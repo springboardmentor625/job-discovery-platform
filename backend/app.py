@@ -4,10 +4,15 @@ from flask_cors import CORS
 import os
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import JWTManager, create_access_token
 
 load_dotenv()
 
 app = Flask(__name__)
+
+app.config["JWT_SECRET_KEY"] = os.getenv("JWT_SECRET_KEY")
+
+jwt = JWTManager(app)
 
 CORS(
     app,
@@ -113,12 +118,15 @@ def login():
             "message": "Invalid email or password"
         }), 401
 
+    access_token = create_access_token(identity=str(user.user_id))
+
     return jsonify({
-        "message": "Login successful",
-        "user_id": user.user_id,
-        "full_name": user.full_name,
-        "email": user.email
-    }), 200
+    "message": "Login successful",
+    "access_token": access_token,
+    "user_id": user.user_id,
+    "full_name": user.full_name,
+    "email": user.email
+}), 200
 
 
 with app.app_context():
