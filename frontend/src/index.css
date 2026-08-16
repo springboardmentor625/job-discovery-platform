@@ -1194,3 +1194,494 @@ input {
   }
 
 }
+
+/* =========================================
+   JOB DISCOVERY
+========================================= */
+
+.job-discovery-page {
+  min-height: 100vh;
+  background: #f6f7fb;
+  padding: 35px 20px;
+}
+
+.job-discovery-container {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.job-discovery-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 25px;
+  margin-bottom: 25px;
+}
+
+.job-discovery-header h1 {
+  margin: 0 0 8px;
+  font-size: 32px;
+}
+
+.job-discovery-header p {
+  margin: 0;
+  color: #6b7280;
+}
+
+
+/* =========================================
+   JOB CARD AREA
+========================================= */
+
+.job-card-area {
+  display: flex;
+  justify-content: center;
+  margin-top: 25px;
+}
+
+.job-card {
+  width: 100%;
+  max-width: 620px;
+
+  background: white;
+
+  border-radius: 22px;
+
+  padding: 35px;
+
+  box-shadow:
+    0 15px 45px rgba(0, 0, 0, 0.08);
+
+  border: 1px solid #e5e7eb;
+}
+
+
+/* =========================================
+   JOB CARD HEADER
+========================================= */
+
+.job-card-top {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+
+  padding-bottom: 25px;
+
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.company-logo {
+  width: 65px;
+  height: 65px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  border-radius: 16px;
+
+  background: #ede9fe;
+
+  color: #6d4aff;
+
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.job-company {
+  margin: 0 0 5px;
+
+  color: #6b7280;
+
+  font-size: 14px;
+}
+
+.job-card-top h2 {
+  margin: 0;
+
+  font-size: 25px;
+}
+
+
+/* =========================================
+   JOB DETAILS
+========================================= */
+
+.job-details {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+
+  margin-top: 22px;
+}
+
+.job-detail {
+  padding: 8px 12px;
+
+  background: #f9fafb;
+
+  border-radius: 8px;
+
+  font-size: 13px;
+
+  color: #374151;
+}
+
+
+/* =========================================
+   SKILLS
+========================================= */
+
+.job-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-top: 20px;
+}
+
+.skill-tag {
+  padding: 7px 11px;
+
+  background: #f3f4f6;
+
+  color: #374151;
+
+  border-radius: 20px;
+
+  font-size: 12px;
+
+  font-weight: 600;
+}
+
+
+/* =========================================
+   DESCRIPTION
+========================================= */
+
+.job-description {
+  margin-top: 25px;
+}
+
+.job-description h3 {
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+.job-description p {
+  color: #6b7280;
+
+  line-height: 1.7;
+
+  margin: 0;
+}
+
+
+/* =========================================
+   SWIPE ACTIONS
+========================================= */
+
+.swipe-actions {
+  display: flex;
+
+  justify-content: center;
+
+  gap: 35px;
+
+  margin-top: 35px;
+}
+
+.reject-button,
+.like-button {
+  width: 65px;
+  height: 65px;
+
+  border-radius: 50%;
+
+  background: white;
+
+  cursor: pointer;
+
+  font-size: 28px;
+
+  font-weight: 700;
+
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.reject-button {
+  border: 2px solid #ef4444;
+  color: #ef4444;
+}
+
+.like-button {
+  border: 2px solid #22c55e;
+  color: #22c55e;
+}
+
+.reject-button:hover,
+.like-button:hover {
+  transform: scale(1.08);
+
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.1);
+}
+
+.reject-button:disabled,
+.like-button:disabled {
+  opacity: 0.5;
+
+  cursor: not-allowed;
+}
+
+.swipe-hint {
+  margin-top: 15px;
+
+  text-align: center;
+
+  color: #9ca3af;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   NO JOBS
+========================================= */
+
+.no-jobs-card {
+  max-width: 550px;
+
+  margin: 80px auto;
+
+  padding: 45px;
+
+  background: white;
+
+  border-radius: 20px;
+
+  text-align: center;
+
+  box-shadow:
+    0 10px 35px rgba(0, 0, 0, 0.05);
+}
+
+.no-jobs-icon {
+  width: 70px;
+  height: 70px;
+
+  display: flex;
+
+  align-items: center;
+  justify-content: center;
+
+  margin: 0 auto 20px;
+
+  border-radius: 50%;
+
+  background: #dcfce7;
+
+  color: #16a34a;
+
+  font-size: 30px;
+}
+
+.no-jobs-card h2 {
+  margin-bottom: 10px;
+}
+
+.no-jobs-card p {
+  color: #6b7280;
+
+  margin-bottom: 25px;
+}
+
+.dashboard-button {
+  padding: 11px 20px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: #111827;
+
+  color: white;
+
+  cursor: pointer;
+
+  font-weight: 600;
+}
+
+
+/* =========================================
+   LOADING
+========================================= */
+
+.job-loading {
+  min-height: 100vh;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  background: #f6f7fb;
+
+  color: #6b7280;
+
+  font-size: 18px;
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 700px) {
+
+  .job-discovery-page {
+    padding: 20px 15px;
+  }
+
+  .job-discovery-header {
+    flex-direction: column;
+  }
+
+  .job-card {
+    padding: 25px 20px;
+  }
+
+  .job-card-top h2 {
+    font-size: 21px;
+  }
+
+  .swipe-actions {
+    gap: 25px;
+  }
+
+}
+/* =========================================
+   SWIPE CARD
+========================================= */
+
+.swipe-card-container {
+  position: relative;
+
+  width: 100%;
+  max-width: 620px;
+
+  height: 650px;
+
+  margin: 30px auto 0;
+}
+
+.swipe-card-container .job-card {
+  position: absolute;
+
+  inset: 0;
+
+  width: 100%;
+}
+
+.swipe-card {
+  cursor: grab;
+
+  touch-action: pan-y;
+
+  user-select: none;
+
+  z-index: 2;
+}
+
+.swipe-card:active {
+  cursor: grabbing;
+}
+
+
+/* =========================================
+   NEXT CARD
+========================================= */
+
+.next-job-card {
+  transform: scale(0.96);
+
+  opacity: 0.6;
+
+  z-index: 1;
+
+  overflow: hidden;
+}
+
+.next-job-card .job-description,
+.next-job-card .job-details,
+.next-job-card .job-skills {
+  visibility: hidden;
+}
+
+
+/* =========================================
+   SWIPE INDICATORS
+========================================= */
+
+.swipe-indicator {
+  position: absolute;
+
+  top: 30px;
+
+  z-index: 10;
+
+  padding: 8px 15px;
+
+  border: 3px solid;
+
+  border-radius: 8px;
+
+  font-size: 20px;
+
+  font-weight: 800;
+
+  pointer-events: none;
+}
+
+.like-indicator {
+  right: 25px;
+
+  color: #16a34a;
+
+  border-color: #16a34a;
+
+  transform: rotate(8deg);
+}
+
+.reject-indicator {
+  left: 25px;
+
+  color: #ef4444;
+
+  border-color: #ef4444;
+
+  transform: rotate(-8deg);
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 700px) {
+
+  .swipe-card-container {
+    height: 700px;
+  }
+
+  .swipe-card {
+    padding: 25px 20px;
+  }
+
+  .swipe-indicator {
+    font-size: 16px;
+  }
+
+}

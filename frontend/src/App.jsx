@@ -4,11 +4,15 @@ import {
   Route,
   Navigate
 } from "react-router-dom";
+
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import CandidateDashboard from "./pages/CandidateDashboard";
 import EditProfile from "./pages/EditProfile";
 import Resume from "./pages/Resume";
+import JobDiscovery from "./pages/JobDiscovery";
+
+
 function App() {
 
   return (
@@ -42,6 +46,10 @@ function App() {
         <Route
           path="/register"
           element={<Register />}
+        />
+        <Route
+          path="/candidate/jobs"
+          element={<JobDiscovery />}
         />
 
         

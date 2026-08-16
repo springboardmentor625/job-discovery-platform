@@ -10,6 +10,11 @@ function CandidateDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+
+  // ==========================================
+  // LOAD CANDIDATE PROFILE
+  // ==========================================
+
   useEffect(() => {
 
     const fetchProfile = async () => {
@@ -29,6 +34,8 @@ function CandidateDashboard() {
         if (error.response?.status === 401) {
 
           localStorage.removeItem("access_token");
+          localStorage.removeItem("user_id");
+          localStorage.removeItem("role");
 
           navigate("/login");
 
@@ -46,6 +53,7 @@ function CandidateDashboard() {
           setError(
             "Unable to load your profile."
           );
+
         }
 
       } finally {
@@ -53,12 +61,17 @@ function CandidateDashboard() {
         setLoading(false);
 
       }
+
     };
 
     fetchProfile();
 
   }, [navigate]);
 
+
+  // ==========================================
+  // LOGOUT
+  // ==========================================
 
   const logout = () => {
 
@@ -71,12 +84,20 @@ function CandidateDashboard() {
   };
 
 
+  // ==========================================
+  // LOADING
+  // ==========================================
+
   if (loading) {
 
     return (
+
       <div className="dashboard-loading">
+
         Loading your profile...
+
       </div>
+
     );
 
   }
@@ -86,9 +107,10 @@ function CandidateDashboard() {
 
     <div className="dashboard">
 
-      {/* ========================= */}
-      {/* SIDEBAR */}
-      {/* ========================= */}
+
+      {/* =====================================
+          SIDEBAR
+      ====================================== */}
 
       <aside className="sidebar">
 
@@ -96,36 +118,82 @@ function CandidateDashboard() {
           SwipeX
         </div>
 
+
         <nav>
 
-          <button className="nav-item active">
+          {/* Dashboard */}
+
+          <button
+            className="nav-item active"
+            onClick={() => navigate("/candidate")}
+          >
             Dashboard
           </button>
 
-          <button className="nav-item">
-            Discover Jobs
-          </button>
 
-          <button className="nav-item">
-            Matches
-          </button>
-
-          <button className="nav-item">
-            Applications
-          </button>
-
-          <button className="nav-item">
-            Profile
-          </button>
+          {/* Discover Jobs */}
 
           <button
             className="nav-item"
-            onClick={() => navigate("/candidate/resume")}
-            >
+            onClick={() =>
+              navigate("/candidate/jobs")
+            }
+          >
+            Discover Jobs
+          </button>
+
+
+          {/* Matches */}
+
+          <button
+            className="nav-item"
+            onClick={() =>
+              alert("Matches module coming next.")
+            }
+          >
+            Matches
+          </button>
+
+
+          {/* Applications */}
+
+          <button
+            className="nav-item"
+            onClick={() =>
+              alert("Applications module coming next.")
+            }
+          >
+            Applications
+          </button>
+
+
+          {/* Profile */}
+
+          <button
+            className="nav-item"
+            onClick={() =>
+              navigate("/candidate/profile/edit")
+            }
+          >
+            Profile
+          </button>
+
+
+          {/* Resume */}
+
+          <button
+            className="nav-item"
+            onClick={() =>
+              navigate("/candidate/resume")
+            }
+          >
             Resume
-        </button>
+          </button>
 
         </nav>
+
+
+        {/* Logout */}
 
         <button
           className="logout-button"
@@ -137,11 +205,16 @@ function CandidateDashboard() {
       </aside>
 
 
-      {/* ========================= */}
-      {/* MAIN CONTENT */}
-      {/* ========================= */}
+      {/* =====================================
+          MAIN CONTENT
+      ====================================== */}
 
       <main className="dashboard-main">
+
+
+        {/* =================================
+            HEADER
+        ================================== */}
 
         <header className="dashboard-header">
 
@@ -157,6 +230,7 @@ function CandidateDashboard() {
 
           </div>
 
+
           <div className="candidate-badge">
             Candidate
           </div>
@@ -164,13 +238,14 @@ function CandidateDashboard() {
         </header>
 
 
-        {/* ========================= */}
-        {/* PROFILE */}
-        {/* ========================= */}
+        {/* =================================
+            PROFILE
+        ================================== */}
 
         {profile ? (
 
           <section className="profile-section">
+
 
             <div className="section-header">
 
@@ -186,36 +261,49 @@ function CandidateDashboard() {
 
               </div>
 
+
               <button
                 className="edit-button"
-                onClick={() => navigate("/candidate/profile/edit")}
-                >
+                onClick={() =>
+                  navigate(
+                    "/candidate/profile/edit"
+                  )
+                }
+              >
                 Edit Profile
-            </button>
+              </button>
 
             </div>
 
 
             <div className="profile-card">
 
+
+              {/* Profile Header */}
+
               <div className="profile-header">
 
                 <div className="profile-initial">
 
                   {profile.headline
-                    ? profile.headline.charAt(0).toUpperCase()
+                    ? profile.headline
+                        .charAt(0)
+                        .toUpperCase()
                     : "C"}
 
                 </div>
 
+
                 <div>
 
                   <h2>
-                    {profile.headline || "Candidate"}
+                    {profile.headline ||
+                      "Candidate"}
                   </h2>
 
                   <p>
-                    {profile.location || "Location not added"}
+                    {profile.location ||
+                      "Location not added"}
                   </p>
 
                 </div>
@@ -223,7 +311,10 @@ function CandidateDashboard() {
               </div>
 
 
+              {/* Profile Information */}
+
               <div className="profile-grid">
+
 
                 <div className="profile-field">
 
@@ -232,7 +323,8 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.bio || "Not added"}
+                    {profile.bio ||
+                      "Not added"}
                   </p>
 
                 </div>
@@ -245,7 +337,8 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.education || "Not added"}
+                    {profile.education ||
+                      "Not added"}
                   </p>
 
                 </div>
@@ -258,7 +351,8 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.skills || "Not added"}
+                    {profile.skills ||
+                      "Not added"}
                   </p>
 
                 </div>
@@ -271,7 +365,8 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.experience || "Not added"}
+                    {profile.experience ||
+                      "Not added"}
                   </p>
 
                 </div>
@@ -284,7 +379,8 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.preferred_role || "Not added"}
+                    {profile.preferred_role ||
+                      "Not added"}
                   </p>
 
                 </div>
@@ -297,7 +393,8 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.preferred_location || "Not added"}
+                    {profile.preferred_location ||
+                      "Not added"}
                   </p>
 
                 </div>
@@ -310,10 +407,12 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.expected_salary || "Not added"}
+                    {profile.expected_salary ||
+                      "Not added"}
                   </p>
 
                 </div>
+
 
               </div>
 
@@ -333,7 +432,13 @@ function CandidateDashboard() {
               {error}
             </p>
 
-            <button>
+            <button
+              onClick={() =>
+                navigate(
+                  "/candidate/profile/edit"
+                )
+              }
+            >
               Create Profile
             </button>
 
@@ -342,9 +447,9 @@ function CandidateDashboard() {
         )}
 
 
-        {/* ========================= */}
-        {/* QUICK ACTIONS */}
-        {/* ========================= */}
+        {/* =================================
+            QUICK ACTIONS
+        ================================== */}
 
         <section className="quick-section">
 
@@ -356,40 +461,62 @@ function CandidateDashboard() {
             Continue your job search
           </h2>
 
+
           <div className="quick-grid">
 
-            <div className="quick-card">
+
+            {/* Discover Jobs */}
+
+            <div
+              className="quick-card"
+              onClick={() =>
+                navigate("/candidate/jobs")
+              }
+            >
 
               <h3>
                 Discover Jobs
               </h3>
 
               <p>
-                Find jobs that match your skills
-                and preferences.
+                Find jobs that match your
+                skills and preferences.
               </p>
 
             </div>
 
 
+            {/* Resume */}
+
             <div
-  className="quick-card"
-  onClick={() => navigate("/candidate/resume")}
->
+              className="quick-card"
+              onClick={() =>
+                navigate("/candidate/resume")
+              }
+            >
 
               <h3>
-                Upload Resume
+                Resume
               </h3>
 
               <p>
-                Upload your resume to improve
-                your job recommendations.
+                Upload or manage your
+                resume.
               </p>
 
             </div>
 
 
-            <div className="quick-card">
+            {/* Applications */}
+
+            <div
+              className="quick-card"
+              onClick={() =>
+                alert(
+                  "Applications module coming next."
+                )
+              }
+            >
 
               <h3>
                 Applications
@@ -402,15 +529,18 @@ function CandidateDashboard() {
 
             </div>
 
+
           </div>
 
         </section>
+
 
       </main>
 
     </div>
 
   );
+
 }
 
 export default CandidateDashboard;

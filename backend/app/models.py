@@ -232,3 +232,34 @@ class Job(Base):
         DateTime,
         default=datetime.utcnow
     )
+class JobSwipe(Base):
+
+    __tablename__ = "job_swipes"
+
+    swipe_id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    user_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    job_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    action = Column(
+        String(20),
+        nullable=False
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
