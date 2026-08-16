@@ -25,6 +25,10 @@ router = APIRouter(
 )
 
 
+# ==========================================
+# UPLOAD DIRECTORY
+# ==========================================
+
 UPLOAD_DIR = "uploads"
 
 os.makedirs(
@@ -33,11 +37,19 @@ os.makedirs(
 )
 
 
+# ==========================================
+# ALLOWED FILE TYPES
+# ==========================================
+
 ALLOWED_EXTENSIONS = {
     ".pdf",
     ".docx"
 }
 
+
+# ==========================================
+# EXTRACT PDF TEXT
+# ==========================================
 
 def extract_pdf_text(file_path):
 
@@ -55,6 +67,10 @@ def extract_pdf_text(file_path):
     return text
 
 
+# ==========================================
+# EXTRACT DOCX TEXT
+# ==========================================
+
 def extract_docx_text(file_path):
 
     document = Document(file_path)
@@ -68,6 +84,53 @@ def extract_docx_text(file_path):
     return text
 
 
+# ==========================================
+# GET CURRENT RESUME
+# ==========================================
+
+@router.get("/resume")
+def get_resume(
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    resume = db.query(Resume).filter(
+        Resume.user_id == user_id,
+        Resume.is_primary == True
+    ).order_by(
+        Resume.uploaded_at.desc()
+    ).first()
+
+    if not resume:
+
+        raise HTTPException(
+            status_code=404,
+            detail="No resume uploaded"
+        )
+
+    return {
+
+        "resume_id": resume.resume_id,
+
+        "file_name": resume.file_name,
+
+        "file_type": resume.file_type,
+
+        "file_path": resume.file_path,
+
+        "text_length": len(
+            resume.extracted_text or ""
+        ),
+
+        "uploaded_at": resume.uploaded_at
+
+    }
+
+
+# ==========================================
+# UPLOAD / REPLACE RESUME
+# ==========================================
+
 @router.post("/resume")
 async def upload_resume(
     file: UploadFile = File(...),
@@ -75,11 +138,23 @@ async def upload_resume(
     db: Session = Depends(get_db)
 ):
 
-    # -----------------------------
-    # Check file extension
-    # -----------------------------
+    # ======================================
+    # CHECK FILE NAME
+    # ======================================
 
     original_name = file.filename or ""
+
+    if not original_name:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Please select a resume file"
+        )
+
+
+    # ======================================
+    # CHECK FILE EXTENSION
+    # ======================================
 
     extension = os.path.splitext(
         original_name
@@ -93,9 +168,23 @@ async def upload_resume(
         )
 
 
-    # -----------------------------
-    # Generate unique file name
-    # -----------------------------
+    # ======================================
+    # READ FILE
+    # ======================================
+
+    content = await file.read()
+
+    if not content:
+
+        raise HTTPException(
+            status_code=400,
+            detail="The uploaded file is empty"
+        )
+
+
+    # ======================================
+    # GENERATE UNIQUE FILE NAME
+    # ======================================
 
     unique_name = (
         f"{uuid.uuid4()}{extension}"
@@ -107,23 +196,30 @@ async def upload_resume(
     )
 
 
-    # -----------------------------
-    # Save file
-    # -----------------------------
+    # ======================================
+    # SAVE FILE
+    # ======================================
 
-    with open(
-        file_path,
-        "wb"
-    ) as buffer:
+    try:
 
-        content = await file.read()
+        with open(
+            file_path,
+            "wb"
+        ) as buffer:
 
-        buffer.write(content)
+            buffer.write(content)
+
+    except Exception:
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save the resume file"
+        )
 
 
-    # -----------------------------
-    # Extract text
-    # -----------------------------
+    # ======================================
+    # EXTRACT TEXT
+    # ======================================
 
     try:
 
@@ -141,7 +237,9 @@ async def upload_resume(
 
     except Exception:
 
-        os.remove(file_path)
+        if os.path.exists(file_path):
+
+            os.remove(file_path)
 
         raise HTTPException(
             status_code=400,
@@ -149,9 +247,28 @@ async def upload_resume(
         )
 
 
-    # -----------------------------
-    # Save database record
-    # -----------------------------
+    # ======================================
+    # FIND CURRENT PRIMARY RESUME
+    # ======================================
+
+    old_resume = db.query(Resume).filter(
+        Resume.user_id == user_id,
+        Resume.is_primary == True
+    ).first()
+
+
+    # ======================================
+    # MARK OLD RESUME AS NON-PRIMARY
+    # ======================================
+
+    if old_resume:
+
+        old_resume.is_primary = False
+
+
+    # ======================================
+    # CREATE NEW RESUME RECORD
+    # ======================================
 
     resume = Resume(
 
@@ -166,14 +283,64 @@ async def upload_resume(
         extracted_text=extracted_text,
 
         is_primary=True
+
     )
+
 
     db.add(resume)
 
-    db.commit()
 
-    db.refresh(resume)
+    # ======================================
+    # SAVE DATABASE CHANGES
+    # ======================================
 
+    try:
+
+        db.commit()
+
+        db.refresh(resume)
+
+    except Exception:
+
+        db.rollback()
+
+        if os.path.exists(file_path):
+
+            os.remove(file_path)
+
+        raise HTTPException(
+            status_code=500,
+            detail="Could not save resume information"
+        )
+
+
+    # ======================================
+    # DELETE OLD FILE
+    # ======================================
+
+    if old_resume:
+
+        old_file_path = old_resume.file_path
+
+        if (
+            old_file_path
+            and os.path.exists(old_file_path)
+        ):
+
+            try:
+
+                os.remove(old_file_path)
+
+            except Exception:
+
+                # Don't fail the upload if
+                # old file deletion fails.
+                pass
+
+
+    # ======================================
+    # RESPONSE
+    # ======================================
 
     return {
 
@@ -185,6 +352,10 @@ async def upload_resume(
 
         "file_type": resume.file_type,
 
-        "text_length": len(extracted_text)
+        "text_length": len(
+            extracted_text
+        ),
+
+        "uploaded_at": resume.uploaded_at
 
     }

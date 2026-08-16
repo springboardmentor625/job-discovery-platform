@@ -166,3 +166,69 @@ class Resume(Base):
         DateTime,
         default=datetime.utcnow
     )
+class Job(Base):
+
+    __tablename__ = "jobs"
+
+    job_id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    recruiter_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    title = Column(
+        String(200),
+        nullable=False
+    )
+
+    company = Column(
+        String(200),
+        nullable=False
+    )
+
+    description = Column(
+        String(5000),
+        nullable=False
+    )
+
+    location = Column(
+        String(200),
+        nullable=False
+    )
+
+    employment_type = Column(
+        String(50),
+        nullable=False
+    )
+
+    experience_required = Column(
+        String(100),
+        nullable=True
+    )
+
+    salary = Column(
+        String(100),
+        nullable=True
+    )
+
+    skills = Column(
+        String(1000),
+        nullable=True
+    )
+
+    status = Column(
+        String(30),
+        default="active",
+        nullable=False
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
