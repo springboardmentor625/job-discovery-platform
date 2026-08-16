@@ -442,7 +442,55 @@ class Job(db.Model):
         db.String(50),
         default="ACTIVE"
     )
+# ============================================================
+# ATS REPORT MODEL
+# ============================================================
 
+class ATSReport(db.Model):
+
+    __tablename__ = "ats_reports"
+
+    ats_report_id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    resume_id = db.Column(
+        db.Integer,
+        db.ForeignKey("resumes.resume_id"),
+        nullable=False
+    )
+
+    job_id = db.Column(
+        db.Integer,
+        db.ForeignKey("jobs.job_id"),
+        nullable=False
+    )
+
+    ats_score = db.Column(
+        db.Float
+    )
+
+    match_percentage = db.Column(
+        db.Float
+    )
+
+    missing_skills = db.Column(
+        db.Text
+    )
+
+    missing_keywords = db.Column(
+        db.Text
+    )
+
+    suggestions = db.Column(
+        db.Text
+    )
+
+    analyzed_at = db.Column(
+        db.DateTime,
+        server_default=db.func.now()
+    )
 
 # ============================================================
 # HOME
@@ -1178,7 +1226,232 @@ def get_jobs():
     return jsonify({
         "jobs": result
     }), 200
+# ============================================================
+# ATS ANALYSIS
+# ============================================================
 
+@app.route(
+    "/api/ats/analyze/<int:job_id>",
+    methods=["POST"]
+)
+@jwt_required()
+def analyze_ats(job_id):
+
+    user_id = get_jwt_identity()
+
+    # --------------------------------------------------------
+    # Get selected job
+    # --------------------------------------------------------
+
+    job = Job.query.filter_by(
+        job_id=job_id,
+        status="ACTIVE"
+    ).first()
+
+    if not job:
+
+        return jsonify({
+            "message": "Job not found"
+        }), 404
+
+    # --------------------------------------------------------
+    # Get candidate's default resume
+    # --------------------------------------------------------
+
+    resume = Resume.query.filter_by(
+        user_id=user_id,
+        is_default=True
+    ).first()
+
+    if not resume:
+
+        resume = Resume.query.filter_by(
+            user_id=user_id
+        ).order_by(
+            Resume.uploaded_at.desc()
+        ).first()
+
+    if not resume:
+
+        return jsonify({
+            "message":
+                "Please upload a resume before ATS analysis"
+        }), 400
+
+    # --------------------------------------------------------
+    # Get resume skills
+    # --------------------------------------------------------
+
+    try:
+
+        resume_skills = json.loads(
+            resume.extracted_skills
+        ) if resume.extracted_skills else []
+
+    except Exception:
+
+        resume_skills = []
+
+    # --------------------------------------------------------
+    # Get job required skills
+    # --------------------------------------------------------
+
+    try:
+
+        required_skills = json.loads(
+            job.required_skills
+        ) if job.required_skills else []
+
+    except Exception:
+
+        required_skills = []
+
+    # --------------------------------------------------------
+    # Normalize skills for comparison
+    # --------------------------------------------------------
+
+    resume_skill_map = {
+        skill.strip().lower(): skill
+        for skill in resume_skills
+    }
+
+    required_skill_map = {
+        skill.strip().lower(): skill
+        for skill in required_skills
+    }
+
+    # --------------------------------------------------------
+    # Find matched and missing skills
+    # --------------------------------------------------------
+
+    matched_skills = []
+
+    missing_skills = []
+
+    for skill_key, original_skill in required_skill_map.items():
+
+        if skill_key in resume_skill_map:
+
+            matched_skills.append(
+                original_skill
+            )
+
+        else:
+
+            missing_skills.append(
+                original_skill
+            )
+
+    # --------------------------------------------------------
+    # Calculate match percentage
+    # --------------------------------------------------------
+
+    if len(required_skills) > 0:
+
+        match_percentage = (
+            len(matched_skills)
+            / len(required_skills)
+        ) * 100
+
+    else:
+
+        match_percentage = 0
+
+    # Round to 2 decimal places
+
+    match_percentage = round(
+        match_percentage,
+        2
+    )
+
+    # For our basic MVP, ATS score = match percentage
+
+    ats_score = match_percentage
+
+    # --------------------------------------------------------
+    # Suggestions
+    # --------------------------------------------------------
+
+    if not missing_skills:
+
+        suggestions = (
+            "Your resume matches all required "
+            "skills for this job."
+        )
+
+    else:
+
+        suggestions = (
+            "Consider adding or highlighting "
+            "the missing skills in your resume: "
+            + ", ".join(missing_skills)
+        )
+
+    # --------------------------------------------------------
+    # Save ATS report
+    # --------------------------------------------------------
+
+    report = ATSReport(
+
+        resume_id=resume.resume_id,
+
+        job_id=job.job_id,
+
+        ats_score=ats_score,
+
+        match_percentage=match_percentage,
+
+        missing_skills=json.dumps(
+            missing_skills
+        ),
+
+        missing_keywords=json.dumps(
+            missing_skills
+        ),
+
+        suggestions=suggestions
+    )
+
+    db.session.add(
+        report
+    )
+
+    db.session.commit()
+
+    # --------------------------------------------------------
+    # Return result
+    # --------------------------------------------------------
+
+    return jsonify({
+
+        "message":
+            "ATS analysis completed",
+
+        "ats_report_id":
+            report.ats_report_id,
+
+        "job_id":
+            job.job_id,
+
+        "resume_id":
+            resume.resume_id,
+
+        "ats_score":
+            ats_score,
+
+        "match_percentage":
+            match_percentage,
+
+        "matched_skills":
+            matched_skills,
+
+        "missing_skills":
+            missing_skills,
+
+        "suggestions":
+            suggestions
+
+    }), 201
 
 # ============================================================
 # CREATE DATABASE TABLES + SEED JOBS

@@ -33,9 +33,14 @@ function App() {
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
 
-  // =========================
-  // Registration
-  // =========================
+  // ATS
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [atsResult, setAtsResult] = useState(null);
+  const [atsLoading, setAtsLoading] = useState(false);
+
+  // ============================================================
+  // REGISTRATION
+  // ============================================================
 
   const handleRegister = async (e) => {
     e.preventDefault();
@@ -60,7 +65,9 @@ function App() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("Registration successful! Please login.");
+        setMessage(
+          "Registration successful! Please login."
+        );
 
         setFullName("");
         setRegisterEmail("");
@@ -71,13 +78,15 @@ function App() {
         setMessage(data.message);
       }
     } catch (error) {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
-  // =========================
-  // Login
-  // =========================
+  // ============================================================
+  // LOGIN
+  // ============================================================
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -110,46 +119,48 @@ function App() {
           `Welcome, ${data.full_name}! Login successful.`
         );
 
-        // Check whether profile already exists
         const profileResponse = await fetch(
           "http://127.0.0.1:5000/api/profile",
           {
             method: "GET",
             headers: {
-              Authorization: `Bearer ${data.access_token}`,
+              Authorization:
+                `Bearer ${data.access_token}`,
             },
           }
         );
 
-        const profileData = await profileResponse.json();
+        const profileData =
+          await profileResponse.json();
 
         if (
           profileResponse.ok &&
           profileData.profile_exists
         ) {
-          // Existing candidate → resume
           setPage("resume");
         } else {
-          // New candidate → profile
           setPage("profile");
         }
       } else {
         setMessage(data.message);
       }
     } catch (error) {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
-  // =========================
-  // Candidate Profile
-  // =========================
+  // ============================================================
+  // CREATE PROFILE
+  // ============================================================
 
   const handleProfileSubmit = async (e) => {
     e.preventDefault();
     setMessage("");
 
-    const token = localStorage.getItem("access_token");
+    const token =
+      localStorage.getItem("access_token");
 
     if (!token) {
       setMessage("Please login first.");
@@ -164,20 +175,24 @@ function App() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
+            Authorization:
+              `Bearer ${token}`,
           },
           body: JSON.stringify({
             headline,
             summary,
             location,
-            experience_years: experienceYears
-              ? Number(experienceYears)
-              : 0,
+            experience_years:
+              experienceYears
+                ? Number(experienceYears)
+                : 0,
             education,
             projects,
             certifications,
-            preferred_job_type: preferredJobType,
-            preferred_location: preferredLocation,
+            preferred_job_type:
+              preferredJobType,
+            preferred_location:
+              preferredLocation,
           }),
         }
       );
@@ -186,26 +201,29 @@ function App() {
 
       if (response.ok) {
         setMessage(data.message);
-
         setPage("resume");
       } else {
         setMessage(data.message);
       }
     } catch (error) {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
-  // =========================
-  // Resume Upload
-  // =========================
+  // ============================================================
+  // RESUME UPLOAD
+  // ============================================================
 
   const handleResumeUpload = async (e) => {
     e.preventDefault();
+
     setMessage("");
     setExtractedSkills([]);
 
-    const token = localStorage.getItem("access_token");
+    const token =
+      localStorage.getItem("access_token");
 
     if (!token) {
       setMessage("Please login first.");
@@ -214,17 +232,29 @@ function App() {
     }
 
     if (!resumeFile) {
-      setMessage("Please select a PDF resume.");
+      setMessage(
+        "Please select a PDF resume."
+      );
       return;
     }
 
-    if (resumeFile.type !== "application/pdf") {
-      setMessage("Only PDF resumes are allowed.");
+    if (
+      resumeFile.type !==
+      "application/pdf"
+    ) {
+      setMessage(
+        "Only PDF resumes are allowed."
+      );
       return;
     }
 
-    if (resumeFile.size > 5 * 1024 * 1024) {
-      setMessage("Resume must be smaller than 5 MB.");
+    if (
+      resumeFile.size >
+      5 * 1024 * 1024
+    ) {
+      setMessage(
+        "Resume must be smaller than 5 MB."
+      );
       return;
     }
 
@@ -241,7 +271,8 @@ function App() {
         {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization:
+              `Bearer ${token}`,
           },
           body: formData,
         }
@@ -265,19 +296,22 @@ function App() {
         setMessage(data.message);
       }
     } catch (error) {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
-  // =========================
+  // ============================================================
   // GET JOBS
-  // =========================
+  // ============================================================
 
   const handleViewJobs = async () => {
     setMessage("");
     setJobsLoading(true);
 
-    const token = localStorage.getItem("access_token");
+    const token =
+      localStorage.getItem("access_token");
 
     if (!token) {
       setMessage("Please login first.");
@@ -292,7 +326,8 @@ function App() {
         {
           method: "GET",
           headers: {
-            Authorization: `Bearer ${token}`,
+            Authorization:
+              `Bearer ${token}`,
           },
         }
       );
@@ -304,7 +339,8 @@ function App() {
         setPage("jobs");
       } else {
         setMessage(
-          data.message || "Could not load jobs."
+          data.message ||
+            "Could not load jobs."
         );
       }
     } catch (error) {
@@ -316,9 +352,61 @@ function App() {
     }
   };
 
-  // =========================
+  // ============================================================
+  // ATS ANALYSIS
+  // ============================================================
+
+  const handleAnalyzeATS = async (job) => {
+    setMessage("");
+    setAtsResult(null);
+    setSelectedJob(job);
+    setAtsLoading(true);
+
+    const token =
+      localStorage.getItem("access_token");
+
+    if (!token) {
+      setMessage("Please login first.");
+      setPage("login");
+      setAtsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://127.0.0.1:5000/api/ats/analyze/${job.job_id}`,
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setAtsResult(data);
+        setPage("ats");
+      } else {
+        setMessage(
+          data.message ||
+            "ATS analysis failed."
+        );
+      }
+    } catch (error) {
+      setMessage(
+        "Could not connect to the backend."
+      );
+    } finally {
+      setAtsLoading(false);
+    }
+  };
+
+  // ============================================================
   // REGISTER PAGE
-  // =========================
+  // ============================================================
 
   if (page === "register") {
     return (
@@ -352,7 +440,9 @@ function App() {
               type="email"
               value={registerEmail}
               onChange={(e) =>
-                setRegisterEmail(e.target.value)
+                setRegisterEmail(
+                  e.target.value
+                )
               }
               required
             />
@@ -368,7 +458,9 @@ function App() {
               type="password"
               value={registerPassword}
               onChange={(e) =>
-                setRegisterPassword(e.target.value)
+                setRegisterPassword(
+                  e.target.value
+                )
               }
               required
             />
@@ -381,7 +473,9 @@ function App() {
           </button>
         </form>
 
-        {message && <p>{message}</p>}
+        {message && (
+          <p>{message}</p>
+        )}
 
         <p>
           Already have an account?{" "}
@@ -399,9 +493,9 @@ function App() {
     );
   }
 
-  // =========================
+  // ============================================================
   // LOGIN PAGE
-  // =========================
+  // ============================================================
 
   if (page === "login") {
     return (
@@ -435,7 +529,9 @@ function App() {
               type="password"
               value={password}
               onChange={(e) =>
-                setPassword(e.target.value)
+                setPassword(
+                  e.target.value
+                )
               }
               required
             />
@@ -448,7 +544,9 @@ function App() {
           </button>
         </form>
 
-        {message && <p>{message}</p>}
+        {message && (
+          <p>{message}</p>
+        )}
 
         <p>
           Don't have an account?{" "}
@@ -466,18 +564,24 @@ function App() {
     );
   }
 
-  // =========================
-  // COMPLETE PROFILE PAGE
-  // =========================
+  // ============================================================
+  // PROFILE PAGE
+  // ============================================================
 
   if (page === "profile") {
     return (
       <div>
         <h1>SwipeX</h1>
 
-        <h2>Complete Candidate Profile</h2>
+        <h2>
+          Complete Candidate Profile
+        </h2>
 
-        <form onSubmit={handleProfileSubmit}>
+        <form
+          onSubmit={
+            handleProfileSubmit
+          }
+        >
           <div>
             <label>Headline</label>
             <br />
@@ -486,7 +590,9 @@ function App() {
               type="text"
               value={headline}
               onChange={(e) =>
-                setHeadline(e.target.value)
+                setHeadline(
+                  e.target.value
+                )
               }
               placeholder="AIML Student"
               required
@@ -502,7 +608,9 @@ function App() {
             <textarea
               value={summary}
               onChange={(e) =>
-                setSummary(e.target.value)
+                setSummary(
+                  e.target.value
+                )
               }
               placeholder="Tell us about yourself"
               required
@@ -519,7 +627,9 @@ function App() {
               type="text"
               value={location}
               onChange={(e) =>
-                setLocation(e.target.value)
+                setLocation(
+                  e.target.value
+                )
               }
               placeholder="Bangalore"
               required
@@ -529,7 +639,9 @@ function App() {
           <br />
 
           <div>
-            <label>Experience (Years)</label>
+            <label>
+              Experience (Years)
+            </label>
             <br />
 
             <input
@@ -537,7 +649,9 @@ function App() {
               min="0"
               value={experienceYears}
               onChange={(e) =>
-                setExperienceYears(e.target.value)
+                setExperienceYears(
+                  e.target.value
+                )
               }
               required
             />
@@ -552,9 +666,10 @@ function App() {
             <textarea
               value={education}
               onChange={(e) =>
-                setEducation(e.target.value)
+                setEducation(
+                  e.target.value
+                )
               }
-              placeholder="BE in Artificial Intelligence and Machine Learning"
               required
             />
           </div>
@@ -568,37 +683,47 @@ function App() {
             <textarea
               value={projects}
               onChange={(e) =>
-                setProjects(e.target.value)
+                setProjects(
+                  e.target.value
+                )
               }
-              placeholder="Describe your projects"
             />
           </div>
 
           <br />
 
           <div>
-            <label>Certifications</label>
+            <label>
+              Certifications
+            </label>
             <br />
 
             <textarea
               value={certifications}
               onChange={(e) =>
-                setCertifications(e.target.value)
+                setCertifications(
+                  e.target.value
+                )
               }
-              placeholder="Python, AWS, etc."
             />
           </div>
 
           <br />
 
           <div>
-            <label>Preferred Job Type</label>
+            <label>
+              Preferred Job Type
+            </label>
             <br />
 
             <select
-              value={preferredJobType}
+              value={
+                preferredJobType
+              }
               onChange={(e) =>
-                setPreferredJobType(e.target.value)
+                setPreferredJobType(
+                  e.target.value
+                )
               }
               required
             >
@@ -627,14 +752,20 @@ function App() {
           <br />
 
           <div>
-            <label>Preferred Location</label>
+            <label>
+              Preferred Location
+            </label>
             <br />
 
             <input
               type="text"
-              value={preferredLocation}
+              value={
+                preferredLocation
+              }
               onChange={(e) =>
-                setPreferredLocation(e.target.value)
+                setPreferredLocation(
+                  e.target.value
+                )
               }
               placeholder="Bangalore"
               required
@@ -648,14 +779,16 @@ function App() {
           </button>
         </form>
 
-        {message && <p>{message}</p>}
+        {message && (
+          <p>{message}</p>
+        )}
       </div>
     );
   }
 
-  // =========================
-  // RESUME UPLOAD PAGE
-  // =========================
+  // ============================================================
+  // RESUME PAGE
+  // ============================================================
 
   if (page === "resume") {
     return (
@@ -665,10 +798,15 @@ function App() {
         <h2>Upload Resume</h2>
 
         <p>
-          Upload your resume in PDF format.
+          Upload your resume in PDF
+          format.
         </p>
 
-        <form onSubmit={handleResumeUpload}>
+        <form
+          onSubmit={
+            handleResumeUpload
+          }
+        >
           <div>
             <label>
               Select Resume
@@ -697,7 +835,8 @@ function App() {
 
         {resumeFile && (
           <p>
-            Selected: {resumeFile.name}
+            Selected:{" "}
+            {resumeFile.name}
           </p>
         )}
 
@@ -705,9 +844,12 @@ function App() {
           <p>{message}</p>
         )}
 
-        {extractedSkills.length > 0 && (
+        {extractedSkills.length >
+          0 && (
           <div>
-            <h3>Detected Skills</h3>
+            <h3>
+              Detected Skills
+            </h3>
 
             <ul>
               {extractedSkills.map(
@@ -723,8 +865,12 @@ function App() {
 
             <button
               type="button"
-              onClick={handleViewJobs}
-              disabled={jobsLoading}
+              onClick={
+                handleViewJobs
+              }
+              disabled={
+                jobsLoading
+              }
             >
               {jobsLoading
                 ? "Loading Jobs..."
@@ -736,16 +882,18 @@ function App() {
     );
   }
 
-  // =========================
+  // ============================================================
   // JOBS PAGE
-  // =========================
+  // ============================================================
 
   if (page === "jobs") {
     return (
       <div>
         <h1>SwipeX</h1>
 
-        <h2>Available Jobs</h2>
+        <h2>
+          Available Jobs
+        </h2>
 
         {message && (
           <p>{message}</p>
@@ -754,12 +902,15 @@ function App() {
         {jobs.length === 0 ? (
           <div>
             <p>
-              No active jobs available.
+              No active jobs
+              available.
             </p>
 
             <button
               type="button"
-              onClick={() => setPage("resume")}
+              onClick={() =>
+                setPage("resume")
+              }
             >
               Back to Resume
             </button>
@@ -770,10 +921,13 @@ function App() {
               <div
                 key={job.job_id}
                 style={{
-                  border: "1px solid #ccc",
+                  border:
+                    "1px solid #ccc",
                   padding: "20px",
-                  marginBottom: "20px",
-                  borderRadius: "8px",
+                  marginBottom:
+                    "20px",
+                  borderRadius:
+                    "8px",
                 }}
               >
                 <h3>
@@ -795,14 +949,18 @@ function App() {
                   <strong>
                     Employment:
                   </strong>{" "}
-                  {job.employment_type}
+                  {
+                    job.employment_type
+                  }
                 </p>
 
                 <p>
                   <strong>
                     Experience:
                   </strong>{" "}
-                  {job.experience_required}
+                  {
+                    job.experience_required
+                  }
                 </p>
 
                 <p>
@@ -838,8 +996,15 @@ function App() {
 
                 <ul>
                   {job.required_skills?.map(
-                    (skill, index) => (
-                      <li key={index}>
+                    (
+                      skill,
+                      index
+                    ) => (
+                      <li
+                        key={
+                          index
+                        }
+                      >
                         {skill}
                       </li>
                     )
@@ -848,22 +1013,164 @@ function App() {
 
                 <button
                   type="button"
-                  onClick={() => {
-                    setMessage(
-                      `Selected job: ${job.title}`
-                    );
-                  }}
+                  onClick={() =>
+                    handleAnalyzeATS(
+                      job
+                    )
+                  }
+                  disabled={
+                    atsLoading
+                  }
                 >
-                  View Job
+                  {atsLoading &&
+                  selectedJob?.job_id ===
+                    job.job_id
+                    ? "Analyzing..."
+                    : "Analyze ATS"}
                 </button>
               </div>
             ))}
 
             <button
               type="button"
-              onClick={() => setPage("resume")}
+              onClick={() =>
+                setPage("resume")
+              }
             >
               Back to Resume
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ============================================================
+  // ATS RESULT PAGE
+  // ============================================================
+
+  if (page === "ats") {
+    return (
+      <div>
+        <h1>SwipeX</h1>
+
+        <h2>
+          ATS Analysis
+        </h2>
+
+        {selectedJob && (
+          <div>
+            <h3>
+              {selectedJob.title}
+            </h3>
+
+            <h4>
+              {selectedJob.company_name}
+            </h4>
+          </div>
+        )}
+
+        {atsResult && (
+          <div>
+            <hr />
+
+            <h3>
+              ATS Score
+            </h3>
+
+            <h1>
+              {atsResult.ats_score}%
+            </h1>
+
+            <h3>
+              Match Percentage
+            </h3>
+
+            <h2>
+              {
+                atsResult.match_percentage
+              }%
+            </h2>
+
+            <hr />
+
+            <h3>
+              Matched Skills
+            </h3>
+
+            {atsResult
+              .matched_skills
+              ?.length > 0 ? (
+              <ul>
+                {atsResult.matched_skills.map(
+                  (
+                    skill,
+                    index
+                  ) => (
+                    <li
+                      key={
+                        index
+                      }
+                    >
+                      {skill}
+                    </li>
+                  )
+                )}
+              </ul>
+            ) : (
+              <p>
+                No matched skills.
+              </p>
+            )}
+
+            <h3>
+              Missing Skills
+            </h3>
+
+            {atsResult
+              .missing_skills
+              ?.length > 0 ? (
+              <ul>
+                {atsResult.missing_skills.map(
+                  (
+                    skill,
+                    index
+                  ) => (
+                    <li
+                      key={
+                        index
+                      }
+                    >
+                      {skill}
+                    </li>
+                  )
+                )}
+              </ul>
+            ) : (
+              <p>
+                No missing skills 🎉
+              </p>
+            )}
+
+            <h3>
+              Suggestions
+            </h3>
+
+            <p>
+              {
+                atsResult.suggestions
+              }
+            </p>
+
+            <br />
+
+            <button
+              type="button"
+              onClick={() =>
+                setPage("jobs")
+              }
+            >
+              Back to Jobs
             </button>
           </div>
         )}
