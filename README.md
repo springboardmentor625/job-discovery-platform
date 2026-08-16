@@ -1,1 +1,0 @@
-# job-discovery-platform
