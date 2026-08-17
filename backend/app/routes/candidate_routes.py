@@ -99,7 +99,7 @@ def get_profile(
 
 
 # ==========================================
-# UPDATE PROFILE
+# CREATE OR UPDATE PROFILE
 # ==========================================
 
 @router.put("/profile")
@@ -115,12 +115,43 @@ def update_profile(
         CandidateProfile.user_id == user_id
     ).first()
 
+
+    # ======================================
+    # PROFILE DOES NOT EXIST
+    # CREATE PROFILE
+    # ======================================
+
     if not profile:
 
-        raise HTTPException(
-            status_code=404,
-            detail="Candidate profile not found"
+        profile = CandidateProfile(
+            user_id=user_id,
+            headline=profile_data.headline,
+            bio=profile_data.bio,
+            location=profile_data.location,
+            education=profile_data.education,
+            skills=profile_data.skills,
+            experience=profile_data.experience,
+            preferred_role=profile_data.preferred_role,
+            preferred_location=profile_data.preferred_location,
+            expected_salary=profile_data.expected_salary
         )
+
+        db.add(profile)
+
+        db.commit()
+
+        db.refresh(profile)
+
+        return {
+            "message": "Candidate profile created successfully",
+            "profile_id": profile.profile_id
+        }
+
+
+    # ======================================
+    # PROFILE EXISTS
+    # UPDATE PROFILE
+    # ======================================
 
     if profile_data.headline is not None:
         profile.headline = profile_data.headline
@@ -149,8 +180,11 @@ def update_profile(
     if profile_data.expected_salary is not None:
         profile.expected_salary = profile_data.expected_salary
 
+
     db.commit()
+
     db.refresh(profile)
+
 
     return {
         "message": "Candidate profile updated successfully",
