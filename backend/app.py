@@ -491,6 +491,77 @@ class ATSReport(db.Model):
         db.DateTime,
         server_default=db.func.now()
     )
+# ============================================================
+# RECOMMENDATION MODEL
+# ============================================================
+
+class Recommendation(db.Model):
+
+    __tablename__ = "recommendations"
+
+    recommendation_id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.user_id"),
+        nullable=False
+    )
+
+    job_id = db.Column(
+        db.Integer,
+        db.ForeignKey("jobs.job_id"),
+        nullable=False
+    )
+
+    recommendation_score = db.Column(
+        db.Float
+    )
+
+    recommendation_reason = db.Column(
+        db.Text
+    )
+
+    generated_at = db.Column(
+        db.DateTime,
+        server_default=db.func.now()
+    )
+# ============================================================
+# SWIPE HISTORY MODEL
+# ============================================================
+
+class SwipeHistory(db.Model):
+
+    __tablename__ = "swipe_history"
+
+    swipe_id = db.Column(
+        db.Integer,
+        primary_key=True
+    )
+
+    user_id = db.Column(
+        db.Integer,
+        db.ForeignKey("users.user_id"),
+        nullable=False
+    )
+
+    job_id = db.Column(
+        db.Integer,
+        db.ForeignKey("jobs.job_id"),
+        nullable=False
+    )
+
+    swipe_action = db.Column(
+        db.String(10),
+        nullable=False
+    )
+
+    swiped_at = db.Column(
+        db.DateTime,
+        server_default=db.func.now()
+    )
 
 # ============================================================
 # HOME
@@ -1452,6 +1523,406 @@ def analyze_ats(job_id):
             suggestions
 
     }), 201
+
+# ============================================================
+# JOB RECOMMENDATIONS
+# ============================================================
+
+@app.route(
+    "/api/recommendations",
+    methods=["GET"]
+)
+@jwt_required()
+def get_recommendations():
+
+    user_id = get_jwt_identity()
+
+    # Get candidate profile
+    profile = CandidateProfile.query.filter_by(
+        user_id=user_id
+    ).first()
+
+    if not profile:
+        return jsonify({
+            "message": "Please complete your profile first"
+        }), 400
+
+    # Get candidate resume
+    resume = Resume.query.filter_by(
+        user_id=user_id,
+        is_default=True
+    ).first()
+
+    if not resume:
+        resume = Resume.query.filter_by(
+            user_id=user_id
+        ).order_by(
+            Resume.uploaded_at.desc()
+        ).first()
+
+    if not resume:
+        return jsonify({
+            "message": "Please upload a resume first"
+        }), 400
+
+    # Get resume skills
+    try:
+        resume_skills = json.loads(
+            resume.extracted_skills
+        ) if resume.extracted_skills else []
+    except Exception:
+        resume_skills = []
+
+    resume_skill_set = {
+        skill.strip().lower()
+        for skill in resume_skills
+    }
+
+    # Candidate preferences
+    preferred_location = (
+        profile.preferred_location or ""
+    ).strip().lower()
+
+    preferred_job_type = (
+        profile.preferred_job_type or ""
+    ).strip().lower()
+
+    # Get active jobs
+    jobs = Job.query.filter_by(
+        status="ACTIVE"
+    ).all()
+
+    recommendations = []
+
+    for job in jobs:
+
+        # Get required skills
+        try:
+            required_skills = json.loads(
+                job.required_skills
+            ) if job.required_skills else []
+        except Exception:
+            required_skills = []
+
+        required_skill_set = {
+            skill.strip().lower()
+            for skill in required_skills
+        }
+
+        # ----------------------------------------------------
+        # SKILL MATCH = 70%
+        # ----------------------------------------------------
+
+        matched_skills = (
+            resume_skill_set
+            & required_skill_set
+        )
+
+        if required_skill_set:
+
+            skill_score = (
+                len(matched_skills)
+                / len(required_skill_set)
+            ) * 70
+
+        else:
+            skill_score = 0
+
+        # ----------------------------------------------------
+        # LOCATION MATCH = 15%
+        # ----------------------------------------------------
+
+        location_score = 0
+
+        job_location = (
+            job.location or ""
+        ).strip().lower()
+
+        if preferred_location:
+
+            if (
+                preferred_location in job_location
+                or job_location in preferred_location
+            ):
+                location_score = 15
+
+        # ----------------------------------------------------
+        # JOB TYPE MATCH = 15%
+        # ----------------------------------------------------
+
+        job_type_score = 0
+
+        employment_type = (
+            job.employment_type or ""
+        ).strip().lower()
+
+        if (
+            preferred_job_type
+            and preferred_job_type == employment_type
+        ):
+            job_type_score = 15
+
+        # ----------------------------------------------------
+        # FINAL SCORE
+        # ----------------------------------------------------
+
+        recommendation_score = round(
+            skill_score
+            + location_score
+            + job_type_score,
+            2
+        )
+
+        # ----------------------------------------------------
+        # RECOMMENDATION REASON
+        # ----------------------------------------------------
+
+        reasons = []
+
+        if matched_skills:
+            reasons.append(
+                f"{len(matched_skills)} matching skills"
+            )
+
+        if location_score:
+            reasons.append(
+                "preferred location matches"
+            )
+
+        if job_type_score:
+            reasons.append(
+                "preferred job type matches"
+            )
+
+        if reasons:
+
+            recommendation_reason = (
+                "Recommended because "
+                + ", ".join(reasons)
+                + "."
+            )
+
+        else:
+
+            recommendation_reason = (
+                "This job has some similarity "
+                "with your profile."
+            )
+
+        # ----------------------------------------------------
+        # SAVE / UPDATE RECOMMENDATION
+        # ----------------------------------------------------
+
+        recommendation = Recommendation.query.filter_by(
+            user_id=user_id,
+            job_id=job.job_id
+        ).first()
+
+        if recommendation:
+
+            recommendation.recommendation_score = (
+                recommendation_score
+            )
+
+            recommendation.recommendation_reason = (
+                recommendation_reason
+            )
+
+        else:
+
+            recommendation = Recommendation(
+
+                user_id=user_id,
+
+                job_id=job.job_id,
+
+                recommendation_score=(
+                    recommendation_score
+                ),
+
+                recommendation_reason=(
+                    recommendation_reason
+                )
+            )
+
+            db.session.add(
+                recommendation
+            )
+
+        # Make sure ID is generated
+        db.session.flush()
+
+        # Get company
+        company = Company.query.filter_by(
+            company_id=job.company_id
+        ).first()
+
+        recommendations.append({
+
+            "recommendation_id":
+                recommendation.recommendation_id,
+
+            "job_id":
+                job.job_id,
+
+            "company_name":
+                company.company_name
+                if company
+                else None,
+
+            "title":
+                job.title,
+
+            "description":
+                job.description,
+
+            "location":
+                job.location,
+
+            "employment_type":
+                job.employment_type,
+
+            "salary_min":
+                job.salary_min,
+
+            "salary_max":
+                job.salary_max,
+
+            "experience_required":
+                job.experience_required,
+
+            "required_skills":
+                required_skills,
+
+            "recommendation_score":
+                recommendation_score,
+
+            "recommendation_reason":
+                recommendation_reason
+        })
+
+    db.session.commit()
+
+    # Highest score first
+    recommendations.sort(
+        key=lambda x: x["recommendation_score"],
+        reverse=True
+    )
+
+    return jsonify({
+        "recommendations": recommendations
+    }), 200
+# ============================================================
+# RECORD SWIPE
+# ============================================================
+
+@app.route(
+    "/api/swipe",
+    methods=["POST"]
+)
+@jwt_required()
+def swipe_job():
+
+    user_id = get_jwt_identity()
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            "message": "Request body is required"
+        }), 400
+
+    job_id = data.get("job_id")
+    swipe_action = data.get("swipe_action")
+
+    if not job_id:
+        return jsonify({
+            "message": "job_id is required"
+        }), 400
+
+    if swipe_action not in ["LEFT", "RIGHT", "SAVE"]:
+        return jsonify({
+            "message":
+                "swipe_action must be LEFT, RIGHT, or SAVE"
+        }), 400
+
+    job = Job.query.filter_by(
+        job_id=job_id,
+        status="ACTIVE"
+    ).first()
+
+    if not job:
+        return jsonify({
+            "message": "Job not found"
+        }), 404
+
+    swipe = SwipeHistory(
+        user_id=user_id,
+        job_id=job_id,
+        swipe_action=swipe_action
+    )
+
+    db.session.add(swipe)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Swipe recorded successfully",
+        "swipe_id": swipe.swipe_id,
+        "job_id": job_id,
+        "swipe_action": swipe_action
+    }), 201
+
+
+# ============================================================
+# GET SWIPE HISTORY
+# ============================================================
+
+@app.route(
+    "/api/swipe-history",
+    methods=["GET"]
+)
+@jwt_required()
+def get_swipe_history():
+
+    user_id = get_jwt_identity()
+
+    swipe_records = SwipeHistory.query.filter_by(
+        user_id=user_id
+    ).order_by(
+        SwipeHistory.swiped_at.desc()
+    ).all()
+
+    history = []
+
+    for swipe in swipe_records:
+
+        job = Job.query.filter_by(
+            job_id=swipe.job_id
+        ).first()
+
+        company = None
+
+        if job:
+            company = Company.query.filter_by(
+                company_id=job.company_id
+            ).first()
+
+        history.append({
+            "swipe_id": swipe.swipe_id,
+            "job_id": swipe.job_id,
+            "title": job.title if job else None,
+            "company_name":
+                company.company_name if company else None,
+            "swipe_action": swipe.swipe_action,
+            "swiped_at":
+                swipe.swiped_at.isoformat()
+                if swipe.swiped_at else None
+        })
+
+    return jsonify({
+        "swipe_history": history
+    }), 200
+
 
 # ============================================================
 # CREATE DATABASE TABLES + SEED JOBS

@@ -38,6 +38,15 @@ function App() {
   const [atsResult, setAtsResult] = useState(null);
   const [atsLoading, setAtsLoading] = useState(false);
 
+  // Recommendations
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsLoading, setRecommendationsLoading] =
+    useState(false);
+
+  // Swipe History
+  const [swipeHistory, setSwipeHistory] = useState([]);
+  const [swipeLoading, setSwipeLoading] = useState(false);
+
   // ============================================================
   // REGISTRATION
   // ============================================================
@@ -349,6 +358,170 @@ function App() {
       );
     } finally {
       setJobsLoading(false);
+    }
+  };
+
+  // ============================================================
+  // GET JOB RECOMMENDATIONS
+  // ============================================================
+
+  const handleViewRecommendations = async () => {
+    setMessage("");
+    setRecommendationsLoading(true);
+
+    const token =
+      localStorage.getItem("access_token");
+
+    if (!token) {
+      setMessage("Please login first.");
+      setPage("login");
+      setRecommendationsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/recommendations",
+        {
+          method: "GET",
+          headers: {
+            Authorization:
+              `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setRecommendations(
+          data.recommendations || []
+        );
+
+        setPage("recommendations");
+      } else {
+        setMessage(
+          data.message ||
+            "Could not load recommendations."
+        );
+      }
+    } catch (error) {
+      setMessage(
+        "Could not connect to the backend."
+      );
+    } finally {
+      setRecommendationsLoading(false);
+    }
+  };
+
+  // ============================================================
+  // SWIPE JOB
+  // ============================================================
+
+  const handleSwipe = async (jobId, action) => {
+    setMessage("");
+
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      setMessage("Please login first.");
+      setPage("login");
+      return;
+    }
+
+    setSwipeLoading(true);
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/swipe",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            job_id: jobId,
+            swipe_action: action,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setMessage(
+          `Job ${action === "LEFT"
+            ? "passed"
+            : action === "RIGHT"
+            ? "liked"
+            : "saved"
+          } successfully.`
+        );
+
+        // Remove the swiped job from the recommendation list
+        setRecommendations((previous) =>
+          previous.filter(
+            (job) => job.job_id !== jobId
+          )
+        );
+      } else {
+        setMessage(
+          data.message || "Could not record swipe."
+        );
+      }
+    } catch (error) {
+      setMessage(
+        "Could not connect to the backend."
+      );
+    } finally {
+      setSwipeLoading(false);
+    }
+  };
+
+  // ============================================================
+  // GET SWIPE HISTORY
+  // ============================================================
+
+  const handleViewSwipeHistory = async () => {
+    setMessage("");
+
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      setMessage("Please login first.");
+      setPage("login");
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:5000/api/swipe-history",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setSwipeHistory(
+          data.swipe_history || []
+        );
+        setPage("swipe-history");
+      } else {
+        setMessage(
+          data.message ||
+            "Could not load swipe history."
+        );
+      }
+    } catch (error) {
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
@@ -876,6 +1049,23 @@ function App() {
                 ? "Loading Jobs..."
                 : "View Jobs"}
             </button>
+
+            <br />
+            <br />
+
+            <button
+              type="button"
+              onClick={
+                handleViewRecommendations
+              }
+              disabled={
+                recommendationsLoading
+              }
+            >
+              {recommendationsLoading
+                ? "Finding Jobs..."
+                : "Recommended Jobs"}
+            </button>
           </div>
         )}
       </div>
@@ -1031,6 +1221,25 @@ function App() {
               </div>
             ))}
 
+            <br />
+
+            <button
+              type="button"
+              onClick={
+                handleViewRecommendations
+              }
+              disabled={
+                recommendationsLoading
+              }
+            >
+              {recommendationsLoading
+                ? "Finding Jobs..."
+                : "View Recommended Jobs"}
+            </button>
+
+            <br />
+            <br />
+
             <button
               type="button"
               onClick={() =>
@@ -1041,6 +1250,327 @@ function App() {
             </button>
           </div>
         )}
+      </div>
+    );
+  }
+
+  // ============================================================
+  // RECOMMENDATIONS PAGE
+  // ============================================================
+
+  if (page === "recommendations") {
+    return (
+      <div>
+        <h1>SwipeX</h1>
+
+        <h2>
+          Recommended Jobs
+        </h2>
+
+        <p>
+          Jobs recommended based on your
+          skills and preferences.
+        </p>
+
+        {message && (
+          <p>{message}</p>
+        )}
+
+        {recommendations.length === 0 ? (
+          <div>
+            <p>
+              No recommendations available.
+            </p>
+
+            <button
+              type="button"
+              onClick={
+                handleViewSwipeHistory
+              }
+            >
+              Swipe History
+            </button>
+
+            <br />
+            <br />
+
+            <button
+              type="button"
+              onClick={() =>
+                setPage("resume")
+              }
+            >
+              Back to Resume
+            </button>
+          </div>
+        ) : (
+          <div>
+            {recommendations.map(
+              (job) => (
+                <div
+                  key={
+                    job.recommendation_id
+                  }
+                  style={{
+                    border:
+                      "1px solid #ccc",
+                    padding: "20px",
+                    marginBottom:
+                      "20px",
+                    borderRadius:
+                      "8px",
+                  }}
+                >
+                  <h3>
+                    {job.title}
+                  </h3>
+
+                  <h4>
+                    {job.company_name}
+                  </h4>
+
+                  <p>
+                    <strong>
+                      Recommendation Score:
+                    </strong>{" "}
+                    {
+                      job.recommendation_score
+                    }%
+                  </p>
+
+                  <p>
+                    <strong>
+                      Location:
+                    </strong>{" "}
+                    {job.location}
+                  </p>
+
+                  <p>
+                    <strong>
+                      Employment:
+                    </strong>{" "}
+                    {
+                      job.employment_type
+                    }
+                  </p>
+
+                  <p>
+                    <strong>
+                      Experience:
+                    </strong>{" "}
+                    {
+                      job.experience_required
+                    }
+                  </p>
+
+                  <p>
+                    <strong>
+                      Salary:
+                    </strong>{" "}
+                    ₹
+                    {job.salary_min?.toLocaleString(
+                      "en-IN"
+                    )}
+                    {" - "}
+                    ₹
+                    {job.salary_max?.toLocaleString(
+                      "en-IN"
+                    )}
+                  </p>
+
+                  <p>
+                    <strong>
+                      Required Skills:
+                    </strong>
+                  </p>
+
+                  <ul>
+                    {job.required_skills?.map(
+                      (
+                        skill,
+                        index
+                      ) => (
+                        <li
+                          key={
+                            index
+                          }
+                        >
+                          {skill}
+                        </li>
+                      )
+                    )}
+                  </ul>
+
+                  <p>
+                    <strong>
+                      Why recommended:
+                    </strong>{" "}
+                    {
+                      job.recommendation_reason
+                    }
+                  </p>
+
+                  <br />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleAnalyzeATS(
+                        job
+                      )
+                    }
+                  >
+                    Analyze ATS
+                  </button>
+
+                  <br />
+                  <br />
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSwipe(
+                        job.job_id,
+                        "LEFT"
+                      )
+                    }
+                    disabled={swipeLoading}
+                  >
+                    ❌ Pass
+                  </button>
+
+                  {" "}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSwipe(
+                        job.job_id,
+                        "SAVE"
+                      )
+                    }
+                    disabled={swipeLoading}
+                  >
+                    ⭐ Save
+                  </button>
+
+                  {" "}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleSwipe(
+                        job.job_id,
+                        "RIGHT"
+                      )
+                    }
+                    disabled={swipeLoading}
+                  >
+                    ❤️ Like
+                  </button>
+                </div>
+              )
+            )}
+
+            <button
+              type="button"
+              onClick={() =>
+                setPage("jobs")
+              }
+            >
+              View All Jobs
+            </button>
+
+            <br />
+            <br />
+
+            <button
+              type="button"
+              onClick={() =>
+                setPage("resume")
+              }
+            >
+              Back to Resume
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ============================================================
+  // SWIPE HISTORY PAGE
+  // ============================================================
+
+  if (page === "swipe-history") {
+    return (
+      <div>
+        <h1>SwipeX</h1>
+
+        <h2>Swipe History</h2>
+
+        {message && (
+          <p>{message}</p>
+        )}
+
+        {swipeHistory.length === 0 ? (
+          <p>No swipe history yet.</p>
+        ) : (
+          <div>
+            {swipeHistory.map((item) => (
+              <div
+                key={item.swipe_id}
+                style={{
+                  border: "1px solid #ccc",
+                  padding: "15px",
+                  marginBottom: "15px",
+                  borderRadius: "8px",
+                }}
+              >
+                <h3>{item.title}</h3>
+
+                <h4>
+                  {item.company_name}
+                </h4>
+
+                <p>
+                  <strong>Action:</strong>{" "}
+                  {item.swipe_action}
+                </p>
+
+                {item.swiped_at && (
+                  <p>
+                    <strong>Time:</strong>{" "}
+                    {new Date(
+                      item.swiped_at
+                    ).toLocaleString()}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        <button
+          type="button"
+          onClick={() =>
+            setPage("recommendations")
+          }
+        >
+          Back to Recommendations
+        </button>
+
+        <br />
+        <br />
+
+        <button
+          type="button"
+          onClick={() =>
+            setPage("resume")
+          }
+        >
+          Back to Resume
+        </button>
       </div>
     );
   }
@@ -1171,6 +1701,20 @@ function App() {
               }
             >
               Back to Jobs
+            </button>
+
+            <br />
+            <br />
+
+            <button
+              type="button"
+              onClick={() =>
+                setPage(
+                  "recommendations"
+                )
+              }
+            >
+              Back to Recommendations
             </button>
           </div>
         )}
