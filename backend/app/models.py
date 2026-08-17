@@ -118,9 +118,9 @@ class CandidateProfile(Base):
     )
 
     expected_salary = Column(
-        String(100),
-        nullable=True
-    )
+    Integer,
+    nullable=True
+)
 class Resume(Base):
 
     __tablename__ = "resumes"

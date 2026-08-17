@@ -125,7 +125,9 @@ function CandidateDashboard() {
 
           <button
             className="nav-item active"
-            onClick={() => navigate("/candidate")}
+            onClick={() =>
+              navigate("/candidate")
+            }
           >
             Dashboard
           </button>
@@ -148,7 +150,9 @@ function CandidateDashboard() {
           <button
             className="nav-item"
             onClick={() =>
-              alert("Matches module coming next.")
+              alert(
+                "Matches module coming next."
+              )
             }
           >
             Matches
@@ -160,7 +164,9 @@ function CandidateDashboard() {
           <button
             className="nav-item"
             onClick={() =>
-              alert("Applications module coming next.")
+              alert(
+                "Applications module coming next."
+              )
             }
           >
             Applications
@@ -172,7 +178,9 @@ function CandidateDashboard() {
           <button
             className="nav-item"
             onClick={() =>
-              navigate("/candidate/profile/edit")
+              navigate(
+                "/candidate/profile/edit"
+              )
             }
           >
             Profile
@@ -279,7 +287,9 @@ function CandidateDashboard() {
             <div className="profile-card">
 
 
-              {/* Profile Header */}
+              {/* =================================
+                  PROFILE HEADER
+              ================================== */}
 
               <div className="profile-header">
 
@@ -311,10 +321,14 @@ function CandidateDashboard() {
               </div>
 
 
-              {/* Profile Information */}
+              {/* =================================
+                  PROFILE INFORMATION
+              ================================== */}
 
               <div className="profile-grid">
 
+
+                {/* ABOUT */}
 
                 <div className="profile-field">
 
@@ -330,6 +344,8 @@ function CandidateDashboard() {
                 </div>
 
 
+                {/* EDUCATION */}
+
                 <div className="profile-field">
 
                   <span>
@@ -344,19 +360,55 @@ function CandidateDashboard() {
                 </div>
 
 
+                {/* =================================
+                    SKILLS
+                ================================== */}
+
                 <div className="profile-field">
 
                   <span>
                     Skills
                   </span>
 
-                  <p>
-                    {profile.skills ||
-                      "Not added"}
-                  </p>
+
+                  {profile.skills ? (
+
+                    <div className="profile-skills">
+
+                      {profile.skills
+                        .split(",")
+                        .map(
+                          (skill) =>
+                            skill.trim()
+                        )
+                        .filter(Boolean)
+                        .map(
+                          (skill) => (
+
+                            <span
+                              className="profile-skill-tag"
+                              key={skill}
+                            >
+                              {skill}
+                            </span>
+
+                          )
+                        )}
+
+                    </div>
+
+                  ) : (
+
+                    <p>
+                      Not added
+                    </p>
+
+                  )}
 
                 </div>
 
+
+                {/* EXPERIENCE */}
 
                 <div className="profile-field">
 
@@ -372,6 +424,8 @@ function CandidateDashboard() {
                 </div>
 
 
+                {/* PREFERRED ROLE */}
+
                 <div className="profile-field">
 
                   <span>
@@ -385,6 +439,8 @@ function CandidateDashboard() {
 
                 </div>
 
+
+                {/* PREFERRED LOCATION */}
 
                 <div className="profile-field">
 
@@ -400,6 +456,8 @@ function CandidateDashboard() {
                 </div>
 
 
+                {/* EXPECTED SALARY */}
+
                 <div className="profile-field">
 
                   <span>
@@ -407,8 +465,11 @@ function CandidateDashboard() {
                   </span>
 
                   <p>
-                    {profile.expected_salary ||
-                      "Not added"}
+                    {profile.expected_salary
+                      ? `₹${Number(
+                          profile.expected_salary
+                        ).toLocaleString("en-IN")}`
+                      : "Not added"}
                   </p>
 
                 </div>

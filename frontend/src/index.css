@@ -1685,3 +1685,743 @@ input {
   }
 
 }
+/* =========================================
+   PASSWORD VISIBILITY
+========================================= */
+
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 50px;
+}
+
+.password-toggle {
+  position: absolute;
+
+  right: 12px;
+  top: 50%;
+
+  transform: translateY(-50%);
+
+  border: none;
+  background: transparent;
+
+  cursor: pointer;
+
+  font-size: 18px;
+
+  padding: 4px;
+
+  line-height: 1;
+}
+
+.password-toggle:hover {
+  opacity: 0.7;
+}
+
+.password-hint {
+  display: block;
+
+  margin-top: 7px;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+
+  opacity: 0.7;
+}
+/* =========================================
+   SKILLS SELECTOR
+========================================= */
+
+.selected-skills {
+  display: flex;
+
+  flex-wrap: wrap;
+
+  gap: 9px;
+
+  padding: 12px;
+
+  margin-bottom: 12px;
+
+  min-height: 55px;
+
+  background: #f8f7ff;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+}
+
+
+.skill-chip {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 7px;
+
+  padding: 7px 10px 7px 12px;
+
+  background: #ede9fe;
+
+  color: #5b3fd1;
+
+  border-radius: 20px;
+
+  font-size: 13px;
+
+  font-weight: 600;
+
+  border: 1px solid #ddd6fe;
+}
+
+
+.skill-chip button {
+  width: 20px;
+
+  height: 20px;
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  padding: 0;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: transparent;
+
+  color: #6d4aff;
+
+  font-size: 17px;
+
+  line-height: 1;
+
+  cursor: pointer;
+}
+
+
+.skill-chip button:hover {
+  background: #ddd6fe;
+
+  color: #4c1d95;
+}
+
+
+/* =========================================
+   SKILL SEARCH
+========================================= */
+
+.skill-selector {
+  position: relative;
+
+  width: 100%;
+}
+
+
+.skill-search-input {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  font-size: 15px;
+
+  background: white;
+}
+
+
+.skill-search-input:focus {
+  border-color: #6d4aff;
+
+  box-shadow:
+    0 0 0 3px rgba(109, 74, 255, 0.10);
+}
+
+
+/* =========================================
+   SKILLS DROPDOWN
+========================================= */
+
+.skills-dropdown {
+  position: absolute;
+
+  left: 0;
+
+  right: 0;
+
+  top: calc(100% + 5px);
+
+  z-index: 100;
+
+  max-height: 230px;
+
+  overflow-y: auto;
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.12);
+
+  padding: 6px;
+}
+
+
+.skill-option {
+  display: block;
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: none;
+
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #374151;
+
+  text-align: left;
+
+  font-size: 14px;
+
+  cursor: pointer;
+}
+
+
+.skill-option:hover {
+  background: #f3f0ff;
+
+  color: #6d4aff;
+}
+
+
+.no-skill-result {
+  padding: 14px;
+
+  text-align: center;
+
+  color: #9ca3af;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   CUSTOM SKILL
+========================================= */
+
+.custom-skill-area {
+  margin-top: 12px;
+
+  padding: 15px;
+
+  background: #fafafa;
+
+  border: 1px dashed #d1d5db;
+
+  border-radius: 10px;
+}
+
+
+.custom-skill-input {
+  width: 100%;
+
+  padding: 12px 13px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 8px;
+
+  outline: none;
+
+  font-size: 14px;
+}
+
+
+.custom-skill-input:focus {
+  border-color: #6d4aff;
+
+  box-shadow:
+    0 0 0 3px rgba(109, 74, 255, 0.08);
+}
+
+
+/* =========================================
+   FIELD HELP
+========================================= */
+
+.field-help {
+  display: block;
+
+  margin-top: 7px;
+
+  color: #9ca3af;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================
+   SELECT DROPDOWN
+========================================= */
+
+.edit-form-grid .form-group select {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  background: white;
+
+  color: #374151;
+
+  font-size: 15px;
+
+  cursor: pointer;
+}
+
+
+.edit-form-grid .form-group select:focus {
+  border-color: #6d4aff;
+
+  box-shadow:
+    0 0 0 3px rgba(109, 74, 255, 0.10);
+}
+
+
+/* =========================================
+   SKILLS MOBILE
+========================================= */
+
+@media (max-width: 700px) {
+
+  .selected-skills {
+    padding: 10px;
+  }
+
+  .skill-chip {
+    font-size: 12px;
+  }
+
+  .skills-dropdown {
+    max-height: 200px;
+  }
+
+}
+/* =========================================
+   SKILL SELECTOR
+========================================= */
+
+.selected-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  padding: 12px;
+
+  margin-bottom: 10px;
+
+  background: #f8f7ff;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  min-height: 52px;
+}
+
+
+/* =========================================
+   SKILL CHIP
+========================================= */
+
+.skill-chip {
+  display: inline-flex;
+
+  align-items: center;
+
+  gap: 8px;
+
+  padding: 8px 11px;
+
+  background: #ede9fe;
+
+  color: #5b3fd4;
+
+  border: 1px solid #ddd6fe;
+
+  border-radius: 20px;
+
+  font-size: 13px;
+
+  font-weight: 600;
+}
+
+.skill-chip button {
+  width: 18px;
+  height: 18px;
+
+  padding: 0;
+
+  border: none;
+
+  border-radius: 50%;
+
+  background: transparent;
+
+  color: #6d4aff;
+
+  font-size: 16px;
+
+  line-height: 16px;
+
+  cursor: pointer;
+}
+
+.skill-chip button:hover {
+  background: #ddd6fe;
+}
+
+
+/* =========================================
+   SKILL SELECTOR
+========================================= */
+
+.skill-selector {
+  position: relative;
+
+  width: 100%;
+}
+
+.skill-search-input {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  font-size: 15px;
+
+  background: white;
+}
+
+.skill-search-input:focus {
+  border-color: #6d4aff;
+
+  box-shadow:
+    0 0 0 3px rgba(
+      109,
+      74,
+      255,
+      0.10
+    );
+}
+
+
+/* =========================================
+   SKILL DROPDOWN
+========================================= */
+
+.skills-dropdown {
+  position: absolute;
+
+  top: calc(100% + 5px);
+
+  left: 0;
+
+  right: 0;
+
+  max-height: 240px;
+
+  overflow-y: auto;
+
+  z-index: 100;
+
+  background: white;
+
+  border: 1px solid #e5e7eb;
+
+  border-radius: 10px;
+
+  box-shadow:
+    0 12px 30px rgba(
+      0,
+      0,
+      0,
+      0.12
+    );
+
+  padding: 6px;
+}
+
+.skill-option {
+  display: block;
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: none;
+
+  border-radius: 7px;
+
+  background: transparent;
+
+  color: #374151;
+
+  text-align: left;
+
+  font-size: 14px;
+
+  cursor: pointer;
+}
+
+.skill-option:hover {
+  background: #f3f0ff;
+
+  color: #6d4aff;
+}
+
+
+/* =========================================
+   NO SKILL RESULT
+========================================= */
+
+.no-skill-result {
+  padding: 14px;
+
+  text-align: center;
+
+  color: #9ca3af;
+
+  font-size: 13px;
+}
+
+
+/* =========================================
+   CUSTOM SKILL
+========================================= */
+
+.custom-skill-area {
+  margin-top: 12px;
+
+  padding: 16px;
+
+  background: #fafafa;
+
+  border: 1px dashed #d1d5db;
+
+  border-radius: 10px;
+}
+
+.custom-skill-area label {
+  display: block;
+
+  margin-bottom: 8px;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  color: #374151;
+}
+
+.custom-skill-row {
+  display: flex;
+
+  gap: 10px;
+
+  align-items: center;
+}
+
+.custom-skill-input {
+  flex: 1;
+
+  width: 100%;
+
+  padding: 12px 13px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 8px;
+
+  outline: none;
+
+  font-size: 14px;
+
+  background: white;
+}
+
+.custom-skill-input:focus {
+  border-color: #6d4aff;
+
+  box-shadow:
+    0 0 0 3px rgba(
+      109,
+      74,
+      255,
+      0.08
+    );
+}
+
+.custom-skill-add-button {
+  padding: 12px 20px;
+
+  border: none;
+
+  border-radius: 8px;
+
+  background: #6d4aff;
+
+  color: white;
+
+  font-size: 14px;
+
+  font-weight: 600;
+
+  cursor: pointer;
+
+  white-space: nowrap;
+}
+
+.custom-skill-add-button:hover {
+  background: #5938e6;
+}
+
+
+/* =========================================
+   FIELD HELP
+========================================= */
+
+.field-help {
+  display: block;
+
+  margin-top: 7px;
+
+  color: #9ca3af;
+
+  font-size: 12px;
+
+  line-height: 1.5;
+}
+
+
+/* =========================================
+   SELECT INPUT
+========================================= */
+
+.edit-form-grid .form-group select {
+  width: 100%;
+
+  padding: 13px 14px;
+
+  border: 1px solid #d1d5db;
+
+  border-radius: 9px;
+
+  outline: none;
+
+  background: white;
+
+  color: #1f2937;
+
+  font-size: 15px;
+
+  cursor: pointer;
+}
+
+.edit-form-grid .form-group select:focus {
+  border-color: #6d4aff;
+
+  box-shadow:
+    0 0 0 3px rgba(
+      109,
+      74,
+      255,
+      0.10
+    );
+}
+
+
+/* =========================================
+   MOBILE
+========================================= */
+
+@media (max-width: 700px) {
+
+  .custom-skill-row {
+    flex-direction: column;
+
+    align-items: stretch;
+  }
+
+  .custom-skill-add-button {
+    width: 100%;
+  }
+
+}
+/* =========================================
+   PROFILE SKILLS
+========================================= */
+
+.profile-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.profile-skill-tag {
+  display: inline-flex;
+  align-items: center;
+
+  padding: 7px 12px;
+
+  background: #f1edff;
+  color: #5b3fd4;
+
+  border: 1px solid #ddd6fe;
+  border-radius: 20px;
+
+  font-size: 13px;
+  font-weight: 600;
+
+  line-height: 1;
+}
+
+.profile-skill-tag:hover {
+  background: #e9e3ff;
+  transform: translateY(-1px);
+}
