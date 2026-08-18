@@ -1436,7 +1436,7 @@ function App() {
                     }
                     disabled={swipeLoading}
                   >
-                    ❌ Pass
+                     Pass
                   </button>
 
                   {" "}
@@ -1451,7 +1451,7 @@ function App() {
                     }
                     disabled={swipeLoading}
                   >
-                    ⭐ Save
+                     Save
                   </button>
 
                   {" "}
@@ -1466,7 +1466,7 @@ function App() {
                     }
                     disabled={swipeLoading}
                   >
-                    ❤️ Like
+                    Like
                   </button>
                 </div>
               )
