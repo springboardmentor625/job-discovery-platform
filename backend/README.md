@@ -1,43 +1,49 @@
 # SwipeX Backend
 
-## Overview
+## Project Overview
 
-Backend APIs for the SwipeX job discovery platform.
+The SwipeX backend provides the server-side APIs required for the SwipeX job discovery platform. It handles candidate accounts, authentication, profiles, and database communication.
 
-## Technologies
+## Technology Stack
 
-- Python
-- Flask
-- PostgreSQL
-- Flask-SQLAlchemy
-- Flask-CORS
-- Flask-JWT-Extended
+The backend is developed using the following technologies:
 
-## Current Features
+* **Python** – Backend programming language
+* **Flask** – Web framework for building REST APIs
+* **PostgreSQL** – Relational database
+* **Flask-SQLAlchemy** – Database integration and ORM
+* **Flask-CORS** – Cross-Origin Resource Sharing support
+* **Flask-JWT-Extended** – JWT-based authentication
 
-- Candidate registration
-- Candidate login
-- Password hashing
-- JWT authentication
-- JWT-protected candidate profile
-- PostgreSQL integration
+## Implemented Features
 
-## API Endpoints
+The current backend supports:
 
-| Method | Endpoint | Purpose |
-|--------|----------|---------|
-| POST | `/api/register` | Register candidate |
-| POST | `/api/login` | Login and generate JWT |
-| POST | `/api/profile` | Create candidate profile |
+* New candidate registration
+* Candidate login
+* Secure password hashing
+* JWT-based user authentication
+* Authentication-protected candidate profile access
+* PostgreSQL database connectivity
 
-## Database
+## API Routes
 
-Current tables:
+| HTTP Method | API Endpoint    | Description                                 |
+| ----------- | --------------- | ------------------------------------------- |
+| POST        | `/api/register` | Creates a new candidate account             |
+| POST        | `/api/login`    | Authenticates a candidate and returns a JWT |
+| POST        | `/api/profile`  | Creates a candidate profile                 |
 
-- `users`
-- `candidate_profiles`
+## Database Structure
 
-## Run Locally
+The current PostgreSQL database contains the following tables:
+
+* `users` – Stores candidate account information
+* `candidate_profiles` – Stores candidate profile details
+
+## Running the Backend Locally
+
+Follow these commands to start the backend:
 
 ```powershell
 .\venv\Scripts\Activate.ps1
@@ -45,10 +51,15 @@ pip install -r requirements.txt
 python app.py
 ```
 
-Backend runs at:
+After starting the application, the backend will be available at:
 
 `http://127.0.0.1:5000`
 
-## Environment
+## Environment Configuration
 
-Create a local `.env` file with the database URL and JWT secret.
+Before running the application, create a local `.env` file and provide the required configuration values, including:
+
+* Database URL
+* JWT secret key
+
+Keep the `.env` file local and do not commit sensitive credentials to the repository.
