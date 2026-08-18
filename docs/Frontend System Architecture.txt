@@ -1,0 +1,59 @@
+Frontend System Architecture
+
+The SwipeX frontend is developed using React.js and Vite.
+
+The frontend acts as the presentation layer of the application. It provides the user interface and communicates with the backend through APIs.
+
+The interface is designed to provide clear feedback for successful actions and validation errors.
+
+The frontend provides the user interface for candidate registration, login, profile completion, resume upload, resume analysis, job recommendations, and job interaction.
+
+SwipeX Frontend Technologies:
+
+| Technology           | Main Purpose                                             |
+| -------------------- | -------------------------------------------------------- |
+| **React.js**         | Builds the user interface                                |
+| **JavaScript / JSX** | Provides application logic and React component structure |
+| **HTML5**            | Defines the page structure                               |
+| **CSS3**             | Handles design and styling                               |
+| **Vite**             | Runs and builds the React application                    |
+
+
+## Frontend Features
+
+### Candidate Registration
+Candidates can create an account by providing their required personal information.
+
+### Candidate Login
+Registered candidates can log in to access their SwipeX account.
+
+### Profile Completion
+Candidates can complete their profile by providing information such as:
+
+- Full name
+- Phone number
+- Location
+- Education
+- Experience
+- Preferred job role
+- Preferred location
+- Preferred job type
+
+### Resume Upload
+Candidates can upload their resume through the frontend.
+
+### Resume Analysis
+After uploading the resume, the candidate can proceed to the resume analysis stage.
+
+The frontend is designed to display the results of resume parsing and ATS analysis received from the backend.
+
+### Job Recommendations
+The frontend provides an interface for displaying jobs recommended according to the candidate's profile and resume.
+
+### Job Interaction
+
+Candidates can interact with jobs through three main actions:
+
+- Save – saves the job for later.
+- Swipe Left – allows the candidate to continue viewing recommended jobs.
+- Swipe Right – applies for the selected job.
