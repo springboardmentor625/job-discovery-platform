@@ -1,0 +1,148 @@
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from sqlalchemy.orm import Session
+import shutil
+import os
+import uuid
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.models import CandidateProfile, User, Resume
+from app.schemas import (
+    CandidateMeResponse,
+    CandidateProfileOut,
+    CandidateProfileOut,
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    TokenResponse,
+    UpdateProfileRequest,
+    UserOut,
+)
+from app.security import create_access_token, get_password_hash, verify_password
+router = APIRouter(prefix="/api/auth", tags=["auth"])
+@router.post("/register", response_model=TokenResponse)
+def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    existing_user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="An account with this email already exists.")
+    try:
+        user = User(
+            full_name=payload.full_name,
+            email=payload.email.lower(),
+            password_hash=get_password_hash(payload.password),
+            role="candidate",
+            phone=payload.phone,
+            profile_picture=None,
+            is_verified=False,
+        )
+        db.add(user)
+        db.flush()
+        profile = CandidateProfile(
+            user_id=user.user_id,
+        )
+        db.add(profile)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise HTTPException(status_code=500, detail="Registration failed")
+    token = create_access_token(user.user_id, {"user_id": user.user_id, "role": user.role, "email": user.email})
+    return TokenResponse(access_token=token)
+@router.post("/forgot-password")
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if not user:
+        return {"message": "If an account exists for this email, the password has been updated."}
+    if payload.password != payload.confirm_password:
+        raise HTTPException(status_code=400, detail="Passwords do not match")
+    user.password_hash = get_password_hash(payload.password)
+    db.commit()
+    return {"message": "Password updated successfully. Please log in again."}
+@router.post("/login", response_model=TokenResponse)
+def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    token = create_access_token(user.user_id, {"user_id": user.user_id, "role": user.role, "email": user.email})
+    return TokenResponse(access_token=token)
+@router.get("/me", response_model=CandidateMeResponse)
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.user_id).first()
+    resume = db.query(Resume).filter(Resume.user_id == current_user.user_id).first()
+    return CandidateMeResponse(
+        user=UserOut(
+            user_id=current_user.user_id,
+            full_name=current_user.full_name,
+            email=current_user.email,
+            role=current_user.role,
+            phone=current_user.phone,
+            profile_picture=current_user.profile_picture,
+            is_verified=current_user.is_verified,
+            created_at=str(current_user.created_at),
+        ),
+        profile=CandidateProfileOut(
+            profile_id=profile.profile_id,
+            user_id=profile.user_id,
+            headline=profile.headline,
+            summary=profile.summary,
+            city=profile.city,
+            state=profile.state,
+            experience_years=profile.experience_years,
+            branch=profile.branch,
+            stream=profile.stream,
+            projects=profile.projects,
+            certifications=profile.certifications,
+            skills=profile.skills,
+            preferred_job_type=profile.preferred_job_type,
+            preferred_city=profile.preferred_city,
+            preferred_state=profile.preferred_state,
+        ) if profile else None,
+        has_resume=resume is not None,
+    )
+@router.put("/profile", response_model=CandidateMeResponse)
+def update_profile(payload: UpdateProfileRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.full_name = payload.full_name
+    profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.user_id).first()
+    if not profile:
+        profile = CandidateProfile(user_id=current_user.user_id)
+        db.add(profile)
+    profile.headline = payload.headline
+    profile.summary = payload.summary
+    profile.city = payload.city
+    profile.state = payload.state
+    profile.experience_years = payload.experience_years
+    profile.branch = payload.branch
+    profile.stream = payload.stream
+    profile.projects = payload.projects
+    profile.certifications = payload.certifications
+    profile.skills = payload.skills
+    profile.preferred_job_type = payload.preferred_job_type
+    profile.preferred_city = payload.preferred_city
+    profile.preferred_state = payload.preferred_state
+    db.commit()
+    return get_me(current_user=current_user, db=db)
+@router.post("/logout")
+def logout_user():
+    return {"message": "Logged out successfully"}
+@router.post("/profile-picture")
+def upload_profile_picture(file: UploadFile = File(...), current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not file.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image")
+    file_extension = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+    filename = f"{current_user.user_id}_{uuid.uuid4().hex[:8]}.{file_extension}"
+    file_path = os.path.join("uploads", filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    current_user.profile_picture = f"/uploads/{filename}"
+    db.commit()
+    return {"profile_picture": current_user.profile_picture}
+@router.delete("/profile-picture")
+def remove_profile_picture(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.profile_picture:
+        filename = current_user.profile_picture.split("/")[-1]
+        file_path = os.path.join("uploads", filename)
+        if os.path.exists(file_path):
+            os.remove(file_path)
+        current_user.profile_picture = None
+        db.commit()
+    return {"message": "Profile picture removed successfully"}
