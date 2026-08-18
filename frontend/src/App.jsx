@@ -21,7 +21,6 @@ function App() {
 
   const getInitialPage = () => {
     const hash = window.location.hash.replace("#", "");
-
     const hasToken = Boolean(localStorage.getItem("access_token"));
 
     if (
@@ -89,6 +88,17 @@ function App() {
   const [swipeHistory, setSwipeHistory] = useState([]);
   const [swipeLoading, setSwipeLoading] = useState(false);
 
+  // ============================================================
+  // SWIPE GESTURE STATE
+  // ============================================================
+
+  const [dragX, setDragX] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [swipeAnimating, setSwipeAnimating] = useState(false);
+
+  const dragStartX = useRef(0);
+  const dragPointerId = useRef(null);
+
   const token = () => localStorage.getItem("access_token");
 
   // ============================================================
@@ -120,7 +130,6 @@ function App() {
   // ============================================================
 
   useEffect(() => {
-    // Keep the current page as the first history state.
     window.history.replaceState(
       { page },
       "",
@@ -130,9 +139,10 @@ function App() {
     const handlePopState = (event) => {
       const previousPage = event.state?.page;
 
-      // If the browser has a valid page state,
-      // move the React page state to that page.
-      if (previousPage && VALID_PAGES.includes(previousPage)) {
+      if (
+        previousPage &&
+        VALID_PAGES.includes(previousPage)
+      ) {
         navigationFromBrowser.current = true;
 
         setMessage("");
@@ -141,8 +151,6 @@ function App() {
         return;
       }
 
-      // If the browser reaches an unknown state,
-      // don't allow the app to randomly jump around.
       if (!token()) {
         setPage("login");
       }
@@ -151,7 +159,10 @@ function App() {
     window.addEventListener("popstate", handlePopState);
 
     return () => {
-      window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener(
+        "popstate",
+        handlePopState
+      );
     };
   }, []);
 
@@ -160,14 +171,11 @@ function App() {
   // ============================================================
 
   useEffect(() => {
-    // Browser Back / Forward already changed the history.
     if (navigationFromBrowser.current) {
       navigationFromBrowser.current = false;
       return;
     }
 
-    // Login/profile redirects after authentication should replace
-    // the current history entry instead of creating another entry.
     if (replaceNextNavigation.current) {
       replaceNextNavigation.current = false;
 
@@ -180,8 +188,6 @@ function App() {
       return;
     }
 
-    // If the current history state already represents this page,
-    // don't create a duplicate history entry.
     if (window.history.state?.page === page) {
       return;
     }
@@ -217,7 +223,9 @@ function App() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("Registration successful! Please login.");
+        setMessage(
+          "Registration successful! Please login."
+        );
 
         setFullName("");
         setRegisterEmail("");
@@ -225,10 +233,14 @@ function App() {
 
         go("login");
       } else {
-        setMessage(data.message || "Registration failed.");
+        setMessage(
+          data.message || "Registration failed."
+        );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
@@ -255,7 +267,10 @@ function App() {
       const data = await response.json();
 
       if (response.ok) {
-        localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem(
+          "access_token",
+          data.access_token
+        );
 
         setMessage(
           `Welcome, ${data.full_name}! Login successful.`
@@ -270,18 +285,13 @@ function App() {
           }
         );
 
-        const profileData = await profileResponse.json();
+        const profileData =
+          await profileResponse.json();
 
-        /*
-         * IMPORTANT:
-         *
-         * Login should NOT remain in the authenticated
-         * browser history.
-         *
-         * Therefore we REPLACE login with the first
-         * authenticated page.
-         */
-        if (profileResponse.ok && profileData.profile_exists) {
+        if (
+          profileResponse.ok &&
+          profileData.profile_exists
+        ) {
           replaceNextNavigation.current = true;
 
           window.history.replaceState(
@@ -304,11 +314,14 @@ function App() {
         }
       } else {
         setMessage(
-          data.message || "Invalid email or password."
+          data.message ||
+            "Invalid email or password."
         );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
@@ -339,26 +352,29 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${API}/api/profile`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          headline,
-          summary,
-          location,
-          experience_years: experienceYears
-            ? Number(experienceYears)
-            : 0,
-          education,
-          projects,
-          certifications,
-          preferred_job_type: preferredJobType,
-          preferred_location: preferredLocation,
-        }),
-      });
+      const response = await fetch(
+        `${API}/api/profile`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            headline,
+            summary,
+            location,
+            experience_years: experienceYears
+              ? Number(experienceYears)
+              : 0,
+            education,
+            projects,
+            certifications,
+            preferred_job_type: preferredJobType,
+            preferred_location: preferredLocation,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -367,11 +383,14 @@ function App() {
         setPage("resume");
       } else {
         setMessage(
-          data.message || "Could not save profile."
+          data.message ||
+            "Could not save profile."
         );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
@@ -404,32 +423,47 @@ function App() {
     }
 
     if (!resumeFile) {
-      setMessage("Please select a PDF resume.");
+      setMessage(
+        "Please select a PDF resume."
+      );
       return;
     }
 
-    if (resumeFile.type !== "application/pdf") {
-      setMessage("Only PDF resumes are allowed.");
+    if (
+      resumeFile.type !==
+      "application/pdf"
+    ) {
+      setMessage(
+        "Only PDF resumes are allowed."
+      );
       return;
     }
 
     if (resumeFile.size > 5 * 1024 * 1024) {
-      setMessage("Resume must be smaller than 5 MB.");
+      setMessage(
+        "Resume must be smaller than 5 MB."
+      );
       return;
     }
 
     const formData = new FormData();
 
-    formData.append("resume", resumeFile);
+    formData.append(
+      "resume",
+      resumeFile
+    );
 
     try {
-      const response = await fetch(`${API}/api/resume`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${API}/api/resume`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: formData,
+        }
+      );
 
       const data = await response.json();
 
@@ -447,11 +481,14 @@ function App() {
         e.target.reset();
       } else {
         setMessage(
-          data.message || "Resume upload failed."
+          data.message ||
+            "Resume upload failed."
         );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     }
   };
 
@@ -484,60 +521,8 @@ function App() {
     }
 
     try {
-      const response = await fetch(`${API}/api/jobs`, {
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setJobs(data.jobs || []);
-        setPage("jobs");
-      } else {
-        setMessage(
-          data.message || "Could not load jobs."
-        );
-      }
-    } catch {
-      setMessage("Could not connect to the backend.");
-    } finally {
-      setJobsLoading(false);
-    }
-  };
-
-  // ============================================================
-  // RECOMMENDATIONS
-  // ============================================================
-
-  const handleViewRecommendations = async () => {
-    setMessage("");
-    setRecommendationsLoading(true);
-
-    const authToken = token();
-
-    if (!authToken) {
-      setMessage("Please login first.");
-
-      replaceNextNavigation.current = true;
-
-      window.history.replaceState(
-        { page: "login" },
-        "",
-        "#login"
-      );
-
-      setPage("login");
-
-      setRecommendationsLoading(false);
-
-      return;
-    }
-
-    try {
       const response = await fetch(
-        `${API}/api/recommendations`,
+        `${API}/api/jobs`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -548,29 +533,95 @@ function App() {
       const data = await response.json();
 
       if (response.ok) {
-        setRecommendations(
-          data.recommendations || []
-        );
-
-        setPage("recommendations");
+        setJobs(data.jobs || []);
+        setPage("jobs");
       } else {
         setMessage(
           data.message ||
-            "Could not load recommendations."
+            "Could not load jobs."
         );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     } finally {
-      setRecommendationsLoading(false);
+      setJobsLoading(false);
     }
   };
 
   // ============================================================
-  // SWIPE
+  // RECOMMENDATIONS
   // ============================================================
 
-  const handleSwipe = async (jobId, action) => {
+  const handleViewRecommendations =
+    async () => {
+      setMessage("");
+      setRecommendationsLoading(true);
+
+      const authToken = token();
+
+      if (!authToken) {
+        setMessage("Please login first.");
+
+        replaceNextNavigation.current = true;
+
+        window.history.replaceState(
+          { page: "login" },
+          "",
+          "#login"
+        );
+
+        setPage("login");
+
+        setRecommendationsLoading(false);
+
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API}/api/recommendations`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        const data = await response.json();
+
+        if (response.ok) {
+          setRecommendations(
+            data.recommendations || []
+          );
+
+          setPage("recommendations");
+        } else {
+          setMessage(
+            data.message ||
+              "Could not load recommendations."
+          );
+        }
+      } catch {
+        setMessage(
+          "Could not connect to the backend."
+        );
+      } finally {
+        setRecommendationsLoading(
+          false
+        );
+      }
+    };
+
+  // ============================================================
+  // SWIPE API
+  // ============================================================
+
+  const handleSwipe = async (
+    jobId,
+    action
+  ) => {
     setMessage("");
 
     const authToken = token();
@@ -594,17 +645,20 @@ function App() {
     setSwipeLoading(true);
 
     try {
-      const response = await fetch(`${API}/api/swipe`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: JSON.stringify({
-          job_id: jobId,
-          swipe_action: action,
-        }),
-      });
+      const response = await fetch(
+        `${API}/api/swipe`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: JSON.stringify({
+            job_id: jobId,
+            swipe_action: action,
+          }),
+        }
+      );
 
       const data = await response.json();
 
@@ -620,82 +674,219 @@ function App() {
           `Job ${actionText} successfully.`
         );
 
-        setRecommendations((previous) =>
-          previous.filter(
-            (job) => job.job_id !== jobId
-          )
+        setRecommendations(
+          (previous) =>
+            previous.filter(
+              (job) =>
+                job.job_id !== jobId
+            )
         );
       } else {
         setMessage(
-          data.message || "Could not record swipe."
+          data.message ||
+            "Could not record swipe."
         );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     } finally {
       setSwipeLoading(false);
     }
   };
 
   // ============================================================
-  // SWIPE HISTORY
+  // SWIPE GESTURE
   // ============================================================
 
-  const handleViewSwipeHistory = async () => {
-    setMessage("");
-
-    const authToken = token();
-
-    if (!authToken) {
-      setMessage("Please login first.");
-
-      replaceNextNavigation.current = true;
-
-      window.history.replaceState(
-        { page: "login" },
-        "",
-        "#login"
-      );
-
-      setPage("login");
-
+  const handlePointerDown = (e) => {
+    /*
+     * Buttons inside the card should continue
+     * behaving like normal buttons.
+     */
+    if (e.target.closest("button")) {
       return;
     }
 
-    try {
-      const response = await fetch(
-        `${API}/api/swipe-history`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
+    if (
+      swipeAnimating ||
+      swipeLoading ||
+      recommendations.length === 0
+    ) {
+      return;
+    }
+
+    dragPointerId.current = e.pointerId;
+    dragStartX.current = e.clientX;
+
+    setIsDragging(true);
+
+    e.currentTarget.setPointerCapture(
+      e.pointerId
+    );
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDragging) {
+      return;
+    }
+
+    if (
+      dragPointerId.current !==
+      e.pointerId
+    ) {
+      return;
+    }
+
+    const distance =
+      e.clientX - dragStartX.current;
+
+    const limitedDistance = Math.max(
+      -450,
+      Math.min(450, distance)
+    );
+
+    setDragX(limitedDistance);
+  };
+
+  const handlePointerUp = async (e) => {
+    if (!isDragging) {
+      return;
+    }
+
+    if (
+      dragPointerId.current !==
+      e.pointerId
+    ) {
+      return;
+    }
+
+    setIsDragging(false);
+    dragPointerId.current = null;
+
+    const threshold = 120;
+
+    /*
+     * Small movement:
+     * return the card to the center.
+     */
+    if (Math.abs(dragX) < threshold) {
+      setDragX(0);
+      return;
+    }
+
+    const currentJob =
+      recommendations[0];
+
+    if (!currentJob) {
+      setDragX(0);
+      return;
+    }
+
+    const action =
+      dragX < 0
+        ? "LEFT"
+        : "RIGHT";
+
+    setSwipeAnimating(true);
+
+    /*
+     * Fly the card away.
+     */
+    setDragX(
+      dragX < 0
+        ? -window.innerWidth
+        : window.innerWidth
+    );
+
+    /*
+     * Wait for the animation,
+     * then record the swipe.
+     */
+    setTimeout(async () => {
+      await handleSwipe(
+        currentJob.job_id,
+        action
       );
 
-      const data = await response.json();
+      setDragX(0);
+      setSwipeAnimating(false);
+    }, 280);
+  };
 
-      if (response.ok) {
-        setSwipeHistory(
-          data.swipe_history || []
+  const handlePointerCancel = () => {
+    setIsDragging(false);
+    dragPointerId.current = null;
+    setDragX(0);
+  };
+
+  // ============================================================
+  // SWIPE HISTORY
+  // ============================================================
+
+  const handleViewSwipeHistory =
+    async () => {
+      setMessage("");
+
+      const authToken = token();
+
+      if (!authToken) {
+        setMessage("Please login first.");
+
+        replaceNextNavigation.current =
+          true;
+
+        window.history.replaceState(
+          { page: "login" },
+          "",
+          "#login"
         );
 
-        setPage("swipe-history");
-      } else {
+        setPage("login");
+
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `${API}/api/swipe-history`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (response.ok) {
+          setSwipeHistory(
+            data.swipe_history || []
+          );
+
+          setPage("swipe-history");
+        } else {
+          setMessage(
+            data.message ||
+              "Could not load swipe history."
+          );
+        }
+      } catch {
         setMessage(
-          data.message ||
-            "Could not load swipe history."
+          "Could not connect to the backend."
         );
       }
-    } catch {
-      setMessage("Could not connect to the backend.");
-    }
-  };
+    };
 
   // ============================================================
   // ATS
   // ============================================================
 
-  const handleAnalyzeATS = async (job) => {
+  const handleAnalyzeATS = async (
+    job
+  ) => {
     setMessage("");
     setAtsResult(null);
     setSelectedJob(job);
@@ -706,7 +897,8 @@ function App() {
     if (!authToken) {
       setMessage("Please login first.");
 
-      replaceNextNavigation.current = true;
+      replaceNextNavigation.current =
+        true;
 
       window.history.replaceState(
         { page: "login" },
@@ -732,18 +924,22 @@ function App() {
         }
       );
 
-      const data = await response.json();
+      const data =
+        await response.json();
 
       if (response.ok) {
         setAtsResult(data);
         setPage("ats");
       } else {
         setMessage(
-          data.message || "ATS analysis failed."
+          data.message ||
+            "ATS analysis failed."
         );
       }
     } catch {
-      setMessage("Could not connect to the backend.");
+      setMessage(
+        "Could not connect to the backend."
+      );
     } finally {
       setAtsLoading(false);
     }
@@ -754,20 +950,17 @@ function App() {
   // ============================================================
 
   const handleLogout = () => {
-    localStorage.removeItem("access_token");
+    localStorage.removeItem(
+      "access_token"
+    );
 
     setEmail("");
     setPassword("");
 
-    setMessage("Logged out successfully.");
+    setMessage(
+      "Logged out successfully."
+    );
 
-    /*
-     * Replace the current authenticated page with login.
-     *
-     * This prevents:
-     *
-     * Logout → Back → authenticated page ❌
-     */
     window.history.replaceState(
       { page: "login" },
       "",
@@ -782,7 +975,8 @@ function App() {
   // ============================================================
 
   const Navbar = () => {
-    const loggedIn = Boolean(token());
+    const loggedIn =
+      Boolean(token());
 
     if (
       !loggedIn ||
@@ -794,6 +988,7 @@ function App() {
 
     return (
       <header className="sx-navbar">
+
         <button
           className="sx-logo"
           onClick={() =>
@@ -803,30 +998,45 @@ function App() {
           <span className="sx-logo-mark">
             ✦
           </span>
+
           SwipeX
         </button>
 
         <nav className="sx-nav">
-          <button onClick={() => go("resume")}>
+
+          <button
+            onClick={() =>
+              go("resume")
+            }
+          >
             Dashboard
           </button>
 
           <button
-            onClick={handleViewRecommendations}
-            disabled={recommendationsLoading}
+            onClick={
+              handleViewRecommendations
+            }
+            disabled={
+              recommendationsLoading
+            }
           >
             Recommended
           </button>
 
-          <button onClick={handleViewJobs}>
+          <button
+            onClick={handleViewJobs}
+          >
             Jobs
           </button>
 
           <button
-            onClick={handleViewSwipeHistory}
+            onClick={
+              handleViewSwipeHistory
+            }
           >
             My Swipes
           </button>
+
         </nav>
 
         <button
@@ -835,6 +1045,7 @@ function App() {
         >
           Logout
         </button>
+
       </header>
     );
   };
@@ -846,6 +1057,7 @@ function App() {
   if (page === "login") {
     return (
       <div className="sx-auth-page">
+
         <div className="sx-auth-glow sx-glow-one" />
         <div className="sx-auth-glow sx-glow-two" />
 
@@ -854,24 +1066,28 @@ function App() {
         </div>
 
         <div className="sx-auth-card">
+
           <div className="sx-eyebrow">
             JOB DISCOVERY PLATFORM
           </div>
 
           <h1>
             Find your next
-            <span> opportunity.</span>
+            <span>
+              {" "}opportunity.
+            </span>
           </h1>
 
           <p className="sx-auth-subtitle">
-            Discover jobs matched to your skills,
-            profile and preferences.
+            Discover jobs matched to your
+            skills, profile and preferences.
           </p>
 
           <form
             onSubmit={handleLogin}
             className="sx-form"
           >
+
             <label>Email</label>
 
             <input
@@ -879,7 +1095,9 @@ function App() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) =>
-                setEmail(e.target.value)
+                setEmail(
+                  e.target.value
+                )
               }
               required
             />
@@ -891,7 +1109,9 @@ function App() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) =>
-                setPassword(e.target.value)
+                setPassword(
+                  e.target.value
+                )
               }
               required
             />
@@ -900,8 +1120,10 @@ function App() {
               className="sx-primary-btn"
               type="submit"
             >
-              Login <span>→</span>
+              Login
+              <span>→</span>
             </button>
+
           </form>
 
           {message && (
@@ -912,13 +1134,19 @@ function App() {
 
           <p className="sx-switch-text">
             Don't have an account?{" "}
+
             <button
-              onClick={() => go("register")}
+              onClick={() =>
+                go("register")
+              }
             >
               Create one
             </button>
+
           </p>
+
         </div>
+
       </div>
     );
   }
@@ -930,6 +1158,7 @@ function App() {
   if (page === "register") {
     return (
       <div className="sx-auth-page">
+
         <div className="sx-auth-glow sx-glow-one" />
         <div className="sx-auth-glow sx-glow-two" />
 
@@ -938,13 +1167,16 @@ function App() {
         </div>
 
         <div className="sx-auth-card">
+
           <div className="sx-eyebrow">
             GET STARTED
           </div>
 
           <h1>
             Build your
-            <span> job profile.</span>
+            <span>
+              {" "}job profile.
+            </span>
           </h1>
 
           <p className="sx-auth-subtitle">
@@ -956,6 +1188,7 @@ function App() {
             onSubmit={handleRegister}
             className="sx-form"
           >
+
             <label>Full Name</label>
 
             <input
@@ -963,7 +1196,9 @@ function App() {
               placeholder="Your full name"
               value={fullName}
               onChange={(e) =>
-                setFullName(e.target.value)
+                setFullName(
+                  e.target.value
+                )
               }
               required
             />
@@ -1000,9 +1235,10 @@ function App() {
               className="sx-primary-btn"
               type="submit"
             >
-              Create Account{" "}
+              Create Account
               <span>→</span>
             </button>
+
           </form>
 
           {message && (
@@ -1013,13 +1249,19 @@ function App() {
 
           <p className="sx-switch-text">
             Already have an account?{" "}
+
             <button
-              onClick={() => go("login")}
+              onClick={() =>
+                go("login")
+              }
             >
               Login
             </button>
+
           </p>
+
         </div>
+
       </div>
     );
   }
@@ -1030,6 +1272,7 @@ function App() {
 
   return (
     <div className="sx-app">
+
       <Navbar />
 
       <main className="sx-main">
@@ -1042,7 +1285,9 @@ function App() {
           <section className="sx-section sx-form-page">
 
             <div className="sx-section-heading">
+
               <div>
+
                 <div className="sx-eyebrow">
                   STEP 01
                 </div>
@@ -1055,55 +1300,79 @@ function App() {
                   Tell us about yourself so we
                   can find better opportunities.
                 </p>
+
               </div>
+
             </div>
 
             <form
-              onSubmit={handleProfileSubmit}
+              onSubmit={
+                handleProfileSubmit
+              }
               className="sx-profile-form"
             >
+
               <div className="sx-form-grid">
 
                 <div>
-                  <label>Headline</label>
+
+                  <label>
+                    Headline
+                  </label>
 
                   <input
                     value={headline}
                     onChange={(e) =>
-                      setHeadline(e.target.value)
+                      setHeadline(
+                        e.target.value
+                      )
                     }
                     placeholder="AIML Student"
                     required
                   />
+
                 </div>
 
                 <div>
-                  <label>Location</label>
+
+                  <label>
+                    Location
+                  </label>
 
                   <input
                     value={location}
                     onChange={(e) =>
-                      setLocation(e.target.value)
+                      setLocation(
+                        e.target.value
+                      )
                     }
                     placeholder="Bangalore"
                     required
                   />
+
                 </div>
 
                 <div className="sx-full">
-                  <label>Summary</label>
+
+                  <label>
+                    Summary
+                  </label>
 
                   <textarea
                     value={summary}
                     onChange={(e) =>
-                      setSummary(e.target.value)
+                      setSummary(
+                        e.target.value
+                      )
                     }
                     placeholder="Tell us about yourself"
                     required
                   />
+
                 </div>
 
                 <div>
+
                   <label>
                     Experience (Years)
                   </label>
@@ -1119,35 +1388,51 @@ function App() {
                     }
                     required
                   />
+
                 </div>
 
                 <div>
-                  <label>Education</label>
+
+                  <label>
+                    Education
+                  </label>
 
                   <input
                     value={education}
                     onChange={(e) =>
-                      setEducation(e.target.value)
+                      setEducation(
+                        e.target.value
+                      )
                     }
                     placeholder="B.Tech in AIML"
                     required
                   />
+
                 </div>
 
                 <div className="sx-full">
-                  <label>Projects</label>
+
+                  <label>
+                    Projects
+                  </label>
 
                   <textarea
                     value={projects}
                     onChange={(e) =>
-                      setProjects(e.target.value)
+                      setProjects(
+                        e.target.value
+                      )
                     }
                     placeholder="Your projects"
                   />
+
                 </div>
 
                 <div className="sx-full">
-                  <label>Certifications</label>
+
+                  <label>
+                    Certifications
+                  </label>
 
                   <textarea
                     value={certifications}
@@ -1157,15 +1442,19 @@ function App() {
                       )
                     }
                   />
+
                 </div>
 
                 <div>
+
                   <label>
                     Preferred Job Type
                   </label>
 
                   <select
-                    value={preferredJobType}
+                    value={
+                      preferredJobType
+                    }
                     onChange={(e) =>
                       setPreferredJobType(
                         e.target.value
@@ -1173,6 +1462,7 @@ function App() {
                     }
                     required
                   >
+
                     <option value="">
                       Select
                     </option>
@@ -1192,16 +1482,21 @@ function App() {
                     <option value="Contract">
                       Contract
                     </option>
+
                   </select>
+
                 </div>
 
                 <div>
+
                   <label>
                     Preferred Location
                   </label>
 
                   <input
-                    value={preferredLocation}
+                    value={
+                      preferredLocation
+                    }
                     onChange={(e) =>
                       setPreferredLocation(
                         e.target.value
@@ -1210,16 +1505,19 @@ function App() {
                     placeholder="Bangalore"
                     required
                   />
+
                 </div>
+
               </div>
 
               <button
                 className="sx-primary-btn"
                 type="submit"
               >
-                Save Profile{" "}
+                Save Profile
                 <span>→</span>
               </button>
+
             </form>
 
             {message && (
@@ -1227,6 +1525,7 @@ function App() {
                 {message}
               </div>
             )}
+
           </section>
         )}
 
@@ -1240,6 +1539,7 @@ function App() {
             <div className="sx-dashboard-hero">
 
               <div>
+
                 <div className="sx-eyebrow">
                   YOUR CAREER DASHBOARD
                 </div>
@@ -1256,9 +1556,11 @@ function App() {
                   SwipeX match you with relevant
                   jobs.
                 </p>
+
               </div>
 
               <div className="sx-stat-card">
+
                 <span>
                   PROFILE STATUS
                 </span>
@@ -1270,6 +1572,7 @@ function App() {
                 <small>
                   Ready for job discovery
                 </small>
+
               </div>
 
             </div>
@@ -1295,9 +1598,12 @@ function App() {
                 </p>
 
                 <form
-                  onSubmit={handleResumeUpload}
+                  onSubmit={
+                    handleResumeUpload
+                  }
                   className="sx-upload-form"
                 >
+
                   <label className="sx-file-drop">
 
                     <input
@@ -1330,9 +1636,10 @@ function App() {
                     className="sx-primary-btn"
                     type="submit"
                   >
-                    Analyze Resume{" "}
+                    Analyze Resume
                     <span>→</span>
                   </button>
+
                 </form>
 
               </div>
@@ -1351,8 +1658,10 @@ function App() {
                   Your skill profile
                 </h2>
 
-                {extractedSkills.length > 0 ? (
+                {extractedSkills.length >
+                0 ? (
                   <div className="sx-skills">
+
                     {extractedSkills.map(
                       (skill, index) => (
                         <span key={index}>
@@ -1360,15 +1669,18 @@ function App() {
                         </span>
                       )
                     )}
+
                   </div>
                 ) : (
                   <div className="sx-empty-state">
+
                     <span>+</span>
 
                     <p>
                       Upload a resume to see
                       your detected skills.
                     </p>
+
                   </div>
                 )}
 
@@ -1382,13 +1694,18 @@ function App() {
               </div>
             )}
 
-            {extractedSkills.length > 0 && (
+            {extractedSkills.length >
+              0 && (
               <div className="sx-action-row">
 
                 <button
                   className="sx-secondary-btn"
-                  onClick={handleViewJobs}
-                  disabled={jobsLoading}
+                  onClick={
+                    handleViewJobs
+                  }
+                  disabled={
+                    jobsLoading
+                  }
                 >
                   {jobsLoading
                     ? "Loading..."
@@ -1411,6 +1728,7 @@ function App() {
 
               </div>
             )}
+
           </section>
         )}
 
@@ -1424,6 +1742,7 @@ function App() {
             <div className="sx-section-heading">
 
               <div>
+
                 <div className="sx-eyebrow">
                   JOB DISCOVERY
                 </div>
@@ -1436,6 +1755,7 @@ function App() {
                   Analyze any job against your
                   resume before applying.
                 </p>
+
               </div>
 
               <button
@@ -1472,7 +1792,9 @@ function App() {
                   <JobCard
                     key={job.job_id}
                     job={job}
-                    onATS={handleAnalyzeATS}
+                    onATS={
+                      handleAnalyzeATS
+                    }
                     loading={
                       atsLoading &&
                       selectedJob?.job_id ===
@@ -1483,6 +1805,7 @@ function App() {
               )}
 
             </div>
+
           </section>
         )}
 
@@ -1496,6 +1819,7 @@ function App() {
             <div className="sx-section-heading center">
 
               <div>
+
                 <div className="sx-eyebrow">
                   PERSONALIZED FOR YOU
                 </div>
@@ -1508,6 +1832,7 @@ function App() {
                   Based on your skills,
                   preferences and profile.
                 </p>
+
               </div>
 
             </div>
@@ -1518,7 +1843,8 @@ function App() {
               </div>
             )}
 
-            {recommendations.length === 0 ? (
+            {recommendations.length ===
+            0 ? (
               <div className="sx-empty-state sx-wide">
 
                 <span>✓</span>
@@ -1545,7 +1871,48 @@ function App() {
             ) : (
               <div className="sx-swipe-layout">
 
-                <div className="sx-swipe-card">
+                <div
+                  className={`sx-swipe-card ${
+                    isDragging
+                      ? "is-dragging"
+                      : ""
+                  }`}
+                  onPointerDown={
+                    handlePointerDown
+                  }
+                  onPointerMove={
+                    handlePointerMove
+                  }
+                  onPointerUp={
+                    handlePointerUp
+                  }
+                  onPointerCancel={
+                    handlePointerCancel
+                  }
+                  style={{
+                    transform: `translateX(${dragX}px) rotate(${
+                      dragX * 0.04
+                    }deg)`,
+                    transition:
+                      isDragging
+                        ? "none"
+                        : "transform 0.28s ease",
+                  }}
+                >
+
+                  {/* SWIPE INDICATORS */}
+
+                  {dragX < -30 && (
+                    <div className="sx-swipe-indicator sx-pass-indicator">
+                      PASS
+                    </div>
+                  )}
+
+                  {dragX > 30 && (
+                    <div className="sx-swipe-indicator sx-like-indicator">
+                      LIKE
+                    </div>
+                  )}
 
                   <div className="sx-card-top">
 
@@ -1641,7 +2008,9 @@ function App() {
                         .required_skills
                         ?.map(
                           (skill, index) => (
-                            <span key={index}>
+                            <span
+                              key={index}
+                            >
                               {skill}
                             </span>
                           )
@@ -1654,6 +2023,7 @@ function App() {
                       <span>✦</span>
 
                       <p>
+
                         <strong>
                           Why this matches
                         </strong>
@@ -1664,11 +2034,14 @@ function App() {
                           recommendations[0]
                             .recommendation_reason
                         }
+
                       </p>
 
                     </div>
 
                   </div>
+
+                  {/* ACTION BUTTONS */}
 
                   <div className="sx-swipe-actions">
 
@@ -1681,7 +2054,9 @@ function App() {
                           "LEFT"
                         )
                       }
-                      disabled={swipeLoading}
+                      disabled={
+                        swipeLoading
+                      }
                     >
                       <span>✕</span>
                       Pass
@@ -1696,7 +2071,9 @@ function App() {
                           "SAVE"
                         )
                       }
-                      disabled={swipeLoading}
+                      disabled={
+                        swipeLoading
+                      }
                     >
                       <span>☆</span>
                       Save
@@ -1711,7 +2088,9 @@ function App() {
                           "RIGHT"
                         )
                       }
-                      disabled={swipeLoading}
+                      disabled={
+                        swipeLoading
+                      }
                     >
                       <span>♥</span>
                       Like
@@ -1732,6 +2111,8 @@ function App() {
 
                 </div>
 
+                {/* NEXT JOBS */}
+
                 <div className="sx-next-jobs">
 
                   <div className="sx-eyebrow">
@@ -1743,7 +2124,9 @@ function App() {
                     .map((job) => (
                       <div
                         className="sx-mini-job"
-                        key={job.job_id}
+                        key={
+                          job.job_id
+                        }
                       >
 
                         <div className="sx-company-mark small">
@@ -1753,13 +2136,17 @@ function App() {
                         </div>
 
                         <div>
+
                           <strong>
                             {job.title}
                           </strong>
 
                           <span>
-                            {job.company_name}
+                            {
+                              job.company_name
+                            }
                           </span>
+
                         </div>
 
                         <b>
@@ -1776,6 +2163,7 @@ function App() {
 
               </div>
             )}
+
           </section>
         )}
 
@@ -1789,6 +2177,7 @@ function App() {
             <div className="sx-section-heading">
 
               <div>
+
                 <div className="sx-eyebrow">
                   YOUR ACTIVITY
                 </div>
@@ -1801,6 +2190,7 @@ function App() {
                   Your previous interactions with
                   job opportunities.
                 </p>
+
               </div>
 
             </div>
@@ -1811,7 +2201,8 @@ function App() {
               </div>
             )}
 
-            {swipeHistory.length === 0 ? (
+            {swipeHistory.length ===
+            0 ? (
               <div className="sx-empty-state sx-wide">
 
                 <span>☆</span>
@@ -1824,49 +2215,58 @@ function App() {
             ) : (
               <div className="sx-history-list">
 
-                {swipeHistory.map((item) => (
-                  <div
-                    className="sx-history-card"
-                    key={item.swipe_id}
-                  >
-
-                    <div className="sx-company-mark small">
-                      {item.company_name
-                        ?.charAt(0)
-                        .toUpperCase()}
-                    </div>
-
-                    <div className="sx-history-info">
-
-                      <strong>
-                        {item.title}
-                      </strong>
-
-                      <span>
-                        {item.company_name}
-                      </span>
-
-                    </div>
-
+                {swipeHistory.map(
+                  (item) => (
                     <div
-                      className={`sx-history-action ${item.swipe_action.toLowerCase()}`}
+                      className="sx-history-card"
+                      key={
+                        item.swipe_id
+                      }
                     >
-                      {item.swipe_action}
+
+                      <div className="sx-company-mark small">
+                        {item.company_name
+                          ?.charAt(0)
+                          .toUpperCase()}
+                      </div>
+
+                      <div className="sx-history-info">
+
+                        <strong>
+                          {item.title}
+                        </strong>
+
+                        <span>
+                          {
+                            item.company_name
+                          }
+                        </span>
+
+                      </div>
+
+                      <div
+                        className={`sx-history-action ${item.swipe_action.toLowerCase()}`}
+                      >
+                        {
+                          item.swipe_action
+                        }
+                      </div>
+
+                      {item.swiped_at && (
+                        <small>
+                          {new Date(
+                            item.swiped_at
+                          ).toLocaleString()}
+                        </small>
+                      )}
+
                     </div>
-
-                    {item.swiped_at && (
-                      <small>
-                        {new Date(
-                          item.swiped_at
-                        ).toLocaleString()}
-                      </small>
-                    )}
-
-                  </div>
-                ))}
+                  )
+                )}
 
               </div>
             )}
+
           </section>
         )}
 
@@ -1874,182 +2274,215 @@ function App() {
             ATS
         ====================================================== */}
 
-        {page === "ats" && atsResult && (
-          <section className="sx-section">
+        {page === "ats" &&
+          atsResult && (
+            <section className="sx-section">
 
-            <div className="sx-section-heading">
+              <div className="sx-section-heading">
 
-              <div>
-                <div className="sx-eyebrow">
-                  RESUME ANALYSIS
+                <div>
+
+                  <div className="sx-eyebrow">
+                    RESUME ANALYSIS
+                  </div>
+
+                  <h1>
+                    ATS compatibility
+                  </h1>
+
+                  <p>
+                    How well your resume matches
+                    this job.
+                  </p>
+
                 </div>
 
-                <h1>
-                  ATS compatibility
-                </h1>
-
-                <p>
-                  How well your resume matches
-                  this job.
-                </p>
-              </div>
-
-              <button
-                className="sx-secondary-btn"
-                onClick={() =>
-                  setPage(
-                    recommendations.some(
-                      (job) =>
-                        job.job_id ===
-                        selectedJob?.job_id
+                <button
+                  className="sx-secondary-btn"
+                  onClick={() =>
+                    setPage(
+                      recommendations.some(
+                        (job) =>
+                          job.job_id ===
+                          selectedJob?.job_id
+                      )
+                        ? "recommendations"
+                        : "jobs"
                     )
-                      ? "recommendations"
-                      : "jobs"
-                  )
-                }
-              >
-                ← Back
-              </button>
-
-            </div>
-
-            <div className="sx-ats-grid">
-
-              <div className="sx-ats-score-card">
-
-                <div className="sx-eyebrow">
-                  ATS SCORE
-                </div>
-
-                <div className="sx-score-circle">
-
-                  <strong>
-                    {atsResult.ats_score}%
-                  </strong>
-
-                  <span>
-                    MATCH
-                  </span>
-
-                </div>
-
-                <h3>
-                  {selectedJob?.title}
-                </h3>
-
-                <p>
-                  {selectedJob?.company_name}
-                </p>
+                  }
+                >
+                  ← Back
+                </button>
 
               </div>
 
-              <div className="sx-panel">
+              <div className="sx-ats-grid">
 
-                <div className="sx-ats-row">
+                <div className="sx-ats-score-card">
 
-                  <div>
-                    <span>
-                      Match Percentage
-                    </span>
+                  <div className="sx-eyebrow">
+                    ATS SCORE
+                  </div>
+
+                  <div className="sx-score-circle">
 
                     <strong>
                       {
-                        atsResult.match_percentage
+                        atsResult.ats_score
                       }
                       %
                     </strong>
-                  </div>
 
-                  <div className="sx-progress">
-
-                    <div
-                      style={{
-                        width: `${Math.min(
-                          Number(
-                            atsResult.match_percentage
-                          ) || 0,
-                          100
-                        )}%`,
-                      }}
-                    />
+                    <span>
+                      MATCH
+                    </span>
 
                   </div>
+
+                  <h3>
+                    {selectedJob?.title}
+                  </h3>
+
+                  <p>
+                    {
+                      selectedJob
+                        ?.company_name
+                    }
+                  </p>
 
                 </div>
 
-                <div className="sx-skill-columns">
+                <div className="sx-panel">
 
-                  <div>
+                  <div className="sx-ats-row">
 
-                    <h3>
-                      Matched Skills
-                    </h3>
+                    <div>
 
-                    {atsResult
-                      .matched_skills
-                      ?.length > 0 ? (
-                      <div className="sx-skills success">
+                      <span>
+                        Match Percentage
+                      </span>
 
-                        {atsResult.matched_skills.map(
-                          (skill, index) => (
-                            <span key={index}>
-                              ✓ {skill}
-                            </span>
-                          )
-                        )}
+                      <strong>
+                        {
+                          atsResult.match_percentage
+                        }
+                        %
+                      </strong>
 
-                      </div>
-                    ) : (
-                      <p>
-                        No matched skills.
-                      </p>
-                    )}
+                    </div>
 
-                  </div>
+                    <div className="sx-progress">
 
-                  <div>
+                      <div
+                        style={{
+                          width: `${Math.min(
+                            Number(
+                              atsResult.match_percentage
+                            ) || 0,
+                            100
+                          )}%`,
+                        }}
+                      />
 
-                    <h3>
-                      Missing Skills
-                    </h3>
-
-                    {atsResult
-                      .missing_skills
-                      ?.length > 0 ? (
-                      <div className="sx-skills missing">
-
-                        {atsResult.missing_skills.map(
-                          (skill, index) => (
-                            <span key={index}>
-                              × {skill}
-                            </span>
-                          )
-                        )}
-
-                      </div>
-                    ) : (
-                      <p>
-                        No missing skills 🎉
-                      </p>
-                    )}
+                    </div>
 
                   </div>
 
-                </div>
+                  <div className="sx-skill-columns">
 
-                <div className="sx-suggestion">
+                    <div>
 
-                  <span>✦</span>
+                      <h3>
+                        Matched Skills
+                      </h3>
 
-                  <div>
+                      {atsResult
+                        .matched_skills
+                        ?.length >
+                      0 ? (
+                        <div className="sx-skills success">
 
-                    <h3>
-                      Suggestions
-                    </h3>
+                          {atsResult.matched_skills.map(
+                            (
+                              skill,
+                              index
+                            ) => (
+                              <span
+                                key={
+                                  index
+                                }
+                              >
+                                ✓ {skill}
+                              </span>
+                            )
+                          )}
 
-                    <p>
-                      {atsResult.suggestions}
-                    </p>
+                        </div>
+                      ) : (
+                        <p>
+                          No matched
+                          skills.
+                        </p>
+                      )}
+
+                    </div>
+
+                    <div>
+
+                      <h3>
+                        Missing Skills
+                      </h3>
+
+                      {atsResult
+                        .missing_skills
+                        ?.length >
+                      0 ? (
+                        <div className="sx-skills missing">
+
+                          {atsResult.missing_skills.map(
+                            (
+                              skill,
+                              index
+                            ) => (
+                              <span
+                                key={
+                                  index
+                                }
+                              >
+                                × {skill}
+                              </span>
+                            )
+                          )}
+
+                        </div>
+                      ) : (
+                        <p>
+                          No missing skills
+                          🎉
+                        </p>
+                      )}
+
+                    </div>
+
+                  </div>
+
+                  <div className="sx-suggestion">
+
+                    <span>✦</span>
+
+                    <div>
+
+                      <h3>
+                        Suggestions
+                      </h3>
+
+                      <p>
+                        {
+                          atsResult.suggestions
+                        }
+                      </p>
+
+                    </div>
 
                   </div>
 
@@ -2057,9 +2490,8 @@ function App() {
 
               </div>
 
-            </div>
-          </section>
-        )}
+            </section>
+          )}
 
       </main>
     </div>
@@ -2146,7 +2578,9 @@ function JobCard({
 
       <button
         className="sx-primary-btn sx-full-btn"
-        onClick={() => onATS(job)}
+        onClick={() =>
+          onATS(job)
+        }
         disabled={loading}
       >
         {loading
