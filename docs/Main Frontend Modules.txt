@@ -1,0 +1,96 @@
+Main Frontend Modules
+
+1. Start Page
+
+The start page introduces the SwipeX platform and provides an option for the candidate to begin the registration process.
+
+2. Registration Page
+
+The registration page allows a new candidate to create an account.
+
+Validation is provided for important fields such as:
+
+- Name
+- Email
+- Password
+- Phone number
+
+The phone number accepts exactly 10 numerical digits.
+
+3. Login Page
+
+The login page allows existing candidates to access their account using their credentials.
+
+4. Candidate Profile Page
+
+Candidates can enter additional information required for job recommendations.
+
+The profile includes information such as:
+
+- Personal information
+- Education
+- Experience
+- Preferred job role
+- Preferred location
+- Preferred job type
+
+Preferred location and preferred job role are optional.
+
+5. Resume Upload Page
+
+Candidates can upload their resume through the frontend.
+
+The interface provides validation before allowing the resume to be submitted.
+
+6. Resume Analysis Page
+
+The frontend displays the progress or results of resume processing.
+
+The results can include extracted:
+
+- Skills
+- Experience
+- Education
+- Other relevant resume information
+
+7. ATS Analysis Page
+
+The frontend displays the ATS analysis received from the backend.
+
+This allows the candidate to understand how their resume performs against job requirements.
+
+8. Recommended Jobs Page
+
+Recommended jobs are displayed in an interactive format.
+
+Each job can contain information such as:
+
+- Job title
+- Company
+- Location
+- Job type
+- Required skills
+- Job description
+
+9. Job Interaction
+
+The candidate can perform three actions:
+
+Save: Saves the job for later.
+
+Swipe Left: Moves through the recommended jobs and allows the candidate to continue viewing recommendations.
+
+Swipe Right: Applies for the selected job.
+
+## Expected Frontend Experience
+
+The frontend is designed to provide:
+
+- Simple navigation
+- Clear forms
+- Input validation
+- Responsive user interface
+- Interactive job discovery
+- Easy resume upload
+- Clear presentation of AI analysis
+- Smooth job application workflow
