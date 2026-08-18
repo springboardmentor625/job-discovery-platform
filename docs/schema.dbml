@@ -1,0 +1,73 @@
+// Paste this into https://dbdiagram.io to render the ER diagram
+
+Table users {
+  id int [pk, increment]
+  name varchar
+  email varchar [unique]
+  password_hash varchar
+  role varchar [note: 'job_seeker | recruiter | admin']
+  created_at datetime
+}
+
+Table profiles {
+  id int [pk, increment]
+  user_id int [ref: - users.id]
+  bio text
+  skills text
+  experience text
+  portfolio_url varchar
+}
+
+Table resumes {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  file varchar
+  version int
+  parsed_text text
+  uploaded_at datetime
+}
+
+Table jobs {
+  id int [pk, increment]
+  recruiter_id int [ref: > users.id]
+  company varchar
+  title varchar
+  description text
+  job_type varchar
+  location varchar
+  salary_min int
+  salary_max int
+  skills_required text
+  posted_at datetime
+}
+
+Table swipes {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  job_id int [ref: > jobs.id]
+  direction varchar [note: 'left | right']
+  created_at datetime
+}
+
+Table applications {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  job_id int [ref: > jobs.id]
+  status varchar [note: 'saved | applied | interview | shortlisted | rejected']
+  applied_at datetime
+}
+
+Table recommendations {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  job_id int [ref: > jobs.id]
+  match_score float
+}
+
+Table notifications {
+  id int [pk, increment]
+  user_id int [ref: > users.id]
+  message text
+  read boolean
+  created_at datetime
+}
