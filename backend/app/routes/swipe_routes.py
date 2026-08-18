@@ -4,6 +4,8 @@ from fastapi import (
     HTTPException
 )
 
+from pydantic import BaseModel
+
 from sqlalchemy.orm import Session
 
 from ..database import get_db
@@ -12,120 +14,56 @@ from ..auth import get_current_user
 
 
 router = APIRouter(
-    prefix="/api/candidate",
-    tags=["Job Discovery"]
+    prefix="/api/jobs",
+    tags=["Job Swipes"]
 )
 
 
 # ==========================================
-# GET JOBS FOR CANDIDATE
+# SWIPE REQUEST
 # ==========================================
 
-@router.get("/jobs")
-def get_candidate_jobs(
-    user_id: int = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
+class SwipeRequest(BaseModel):
 
-    # Get job IDs already swiped by this candidate
-
-    swiped_job_ids = db.query(
-        JobSwipe.job_id
-    ).filter(
-        JobSwipe.user_id == user_id
-    ).all()
-
-    swiped_job_ids = [
-        job_id
-        for (job_id,) in swiped_job_ids
-    ]
-
-
-    # Get active jobs that candidate
-    # has not swiped on yet
-
-    query = db.query(Job).filter(
-        Job.status == "active"
-    )
-
-    if swiped_job_ids:
-
-        query = query.filter(
-            ~Job.job_id.in_(swiped_job_ids)
-        )
-
-
-    jobs = query.order_by(
-        Job.created_at.desc()
-    ).all()
-
-
-    return [
-
-        {
-            "job_id": job.job_id,
-
-            "title": job.title,
-
-            "company": job.company,
-
-            "description": job.description,
-
-            "location": job.location,
-
-            "employment_type":
-                job.employment_type,
-
-            "experience_required":
-                job.experience_required,
-
-            "salary":
-                job.salary,
-
-            "skills":
-                job.skills,
-
-            "created_at":
-                job.created_at
-        }
-
-        for job in jobs
-
-    ]
+    action: str
 
 
 # ==========================================
-# SWIPE JOB
+# LIKE / REJECT JOB
 # ==========================================
 
-@router.post("/jobs/{job_id}/swipe")
+@router.post("/{job_id}/swipe")
 def swipe_job(
     job_id: int,
-    action: str,
+    data: SwipeRequest,
     user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
 
-    # --------------------------------------
-    # Validate action
-    # --------------------------------------
+    # ======================================
+    # VALIDATE ACTION
+    # ======================================
 
-    if action not in ["liked", "rejected"]:
+    if data.action not in [
+        "like",
+        "reject"
+    ]:
 
         raise HTTPException(
             status_code=400,
-            detail="Action must be 'liked' or 'rejected'"
+            detail="Action must be either like or reject"
         )
 
 
-    # --------------------------------------
-    # Check job exists
-    # --------------------------------------
+    # ======================================
+    # CHECK JOB
+    # ======================================
 
     job = db.query(Job).filter(
         Job.job_id == job_id,
         Job.status == "active"
     ).first()
+
 
     if not job:
 
@@ -135,9 +73,9 @@ def swipe_job(
         )
 
 
-    # --------------------------------------
-    # Check whether already swiped
-    # --------------------------------------
+    # ======================================
+    # CHECK EXISTING SWIPE
+    # ======================================
 
     existing_swipe = db.query(
         JobSwipe
@@ -147,17 +85,37 @@ def swipe_job(
     ).first()
 
 
+    # ======================================
+    # UPDATE EXISTING SWIPE
+    # ======================================
+
     if existing_swipe:
 
-        raise HTTPException(
-            status_code=400,
-            detail="You have already swiped on this job"
-        )
+        existing_swipe.action = data.action
+
+        db.commit()
+
+        db.refresh(existing_swipe)
+
+        return {
+
+            "message": "Swipe updated successfully",
+
+            "swipe_id":
+                existing_swipe.swipe_id,
+
+            "job_id":
+                existing_swipe.job_id,
+
+            "action":
+                existing_swipe.action
+
+        }
 
 
-    # --------------------------------------
-    # Save swipe
-    # --------------------------------------
+    # ======================================
+    # CREATE NEW SWIPE
+    # ======================================
 
     swipe = JobSwipe(
 
@@ -165,7 +123,7 @@ def swipe_job(
 
         job_id=job_id,
 
-        action=action
+        action=data.action
 
     )
 
@@ -177,18 +135,17 @@ def swipe_job(
     db.refresh(swipe)
 
 
-    # --------------------------------------
-    # Response
-    # --------------------------------------
-
     return {
 
-        "message": "Job swipe saved successfully",
+        "message": "Swipe saved successfully",
 
-        "swipe_id": swipe.swipe_id,
+        "swipe_id":
+            swipe.swipe_id,
 
-        "job_id": job_id,
+        "job_id":
+            swipe.job_id,
 
-        "action": action
+        "action":
+            swipe.action
 
     }

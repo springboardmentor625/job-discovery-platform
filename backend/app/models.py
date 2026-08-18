@@ -263,3 +263,41 @@ class JobSwipe(Base):
         DateTime,
         default=datetime.utcnow
     )
+class Application(Base):
+
+    __tablename__ = "applications"
+
+    application_id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    user_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    job_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    status = Column(
+        String(30),
+        default="applied",
+        nullable=False
+    )
+
+    applied_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+    updated_at = Column(
+        DateTime,
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow
+    )

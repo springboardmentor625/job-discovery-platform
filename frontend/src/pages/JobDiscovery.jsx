@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion, useMotionValue, useTransform } from "framer-motion";
 import api from "../api";
 
 function JobDiscovery() {
@@ -8,140 +7,138 @@ function JobDiscovery() {
   const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+
   const [loading, setLoading] = useState(true);
-  const [swiping, setSwiping] = useState(false);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+
+  const [actionLoading, setActionLoading] = useState(false);
+
 
   // ==========================================
-  // LOAD JOBS
+  // LOAD MATCHED JOBS
   // ==========================================
 
   useEffect(() => {
-    loadJobs();
-  }, []);
 
-  const loadJobs = async () => {
+    const fetchMatchedJobs = async () => {
 
-    try {
+      try {
 
-      setLoading(true);
-      setError("");
+        const response = await api.get(
+          "/api/jobs/matched"
+        );
 
-      const response = await api.get(
-        "/api/candidate/jobs"
-      );
+        setJobs(response.data || []);
 
-      setJobs(response.data);
+      } catch (err) {
 
-    } catch (err) {
+        console.error(err);
 
-      console.error(err);
+        if (err.response?.status === 401) {
 
-      if (err.response?.status === 401) {
+          localStorage.removeItem(
+            "access_token"
+          );
 
-        localStorage.removeItem("access_token");
+          localStorage.removeItem(
+            "user_id"
+          );
 
-        navigate("/login");
+          localStorage.removeItem(
+            "role"
+          );
 
-        return;
+          navigate("/login");
+
+          return;
+        }
+
+        if (err.response?.status === 404) {
+
+          setError(
+            "Please complete your candidate profile first."
+          );
+
+        } else {
+
+          setError(
+            err.response?.data?.detail ||
+            "Unable to load matched jobs."
+          );
+
+        }
+
+      } finally {
+
+        setLoading(false);
+
       }
 
-      setError(
-        err.response?.data?.detail ||
-        "Unable to load jobs."
-      );
+    };
 
-    } finally {
 
-      setLoading(false);
+    fetchMatchedJobs();
 
-    }
+  }, [navigate]);
+
+
+  // ==========================================
+  // CURRENT JOB
+  // ==========================================
+
+  const currentJob =
+    jobs[currentIndex];
+
+
+  const nextJob = () => {
+
+    setCurrentIndex(
+      (previous) =>
+        previous + 1
+    );
 
   };
 
 
   // ==========================================
-  // SAVE SWIPE
+  // LIKE
   // ==========================================
 
-  const saveSwipe = async (action) => {
+  const handleLike = async () => {
 
     if (
-      jobs.length === 0 ||
-      swiping
+      !currentJob ||
+      actionLoading
     ) {
       return;
     }
 
-    const currentJob = jobs[0];
+
+    setActionLoading(true);
+
 
     try {
 
-      setSwiping(true);
-
-      setError("");
-
-      setMessage("");
-
-
       await api.post(
-        `/api/candidate/jobs/${currentJob.job_id}/swipe`,
-        null,
+        `/api/jobs/${currentJob.job_id}/swipe`,
         {
-          params: {
-            action: action
-          }
+          action: "like"
         }
       );
 
-
-      // Remove current job
-
-      setJobs((previousJobs) =>
-        previousJobs.slice(1)
-      );
-
-
-      if (action === "liked") {
-
-        setMessage(
-          "Job added to your liked jobs ❤️"
-        );
-
-      } else {
-
-        setMessage(
-          "Job rejected."
-        );
-
-      }
-
     } catch (err) {
 
-      console.error(err);
-
-      if (
-        err.response?.status === 401
-      ) {
-
-        localStorage.removeItem(
-          "access_token"
-        );
-
-        navigate("/login");
-
-        return;
-      }
-
-      setError(
-        err.response?.data?.detail ||
-        "Unable to save your swipe."
+      console.error(
+        "Like error:",
+        err
       );
 
     } finally {
 
-      setSwiping(false);
+      setActionLoading(false);
+
+      nextJob();
 
     }
 
@@ -149,48 +146,44 @@ function JobDiscovery() {
 
 
   // ==========================================
-  // DRAG END
+  // REJECT
   // ==========================================
 
-  const handleDragEnd = (
-    event,
-    info
-  ) => {
-
-    if (swiping) {
-      return;
-    }
-
-    const swipeDistance =
-      info.offset.x;
-
-    const swipeVelocity =
-      info.velocity.x;
-
-
-    // Swipe RIGHT = LIKE
+  const handleReject = async () => {
 
     if (
-      swipeDistance > 120 ||
-      swipeVelocity > 700
+      !currentJob ||
+      actionLoading
     ) {
-
-      saveSwipe("liked");
-
       return;
     }
 
 
-    // Swipe LEFT = REJECT
+    setActionLoading(true);
 
-    if (
-      swipeDistance < -120 ||
-      swipeVelocity < -700
-    ) {
 
-      saveSwipe("rejected");
+    try {
 
-      return;
+      await api.post(
+        `/api/jobs/${currentJob.job_id}/swipe`,
+        {
+          action: "reject"
+        }
+      );
+
+    } catch (err) {
+
+      console.error(
+        "Reject error:",
+        err
+      );
+
+    } finally {
+
+      setActionLoading(false);
+
+      nextJob();
+
     }
 
   };
@@ -204,9 +197,24 @@ function JobDiscovery() {
 
     return (
 
-      <div className="job-loading">
+      <div className="job-discovery-modern">
 
-        Loading jobs...
+        <div className="jobs-loading-card">
+
+          <div className="loading-spinner">
+            ✦
+          </div>
+
+          <h2>
+            Finding your best matches...
+          </h2>
+
+          <p>
+            SwipeX is analyzing jobs based on
+            your profile and preferences.
+          </p>
+
+        </div>
 
       </div>
 
@@ -215,411 +223,500 @@ function JobDiscovery() {
   }
 
 
-  return (
+  // ==========================================
+  // ERROR
+  // ==========================================
 
-    <div className="job-discovery-page">
+  if (error) {
 
-      <div className="job-discovery-container">
+    return (
 
+      <div className="job-discovery-modern">
 
-        {/* =================================
-            HEADER
-        ================================== */}
+        <div className="jobs-empty-card">
 
-        <div className="job-discovery-header">
+          <div className="empty-icon">
+            ⚠
+          </div>
+
+          <h2>
+            Something went wrong
+          </h2>
+
+          <p>
+            {error}
+          </p>
 
           <button
-            className="back-button"
+            className="primary-job-button"
+            onClick={() =>
+              navigate(
+                "/candidate/profile/edit"
+              )
+            }
+          >
+            Update Profile
+          </button>
+
+        </div>
+
+      </div>
+
+    );
+
+  }
+
+
+  // ==========================================
+  // ALL JOBS FINISHED
+  // ==========================================
+
+  if (
+    jobs.length === 0 ||
+    currentIndex >= jobs.length
+  ) {
+
+    return (
+
+      <div className="job-discovery-modern">
+
+        <div className="jobs-empty-card">
+
+          <div className="empty-icon">
+            ✓
+          </div>
+
+          <h2>
+            You're all caught up!
+          </h2>
+
+          <p>
+            We've shown you all the jobs
+            currently matching your profile.
+          </p>
+
+          <button
+            className="primary-job-button"
             onClick={() =>
               navigate("/candidate")
             }
           >
-            ← Dashboard
+            Back to Dashboard
           </button>
 
+        </div>
+
+      </div>
+
+    );
+
+  }
+
+
+  // ==========================================
+  // MATCH PERCENTAGE
+  // ==========================================
+
+  const matchScore =
+    Math.round(
+      currentJob.match_score || 0
+    );
+
+
+  // ==========================================
+  // UI
+  // ==========================================
+
+  return (
+
+    <div className="job-discovery-modern">
+
+
+      {/* ======================================
+          HEADER
+      ======================================= */}
+
+      <div className="modern-jobs-header">
+
+        <button
+          className="modern-back-button"
+          onClick={() =>
+            navigate("/candidate")
+          }
+        >
+          ← Dashboard
+        </button>
+
+
+        <div className="modern-header-content">
 
           <div>
 
-            <p className="section-label">
+            <span className="modern-eyebrow">
               SWIPEX DISCOVERY
-            </p>
+            </span>
 
             <h1>
-              Discover Jobs
+              Find your next opportunity.
             </h1>
 
             <p>
-              Swipe right if you're interested
-              and left if you're not.
+              Jobs ranked according to your
+              skills, experience and preferences.
             </p>
+
+          </div>
+
+
+          <div className="job-counter">
+
+            <strong>
+              {currentIndex + 1}
+            </strong>
+
+            <span>
+              / {jobs.length}
+            </span>
 
           </div>
 
         </div>
 
-
-        {/* =================================
-            ERROR
-        ================================== */}
-
-        {error && (
-
-          <div className="login-error">
-
-            {error}
-
-          </div>
-
-        )}
+      </div>
 
 
-        {/* =================================
-            MESSAGE
-        ================================== */}
+      {/* ======================================
+          CARD AREA
+      ======================================= */}
 
-        {message && (
-
-          <div className="success-message">
-
-            {message}
-
-          </div>
-
-        )}
+      <div className="modern-job-area">
 
 
-        {/* =================================
-            NO JOBS
-        ================================== */}
+        {/* Background card */}
 
-        {jobs.length === 0 && !error && (
+        {jobs[currentIndex + 1] && (
 
-          <div className="no-jobs-card">
+          <div className="modern-job-card next-card">
 
-            <div className="no-jobs-icon">
-              ✓
+            <div className="next-card-content">
+              Next opportunity
             </div>
 
-            <h2>
-              You're all caught up!
-            </h2>
+          </div>
+
+        )}
+
+
+        {/* Current card */}
+
+        <div className="modern-job-card">
+
+
+          {/* ==================================
+              TOP
+          =================================== */}
+
+          <div className="modern-job-top">
+
+
+            <div className="modern-company-logo">
+
+              {currentJob.company
+                ? currentJob.company
+                    .charAt(0)
+                    .toUpperCase()
+                : "J"}
+
+            </div>
+
+
+            <div className="modern-company-info">
+
+              <span>
+                {currentJob.company ||
+                  "Company"}
+              </span>
+
+              <h2>
+                {currentJob.title}
+              </h2>
+
+            </div>
+
+
+            <div
+              className={`match-badge ${
+                matchScore >= 80
+                  ? "excellent"
+                  : matchScore >= 60
+                  ? "good"
+                  : "average"
+              }`}
+            >
+
+              <strong>
+                {matchScore}%
+              </strong>
+
+              <span>
+                Match
+              </span>
+
+            </div>
+
+          </div>
+
+
+          {/* ==================================
+              DETAILS
+          =================================== */}
+
+          <div className="modern-job-details">
+
+
+            <div className="modern-detail">
+
+              <span>📍</span>
+
+              <div>
+
+                <small>
+                  Location
+                </small>
+
+                <strong>
+                  {currentJob.location ||
+                    "Not specified"}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div className="modern-detail">
+
+              <span>💼</span>
+
+              <div>
+
+                <small>
+                  Employment
+                </small>
+
+                <strong>
+                  {currentJob.employment_type ||
+                    "Not specified"}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div className="modern-detail">
+
+              <span>💰</span>
+
+              <div>
+
+                <small>
+                  Salary
+                </small>
+
+                <strong>
+                  {currentJob.salary ||
+                    "Not specified"}
+                </strong>
+
+              </div>
+
+            </div>
+
+
+            <div className="modern-detail">
+
+              <span>🎯</span>
+
+              <div>
+
+                <small>
+                  Experience
+                </small>
+
+                <strong>
+                  {currentJob.experience_required ||
+                    "Not specified"}
+                </strong>
+
+              </div>
+
+            </div>
+
+          </div>
+
+
+          {/* ==================================
+              MATCHED SKILLS
+          =================================== */}
+
+          {currentJob.matched_skills?.length > 0 && (
+
+            <div className="matched-section">
+
+              <div className="matched-title">
+
+                <span>
+                  ✦
+                </span>
+
+                Skills matching your profile
+
+              </div>
+
+
+              <div className="modern-skills">
+
+                {currentJob.matched_skills.map(
+                  (skill) => (
+
+                    <span
+                      className="matched-skill"
+                      key={skill}
+                    >
+                      ✓ {skill}
+                    </span>
+
+                  )
+                )}
+
+              </div>
+
+            </div>
+
+          )}
+
+
+          {/* ==================================
+              JOB SKILLS
+          =================================== */}
+
+          {currentJob.skills && (
+
+            <div className="all-skills-section">
+
+              <span className="skills-label">
+                Required Skills
+              </span>
+
+
+              <div className="modern-skills">
+
+                {currentJob.skills
+                  .split(",")
+                  .map(
+                    (skill) =>
+                      skill.trim()
+                  )
+                  .filter(Boolean)
+                  .slice(0, 10)
+                  .map(
+                    (skill) => (
+
+                      <span
+                        className="normal-skill"
+                        key={skill}
+                      >
+                        {skill}
+                      </span>
+
+                    )
+                  )}
+
+              </div>
+
+            </div>
+
+          )}
+
+
+          {/* ==================================
+              DESCRIPTION
+          =================================== */}
+
+          <div className="modern-description">
+
+            <span>
+              ABOUT THE ROLE
+            </span>
 
             <p>
-              There are no more jobs available
-              for you right now.
+              {currentJob.description ||
+                "No description available."}
             </p>
 
+          </div>
+
+
+          {/* ==================================
+              ACTIONS
+          =================================== */}
+
+          <div className="modern-actions">
+
             <button
-              className="dashboard-button"
-              onClick={() =>
-                navigate("/candidate")
-              }
+              className="modern-reject"
+              onClick={handleReject}
+              disabled={actionLoading}
+              title="Not interested"
             >
-              Back to Dashboard
+              ✕
+            </button>
+
+
+            <div className="swipe-action-label">
+              <span>
+                SwipeX
+              </span>
+
+              <small>
+                Choose your opportunity
+              </small>
+            </div>
+
+
+            <button
+              className="modern-like"
+              onClick={handleLike}
+              disabled={actionLoading}
+              title="Interested"
+            >
+              ♥
             </button>
 
           </div>
 
-        )}
 
-
-        {/* =================================
-            SWIPE CARDS
-        ================================== */}
-
-        {jobs.length > 0 && (
-
-          <div className="swipe-card-container">
-
-            {/* NEXT CARD */}
-
-            {jobs.length > 1 && (
-
-              <div className="job-card next-job-card">
-
-                <div className="job-card-top">
-
-                  <div className="company-logo">
-
-                    {jobs[1].company
-                      ?.charAt(0)
-                      .toUpperCase()}
-
-                  </div>
-
-                  <div>
-
-                    <p className="job-company">
-                      {jobs[1].company}
-                    </p>
-
-                    <h2>
-                      {jobs[1].title}
-                    </h2>
-
-                  </div>
-
-                </div>
-
-              </div>
-
-            )}
-
-
-            {/* CURRENT CARD */}
-
-            <SwipeCard
-              job={jobs[0]}
-              onSwipe={handleDragEnd}
-              swiping={swiping}
-            />
-
+          <div className="modern-hint">
+            <span>
+              ✕
+            </span>
+            Not interested
+            <span>
+              •
+            </span>
+            <span>
+              ♥
+            </span>
+            Interested
           </div>
 
-        )}
 
+        </div>
 
       </div>
 
     </div>
-
-  );
-
-}
-
-
-// ==========================================
-// SWIPE CARD COMPONENT
-// ==========================================
-
-function SwipeCard({
-  job,
-  onSwipe,
-  swiping
-}) {
-
-  const x = useMotionValue(0);
-
-  const rotate = useTransform(
-    x,
-    [-300, 300],
-    [-15, 15]
-  );
-
-  const likeOpacity = useTransform(
-    x,
-    [0, 150],
-    [0, 1]
-  );
-
-  const rejectOpacity = useTransform(
-    x,
-    [-150, 0],
-    [1, 0]
-  );
-
-
-  return (
-
-    <motion.div
-      className="job-card swipe-card"
-      style={{
-        x,
-        rotate
-      }}
-      drag="x"
-      dragConstraints={{
-        left: 0,
-        right: 0
-      }}
-      dragElastic={1}
-      onDragEnd={onSwipe}
-      whileDrag={{
-        cursor: "grabbing"
-      }}
-      animate={{
-        scale: swiping ? 0.98 : 1
-      }}
-    >
-
-
-      {/* LIKE INDICATOR */}
-
-      <motion.div
-        className="swipe-indicator like-indicator"
-        style={{
-          opacity: likeOpacity
-        }}
-      >
-        LIKE ❤️
-      </motion.div>
-
-
-      {/* REJECT INDICATOR */}
-
-      <motion.div
-        className="swipe-indicator reject-indicator"
-        style={{
-          opacity: rejectOpacity
-        }}
-      >
-        NOPE ✕
-      </motion.div>
-
-
-      {/* JOB HEADER */}
-
-      <div className="job-card-top">
-
-        <div className="company-logo">
-
-          {job.company
-            ?.charAt(0)
-            .toUpperCase()}
-
-        </div>
-
-
-        <div>
-
-          <p className="job-company">
-            {job.company}
-          </p>
-
-          <h2>
-            {job.title}
-          </h2>
-
-        </div>
-
-      </div>
-
-
-      {/* JOB DETAILS */}
-
-      <div className="job-details">
-
-        <div className="job-detail">
-          📍 {job.location}
-        </div>
-
-        <div className="job-detail">
-          💼 {job.employment_type}
-        </div>
-
-
-        {job.experience_required && (
-
-          <div className="job-detail">
-            🎓 {job.experience_required}
-          </div>
-
-        )}
-
-
-        {job.salary && (
-
-          <div className="job-detail">
-            💰 {job.salary}
-          </div>
-
-        )}
-
-      </div>
-
-
-      {/* SKILLS */}
-
-      {job.skills && (
-
-        <div className="job-skills">
-
-          {job.skills
-            .split(",")
-            .map((skill, index) => (
-
-              <span
-                key={index}
-                className="skill-tag"
-              >
-                {skill.trim()}
-              </span>
-
-            ))}
-
-        </div>
-
-      )}
-
-
-      {/* DESCRIPTION */}
-
-      <div className="job-description">
-
-        <h3>
-          About the role
-        </h3>
-
-        <p>
-          {job.description}
-        </p>
-
-      </div>
-
-
-      {/* BUTTON FALLBACK */}
-
-      <div className="swipe-actions">
-
-        <button
-          className="reject-button"
-          onClick={() =>
-            onSwipe(
-              null,
-              {
-                offset: {
-                  x: -200
-                },
-                velocity: {
-                  x: 0
-                }
-              }
-            )
-          }
-          disabled={swiping}
-        >
-          ✕
-        </button>
-
-
-        <button
-          className="like-button"
-          onClick={() =>
-            onSwipe(
-              null,
-              {
-                offset: {
-                  x: 200
-                },
-                velocity: {
-                  x: 0
-                }
-              }
-            )
-          }
-          disabled={swiping}
-        >
-          ♥
-        </button>
-
-      </div>
-
-
-      <p className="swipe-hint">
-        Drag right to like • Drag left to reject
-      </p>
-
-    </motion.div>
 
   );
 

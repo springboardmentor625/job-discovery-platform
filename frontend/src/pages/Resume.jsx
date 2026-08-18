@@ -1,10 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 
 function Resume() {
 
   const navigate = useNavigate();
+
+  const fileInputRef = useRef(null);
 
   const [file, setFile] = useState(null);
 
@@ -50,7 +52,6 @@ function Resume() {
 
         if (err.response?.status === 404) {
 
-          // No resume uploaded yet
           setResume(null);
 
         } else {
@@ -66,12 +67,30 @@ function Resume() {
         setLoading(false);
 
       }
-    };
 
+    };
 
     loadResume();
 
   }, [navigate]);
+
+
+  // ==========================================
+  // OPEN FILE PICKER
+  // ==========================================
+
+  const openFilePicker = () => {
+
+    if (uploading) {
+      return;
+    }
+
+    setMessage("");
+    setError("");
+
+    fileInputRef.current?.click();
+
+  };
 
 
   // ==========================================
@@ -81,7 +100,7 @@ function Resume() {
   const handleFileChange = (e) => {
 
     const selectedFile =
-      e.target.files[0];
+      e.target.files?.[0];
 
     setMessage("");
     setError("");
@@ -91,11 +110,17 @@ function Resume() {
       setFile(null);
 
       return;
+
     }
+
 
     const fileName =
       selectedFile.name.toLowerCase();
 
+
+    // ----------------------------------------
+    // FILE TYPE VALIDATION
+    // ----------------------------------------
 
     if (
       !fileName.endsWith(".pdf") &&
@@ -108,7 +133,10 @@ function Resume() {
 
       setFile(null);
 
+      e.target.value = "";
+
       return;
+
     }
 
 
@@ -130,7 +158,9 @@ function Resume() {
       );
 
       return;
+
     }
+
 
     setUploading(true);
 
@@ -160,14 +190,27 @@ function Resume() {
         "Resume uploaded successfully."
       );
 
+
       setFile(null);
 
 
-      // Load the newly uploaded resume
+      // Clear file input
+      if (fileInputRef.current) {
+
+        fileInputRef.current.value = "";
+
+      }
+
+
+      // --------------------------------------
+      // LOAD NEW RESUME
+      // --------------------------------------
+
       const response =
         await api.get(
           "/api/candidate/resume"
         );
+
 
       setResume(
         response.data
@@ -190,6 +233,7 @@ function Resume() {
         navigate("/login");
 
         return;
+
       }
 
 
@@ -202,6 +246,28 @@ function Resume() {
     } finally {
 
       setUploading(false);
+
+    }
+
+  };
+
+
+  // ==========================================
+  // REMOVE SELECTED FILE
+  // ==========================================
+
+  const removeSelectedFile = () => {
+
+    setFile(null);
+
+    setMessage("");
+
+    setError("");
+
+
+    if (fileInputRef.current) {
+
+      fileInputRef.current.value = "";
 
     }
 
@@ -227,6 +293,10 @@ function Resume() {
   }
 
 
+  // ==========================================
+  // UI
+  // ==========================================
+
   return (
 
     <div className="resume-page">
@@ -234,74 +304,108 @@ function Resume() {
       <div className="resume-container">
 
 
-        {/* BACK */}
+        {/* =====================================
+            BACK
+        ====================================== */}
 
         <button
+          type="button"
           className="back-button"
           onClick={() =>
             navigate("/candidate")
           }
         >
+
           ← Back to Dashboard
+
         </button>
 
 
-        {/* HEADER */}
+        {/* =====================================
+            HEADER
+        ====================================== */}
 
         <div className="resume-header">
 
           <p className="section-label">
+
             RESUME MANAGEMENT
+
           </p>
 
+
           <h1>
+
             Resume
+
           </h1>
 
+
           <p>
+
             Upload your latest resume to
             improve your job recommendations.
+
           </p>
 
         </div>
 
 
-        {/* ================================= */}
-        {/* CURRENT RESUME */}
-        {/* ================================= */}
+        {/* =====================================
+            CURRENT RESUME
+        ====================================== */}
 
         {resume && (
 
           <div className="current-resume-card">
 
+
             <div className="current-resume-icon">
+
               📄
+
             </div>
 
 
             <div className="current-resume-info">
 
               <p className="section-label">
+
                 CURRENT RESUME
+
               </p>
+
 
               <h2>
+
                 {resume.file_name}
+
               </h2>
 
+
               <p>
+
                 {resume.file_type?.toUpperCase()}
+
                 {" • "}
-                {resume.text_length} characters
+
+                {resume.text_length}
+
+                {" characters"}
+
               </p>
+
 
               {resume.uploaded_at && (
 
                 <small>
+
                   Uploaded on{" "}
+
                   {new Date(
                     resume.uploaded_at
                   ).toLocaleString()}
+
                 </small>
 
               )}
@@ -312,27 +416,52 @@ function Resume() {
             <div className="resume-current-status">
 
               <span>
+
                 ✓
+
               </span>
 
               Uploaded
 
             </div>
 
+
           </div>
 
         )}
 
 
-        {/* ================================= */}
-        {/* UPLOAD CARD */}
-        {/* ================================= */}
+        {/* =====================================
+            UPLOAD CARD
+        ====================================== */}
 
         <div className="resume-upload-card">
 
-          <div className="upload-icon">
-            ↑
-          </div>
+
+          {/* =================================
+              CLICKABLE UPLOAD ARROW
+          ================================= */}
+
+          <button
+            type="button"
+            className="upload-icon-button"
+            onClick={openFilePicker}
+            disabled={uploading}
+            aria-label={
+              resume
+                ? "Replace resume"
+                : "Upload resume"
+            }
+          >
+
+            <div className="upload-icon">
+
+              ↑
+
+            </div>
+
+          </button>
+
 
           <h2>
 
@@ -342,26 +471,30 @@ function Resume() {
 
           </h2>
 
+
           <p>
+
             Supported formats: PDF and DOCX
+
           </p>
 
 
-          <label className="file-select-button">
+          {/* =================================
+              HIDDEN FILE INPUT
+          ================================= */}
 
-            Choose Resume
-
-            <input
-              type="file"
-              accept=".pdf,.docx"
-              onChange={handleFileChange}
-              hidden
-            />
-
-          </label>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".pdf,.docx"
+            onChange={handleFileChange}
+            hidden
+          />
 
 
-          {/* SELECTED FILE */}
+          {/* =================================
+              SELECTED FILE
+          ================================= */}
 
           {file && (
 
@@ -370,27 +503,35 @@ function Resume() {
               <div>
 
                 <strong>
+
                   {file.name}
+
                 </strong>
 
+
                 <span>
+
                   {(
                     file.size /
                     1024 /
                     1024
-                  ).toFixed(2)}{" "}
-                  MB
+                  ).toFixed(2)}
+
+                  {" MB"}
+
                 </span>
 
               </div>
 
 
               <button
-                onClick={() =>
-                  setFile(null)
-                }
+                type="button"
+                onClick={removeSelectedFile}
+                disabled={uploading}
               >
+
                 Remove
+
               </button>
 
             </div>
@@ -398,18 +539,23 @@ function Resume() {
           )}
 
 
-          {/* UPLOAD BUTTON */}
+          {/* =================================
+              UPLOAD BUTTON
+          ================================= */}
 
           {file && (
 
             <button
+              type="button"
               className="upload-button"
               onClick={handleUpload}
               disabled={uploading}
             >
 
               {uploading
+
                 ? "Uploading..."
+
                 : resume
                   ? "Replace Resume"
                   : "Upload Resume"}
@@ -419,19 +565,31 @@ function Resume() {
           )}
 
 
+          {/* =================================
+              SUCCESS
+          ================================= */}
+
           {message && (
 
             <div className="success-message">
+
               {message}
+
             </div>
 
           )}
 
 
+          {/* =================================
+              ERROR
+          ================================= */}
+
           {error && (
 
             <div className="login-error">
+
               {error}
+
             </div>
 
           )}
@@ -439,33 +597,41 @@ function Resume() {
         </div>
 
 
-        {/* ================================= */}
-        {/* NO RESUME */}
-        {/* ================================= */}
+        {/* =====================================
+            NO RESUME
+        ====================================== */}
 
         {!resume && !error && (
 
           <div className="no-resume-card">
 
             <h3>
+
               No resume uploaded yet
+
             </h3>
 
+
             <p>
+
               Upload your resume to help
               SwipeX provide better job
               recommendations.
+
             </p>
 
           </div>
 
         )}
 
+
       </div>
 
     </div>
 
   );
+
 }
+
 
 export default Resume;

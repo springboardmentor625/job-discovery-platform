@@ -150,10 +150,8 @@ function CandidateDashboard() {
           <button
             className="nav-item"
             onClick={() =>
-              alert(
-                "Matches module coming next."
-              )
-            }
+            navigate("/candidate/matches")
+          }
           >
             Matches
           </button>
@@ -164,9 +162,7 @@ function CandidateDashboard() {
           <button
             className="nav-item"
             onClick={() =>
-              alert(
-                "Applications module coming next."
-              )
+              navigate("/candidate/applications")
             }
           >
             Applications
@@ -573,9 +569,7 @@ function CandidateDashboard() {
             <div
               className="quick-card"
               onClick={() =>
-                alert(
-                  "Applications module coming next."
-                )
+                navigate("/candidate/applications")
               }
             >
 

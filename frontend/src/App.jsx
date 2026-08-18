@@ -11,6 +11,8 @@ import CandidateDashboard from "./pages/CandidateDashboard";
 import EditProfile from "./pages/EditProfile";
 import Resume from "./pages/Resume";
 import JobDiscovery from "./pages/JobDiscovery";
+import Applications from "./pages/Applications";
+import Matches from "./pages/Matches";
 
 
 function App() {
@@ -28,6 +30,10 @@ function App() {
         <Route
           path="/candidate/resume"
           element={<Resume />}
+        />
+        <Route
+          path="/candidate/applications"
+          element={<Applications />}
         />
         <Route
           path="/candidate"
@@ -50,6 +56,10 @@ function App() {
         <Route
           path="/candidate/jobs"
           element={<JobDiscovery />}
+        />
+        <Route
+        path="/candidate/matches"
+        element={<Matches />}
         />
 
         
