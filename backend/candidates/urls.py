@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from rest_framework_simplejwt.views import TokenRefreshView
 
 from .views import (
     RegisterView,
@@ -7,8 +8,11 @@ from .views import (
     ResumeViewSet,
     JobViewSet,
     JobSwipeViewSet,
+    ApplicationViewSet,
 )
-from .views import ApplicationViewSet
+
+from .auth_views import EmailTokenObtainPairView
+
 
 router = DefaultRouter()
 
@@ -56,19 +60,42 @@ router.register(
     basename="swipe"
 )
 
+
+# =========================
+# APPLICATIONS
+# =========================
+
 router.register(
-    r'applications',
+    r"applications",
     ApplicationViewSet,
-    basename='application'
+    basename="application"
 )
 
+
 urlpatterns = [
+
+    # Registration
     path(
         "register/",
         RegisterView.as_view(),
         name="register"
     ),
 
+    # JWT Login using EMAIL + PASSWORD
+    path(
+        "login/",
+        EmailTokenObtainPairView.as_view(),
+        name="token_obtain_pair"
+    ),
+
+    # JWT Refresh
+    path(
+        "token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token_refresh"
+    ),
+
+    # API routes
     path(
         "",
         include(router.urls)

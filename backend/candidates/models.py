@@ -25,10 +25,15 @@ class Candidate(models.Model):
         null=True
     )
 
-    skills = models.TextField()
+    skills = models.TextField(
+        blank=True,
+        default=""
+    )
 
     experience = models.CharField(
-        max_length=20
+        max_length=20,
+        blank=True,
+        default=""
     )
 
     education = models.TextField(
@@ -67,8 +72,40 @@ class Resume(models.Model):
         upload_to="resumes/"
     )
 
+    # Parsed resume information
+    extracted_text = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    extracted_skills = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    extracted_experience = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    extracted_education = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    # ATS result
     ats_score = models.IntegerField(
         default=0
+    )
+
+    missing_skills = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    ats_suggestions = models.TextField(
+        blank=True,
+        default=""
     )
 
     uploaded_at = models.DateTimeField(
@@ -80,7 +117,6 @@ class Resume(models.Model):
             f"{self.candidate.full_name} - "
             f"{self.resume_file.name}"
         )
-
 
 # =====================================
 # JOB
@@ -157,10 +193,31 @@ class JobSwipe(models.Model):
             f"{self.decision}"
         )
 
+
+# =====================================
+# APPLICATION
+# =====================================
+
 class Application(models.Model):
-    candidate = models.ForeignKey(Candidate, on_delete=models.CASCADE)
-    job = models.ForeignKey(Job, on_delete=models.CASCADE)
-    applied_at = models.DateTimeField(auto_now_add=True)
+
+    candidate = models.ForeignKey(
+        Candidate,
+        on_delete=models.CASCADE,
+        related_name="applications"
+    )
+
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name="applications"
+    )
+
+    applied_at = models.DateTimeField(
+        auto_now_add=True
+    )
 
     def __str__(self):
-        return f"{self.candidate.full_name} - {self.job.title}"
+        return (
+            f"{self.candidate.full_name} - "
+            f"{self.job.title}"
+        )

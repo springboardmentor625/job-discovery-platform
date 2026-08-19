@@ -11,7 +11,8 @@ import MyResume from "./pages/MyResume";
 import Jobs from "./pages/Jobs";
 import Applications from "./pages/Applications";
 import Settings from "./pages/Settings";
-
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 function App() {
   return (
     <BrowserRouter>
@@ -28,6 +29,7 @@ function App() {
         <Route path="/applications" element={<Applications />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
+        <ToastContainer />
     </BrowserRouter>
   );
 }

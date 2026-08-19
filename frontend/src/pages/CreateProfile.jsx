@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../services/api";
 
 function CreateProfile() {
@@ -25,21 +26,22 @@ function CreateProfile() {
     });
   };
 
-  // -------------------------
-  // Add Skill Validation
-  // -------------------------
+  // =========================
+  // ADD SKILL
+  // =========================
+
   const addSkill = () => {
     const skill = skillInput.trim();
 
     const skillRegex = /^[A-Za-z+#.\-\s]{2,30}$/;
 
     if (!skill) {
-      alert("Please enter a skill.");
+      toast.error("Please enter a skill.");
       return;
     }
 
     if (!skillRegex.test(skill)) {
-      alert(
+      toast.error(
         "Enter a valid professional skill (Example: Python, React, C++, SQL)."
       );
       return;
@@ -50,41 +52,59 @@ function CreateProfile() {
         (s) => s.toLowerCase() === skill.toLowerCase()
       )
     ) {
-      alert("Skill already added.");
+      toast.error("Skill already added.");
       return;
     }
 
     setSkills([...skills, skill]);
     setSkillInput("");
+    toast.success(`${skill} added`);
   };
+
+  // =========================
+  // REMOVE SKILL
+  // =========================
 
   const removeSkill = (index) => {
-    setSkills(skills.filter((_, i) => i !== index));
+    const removedSkill = skills[index];
+
+    setSkills(
+      skills.filter((_, i) => i !== index)
+    );
+
+    toast.success(`${removedSkill} removed`);
   };
 
-  // -------------------------
-  // Submit
-  // -------------------------
+  // =========================
+  // SUBMIT
+  // =========================
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (skills.length < 2) {
-      alert("Please add at least 2 professional skills.");
+      toast.error(
+        "Please add at least 2 professional skills."
+      );
       return;
     }
 
     if (!/^[6-9]\d{9}$/.test(formData.phone)) {
-      alert("Enter a valid 10-digit mobile number.");
+      toast.error(
+        "Enter a valid 10-digit mobile number."
+      );
       return;
     }
 
     if (formData.education.trim().length < 10) {
-      alert("Please enter valid education details.");
+      toast.error(
+        "Please enter valid education details."
+      );
       return;
     }
 
     if (formData.projects.trim().length < 20) {
-      alert(
+      toast.error(
         "Please provide a meaningful project description (minimum 20 characters)."
       );
       return;
@@ -94,7 +114,9 @@ function CreateProfile() {
       formData.certifications &&
       formData.certifications.trim().length < 5
     ) {
-      alert("Please enter a valid certification.");
+      toast.error(
+        "Please enter a valid certification."
+      );
       return;
     }
 
@@ -106,30 +128,46 @@ function CreateProfile() {
 
       await api.post("candidates/", data);
 
-      alert("Profile Created Successfully!");
+      toast.success(
+        "Profile Created Successfully!"
+      );
+
       navigate("/profile");
+
     } catch (error) {
-      console.log(error.response?.data);
+      console.error(
+        "CREATE PROFILE ERROR:",
+        error.response?.data || error
+      );
 
       if (error.response?.data) {
-        const message = Object.entries(error.response.data)
+        const message = Object.entries(
+          error.response.data
+        )
           .map(
             ([key, value]) =>
               `${key}: ${
-                Array.isArray(value) ? value.join(", ") : value
+                Array.isArray(value)
+                  ? value.join(", ")
+                  : value
               }`
           )
           .join("\n");
 
-        alert(message);
+        toast.error(
+          message || "Unable to create profile."
+        );
       } else {
-        alert("Unable to create profile.");
+        toast.error(
+          "Unable to create profile."
+        );
       }
     }
   };
 
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center items-center py-10">
+
       <div className="bg-white shadow-xl rounded-xl w-full max-w-3xl p-8">
 
         <h2 className="text-3xl font-bold text-indigo-700 mb-2">
@@ -145,6 +183,8 @@ function CreateProfile() {
           className="grid grid-cols-2 gap-4"
         >
 
+          {/* FULL NAME */}
+
           <input
             className="border p-3 rounded-lg"
             name="full_name"
@@ -153,6 +193,8 @@ function CreateProfile() {
             onChange={handleChange}
             required
           />
+
+          {/* EMAIL */}
 
           <input
             className="border p-3 rounded-lg"
@@ -164,6 +206,8 @@ function CreateProfile() {
             required
           />
 
+          {/* PHONE */}
+
           <input
             className="border p-3 rounded-lg"
             name="phone"
@@ -173,6 +217,8 @@ function CreateProfile() {
             required
           />
 
+          {/* EXPERIENCE */}
+
           <select
             className="border p-3 rounded-lg"
             name="experience"
@@ -180,16 +226,39 @@ function CreateProfile() {
             onChange={handleChange}
             required
           >
-            <option value="">Select Experience</option>
-            <option value="Fresher">Fresher</option>
-            <option value="0-1 Years">0-1 Years</option>
-            <option value="1-3 Years">1-3 Years</option>
-            <option value="3-5 Years">3-5 Years</option>
-            <option value="5-8 Years">5-8 Years</option>
-            <option value="8+ Years">8+ Years</option>
+            <option value="">
+              Select Experience
+            </option>
+
+            <option value="Fresher">
+              Fresher
+            </option>
+
+            <option value="0-1 Years">
+              0-1 Years
+            </option>
+
+            <option value="1-3 Years">
+              1-3 Years
+            </option>
+
+            <option value="3-5 Years">
+              3-5 Years
+            </option>
+
+            <option value="5-8 Years">
+              5-8 Years
+            </option>
+
+            <option value="8+ Years">
+              8+ Years
+            </option>
           </select>
 
+          {/* SKILLS */}
+
           <div className="col-span-2">
+
             <label className="block font-semibold mb-2">
               Professional Skills
             </label>
@@ -202,6 +271,12 @@ function CreateProfile() {
                 onChange={(e) =>
                   setSkillInput(e.target.value)
                 }
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    addSkill();
+                  }
+                }}
                 placeholder="Example: Python"
                 className="border rounded-lg p-3 flex-1"
               />
@@ -221,24 +296,35 @@ function CreateProfile() {
             </p>
 
             <div className="flex flex-wrap gap-2 mt-4">
+
               {skills.map((skill, index) => (
+
                 <div
                   key={index}
                   className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full flex items-center gap-2"
                 >
+
                   {skill}
 
                   <button
                     type="button"
-                    onClick={() => removeSkill(index)}
+                    onClick={() =>
+                      removeSkill(index)
+                    }
                     className="text-red-500 font-bold"
                   >
                     ×
                   </button>
+
                 </div>
+
               ))}
+
             </div>
+
           </div>
+
+          {/* EDUCATION */}
 
           <textarea
             className="border p-3 rounded-lg col-span-2"
@@ -250,6 +336,8 @@ function CreateProfile() {
             required
           />
 
+          {/* PROJECTS */}
+
           <textarea
             className="border p-3 rounded-lg col-span-2"
             rows={4}
@@ -260,6 +348,8 @@ function CreateProfile() {
             required
           />
 
+          {/* CERTIFICATIONS */}
+
           <textarea
             className="border p-3 rounded-lg col-span-2"
             rows={3}
@@ -269,7 +359,10 @@ function CreateProfile() {
             onChange={handleChange}
           />
 
+          {/* SUBMIT */}
+
           <button
+            type="submit"
             className="col-span-2 bg-indigo-600 text-white p-3 rounded-lg hover:bg-indigo-700 transition"
           >
             Save Profile
@@ -278,6 +371,7 @@ function CreateProfile() {
         </form>
 
       </div>
+
     </div>
   );
 }

@@ -1,55 +1,23 @@
 from rest_framework import serializers
 
-from .models import Candidate, Resume, Job, JobSwipe, Application
-import re
+from .models import (
+    Candidate,
+    Resume,
+    Job,
+    JobSwipe,
+    Application,
+)
+
 
 # =====================================
 # CANDIDATE SERIALIZER
 # =====================================
 
-
 class CandidateSerializer(serializers.ModelSerializer):
-
-    def validate_skills(self, value):
-        allowed = {
-            "python", "java", "javascript", "react", "django", "flask",
-            "html", "css", "sql", "mysql", "postgresql", "mongodb",
-            "c", "c++", "c#", "nodejs", "express", "git", "aws",
-            "azure", "docker", "kubernetes"
-        }
-
-        skills = [s.strip().lower() for s in value.split(",")]
-
-        for skill in skills:
-            if skill not in allowed:
-                raise serializers.ValidationError(
-                    f'"{skill}" is not a recognized professional skill.'
-                )
-        return value
-
-    def validate_education(self, value):
-        if len(value.split()) < 3:
-            raise serializers.ValidationError(
-                "Enter a valid education detail."
-            )
-        return value
-
-    def validate_projects(self, value):
-        if len(value.split()) < 10:
-            raise serializers.ValidationError(
-                "Project description is too short."
-            )
-        return value
-
-    def validate_certifications(self, value):
-        if value and len(value.split()) < 2:
-            raise serializers.ValidationError(
-                "Enter a valid certification."
-            )
-        return value
 
     class Meta:
         model = Candidate
+
         fields = [
             "id",
             "full_name",
@@ -63,7 +31,103 @@ class CandidateSerializer(serializers.ModelSerializer):
             "certifications",
             "created_at",
         ]
-        read_only_fields = ["id", "email", "created_at"]
+
+        read_only_fields = [
+            "id",
+            "email",
+            "created_at",
+        ]
+
+    # =====================================
+    # SKILLS VALIDATION
+    # =====================================
+
+    def validate_skills(self, value):
+
+        allowed = {
+            "python",
+            "java",
+            "javascript",
+            "react",
+            "django",
+            "flask",
+            "html",
+            "css",
+            "sql",
+            "mysql",
+            "postgresql",
+            "mongodb",
+            "c",
+            "c++",
+            "c#",
+            "nodejs",
+            "node.js",
+            "express",
+            "git",
+            "aws",
+            "azure",
+            "docker",
+            "kubernetes",
+            "angular",
+        }
+
+        skills = [
+            skill.strip().lower()
+            for skill in value.split(",")
+            if skill.strip()
+        ]
+
+        for skill in skills:
+
+            if skill not in allowed:
+
+                raise serializers.ValidationError(
+                    f'"{skill}" is not a recognized professional skill.'
+                )
+
+        return value
+
+    # =====================================
+    # EDUCATION VALIDATION
+    # =====================================
+
+    def validate_education(self, value):
+
+        if value and len(value.split()) < 3:
+
+            raise serializers.ValidationError(
+                "Enter a valid education detail."
+            )
+
+        return value
+
+    # =====================================
+    # PROJECT VALIDATION
+    # =====================================
+
+    def validate_projects(self, value):
+
+        if value and len(value.split()) < 10:
+
+            raise serializers.ValidationError(
+                "Project description is too short."
+            )
+
+        return value
+
+    # =====================================
+    # CERTIFICATION VALIDATION
+    # =====================================
+
+    def validate_certifications(self, value):
+
+        if value and len(value.split()) < 2:
+
+            raise serializers.ValidationError(
+                "Enter a valid certification."
+            )
+
+        return value
 
 
 # =====================================
@@ -75,13 +139,7 @@ class ResumeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Resume
 
-        fields = [
-            "id",
-            "candidate",
-            "resume_file",
-            "ats_score",
-            "uploaded_at",
-        ]
+        fields = "__all__"
 
         read_only_fields = [
             "id",
@@ -136,11 +194,13 @@ class JobSerializer(serializers.ModelSerializer):
             return None
 
         try:
+
             return Candidate.objects.get(
                 email__iexact=request.user.email
             )
 
         except Candidate.DoesNotExist:
+
             return None
 
     # =====================================
@@ -175,9 +235,11 @@ class JobSerializer(serializers.ModelSerializer):
             return 0
 
         try:
+
             return candidate.resume.ats_score
 
         except Exception:
+
             return 0
 
     # =====================================
@@ -185,6 +247,9 @@ class JobSerializer(serializers.ModelSerializer):
     # =====================================
 
     def get_required_skills(self, obj):
+
+        if not obj.required_skills:
+            return []
 
         return [
             skill.strip().lower()
@@ -291,7 +356,19 @@ class JobSwipeSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
+
+# =====================================
+# APPLICATION SERIALIZER
+# =====================================
+
 class ApplicationSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Application
+
         fields = "__all__"
+
+        read_only_fields = [
+            "candidate",
+            "applied_at",
+        ]

@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { toast } from "react-toastify";
 import api from "../services/api";
 
 function Register() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    username: "",
+    full_name: "",
     email: "",
+    phone: "",
     password: "",
   });
 
@@ -22,46 +24,74 @@ function Register() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  const password = formData.password;
+    const password = formData.password;
 
-  const strongPassword =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
+    const strongPassword =
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/;
 
-  if (!strongPassword.test(password)) {
-    alert(
-      "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number and one special character."
-    );
-    return;
-  }
+    if (!strongPassword.test(password)) {
+      alert(
+        "Password must contain at least 8 characters, one uppercase letter, one lowercase letter, one number and one special character."
+      );
+      return;
+    }
 
-  try {
-  await api.post("register/", formData);
+    try {
+      console.log("REGISTER DATA:", {
+        full_name: formData.full_name,
+        email: formData.email,
+        phone: formData.phone,
+      });
 
-  alert("Registration Successful!");
-  navigate("/");
-} catch (error) {
-  console.log("REGISTER ERROR:", error);
-  console.log("RESPONSE:", error.response);
-  console.log("DATA:", error.response?.data);
+      const response = await api.post("register/", {
+        full_name: formData.full_name,
+        email: formData.email,
+        phone: formData.phone,
+        password: formData.password,
+      });
 
-  if (!error.response) {
-    alert("Cannot connect to backend.");
-    return;
-  }
+      console.log("REGISTER SUCCESS:", response.data);
 
-  const data = error.response.data;
+      toast.success("Registration Successful!");
 
-  const message = Object.entries(data)
-    .map(([key, value]) =>
-      `${key}: ${Array.isArray(value) ? value.join(", ") : value}`
-    )
-    .join("\n");
+      navigate("/");
+    } catch (error) {
+      console.log("REGISTER ERROR:", error);
+      console.log("RESPONSE:", error.response);
+      console.log("DATA:", error.response?.data);
 
-  alert(message);
-}
-};
+      // No response from Django
+      if (!error.response) {
+        alert(
+          "Cannot connect to backend. Make sure Django is running on http://127.0.0.1:8000/"
+        );
+        return;
+      }
+
+      // Django responded with an error
+      const data = error.response.data;
+
+      if (typeof data === "string") {
+        alert(data);
+        return;
+      }
+
+      const message = Object.entries(data)
+        .map(([key, value]) => {
+          if (Array.isArray(value)) {
+            return `${key}: ${value.join(", ")}`;
+          }
+
+          return `${key}: ${value}`;
+        })
+        .join("\n");
+
+      alert(message || "Registration failed.");
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
 
@@ -79,10 +109,10 @@ function Register() {
 
           <input
             type="text"
-            name="username"
-            placeholder="Username"
+            name="full_name"
+            placeholder="Full Name"
             className="w-full border rounded-lg p-3 mb-4"
-            value={formData.username}
+            value={formData.full_name}
             onChange={handleChange}
             required
           />
@@ -93,6 +123,16 @@ function Register() {
             placeholder="Email"
             className="w-full border rounded-lg p-3 mb-4"
             value={formData.email}
+            onChange={handleChange}
+            required
+          />
+
+          <input
+            type="tel"
+            name="phone"
+            placeholder="Phone Number"
+            className="w-full border rounded-lg p-3 mb-4"
+            value={formData.phone}
             onChange={handleChange}
             required
           />

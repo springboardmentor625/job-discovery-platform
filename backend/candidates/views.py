@@ -60,20 +60,42 @@ class CandidateViewSet(viewsets.ModelViewSet):
 
     permission_classes = [IsAuthenticated]
 
+    # =====================================
+    # GET LOGGED-IN CANDIDATE
+    # =====================================
+
     def get_queryset(self):
-        """
-        Only return the candidate profile
-        belonging to the logged-in user.
-        """
 
         return Candidate.objects.filter(
             email__iexact=self.request.user.email
         )
 
+    # =====================================
+    # CREATE PROFILE
+    # =====================================
+
     def perform_create(self, serializer):
-        """
-        Automatically use the logged-in user's email.
-        """
+
+        # Prevent duplicate profile
+        existing_candidate = Candidate.objects.filter(
+            email__iexact=self.request.user.email
+        ).first()
+
+        if existing_candidate:
+
+            raise serializers.ValidationError({
+                "detail": "Candidate profile already exists."
+            })
+
+        serializer.save(
+            email=self.request.user.email
+        )
+
+    # =====================================
+    # UPDATE PROFILE
+    # =====================================
+
+    def perform_update(self, serializer):
 
         serializer.save(
             email=self.request.user.email
@@ -86,21 +108,15 @@ class CandidateViewSet(viewsets.ModelViewSet):
 
 class ResumeViewSet(viewsets.ModelViewSet):
 
-    queryset = Resume.objects.all()
-
     serializer_class = ResumeSerializer
 
     permission_classes = [IsAuthenticated]
 
     # =====================================
-    # GET LOGGED-IN USER RESUMES
+    # GET LOGGED-IN USER RESUME
     # =====================================
 
     def get_queryset(self):
-        """
-        Only show resumes belonging to
-        the logged-in candidate.
-        """
 
         try:
 
@@ -117,118 +133,62 @@ class ResumeViewSet(viewsets.ModelViewSet):
         )
 
     # =====================================
-    # CREATE / REPLACE RESUME
+    # GET LOGGED-IN CANDIDATE
     # =====================================
 
-    def perform_create(self, serializer):
-
-        # =====================================
-        # GET CANDIDATE
-        # =====================================
+    def get_candidate(self):
 
         try:
 
-            candidate = Candidate.objects.get(
+            return Candidate.objects.get(
                 email__iexact=self.request.user.email
             )
 
         except Candidate.DoesNotExist:
 
-            raise serializers.ValidationError(
-                {
-                    "detail":
-                    "Candidate profile not found."
-                }
-            )
+            raise serializers.ValidationError({
+                "detail": "Candidate profile not found."
+            })
 
-        # =====================================
-        # GET UPLOADED FILE
-        # =====================================
+    # =====================================
+    # PROCESS RESUME
+    # =====================================
 
-        new_file = serializer.validated_data.get(
-            "resume_file"
-        )
-
-        if not new_file:
-
-            raise serializers.ValidationError(
-                {
-                    "resume_file":
-                    "Please upload a resume file."
-                }
-            )
-
-        # =====================================
-        # EXISTING RESUME -> REPLACE
-        # =====================================
+    def process_resume(
+        self,
+        resume,
+        candidate
+    ):
 
         try:
 
-            resume = Resume.objects.get(
-                candidate=candidate
+            print(
+                "================================="
             )
 
             print(
-                "Existing resume found:",
-                resume.id
-            )
-
-            # Delete old physical file
-            if resume.resume_file:
-
-                try:
-
-                    resume.resume_file.delete(
-                        save=False
-                    )
-
-                except Exception as e:
-
-                    print(
-                        "OLD FILE DELETE ERROR:",
-                        e
-                    )
-
-            # Save new uploaded file
-            resume.resume_file = new_file
-
-            # Reset ATS score
-            resume.ats_score = 0
-
-            resume.save()
-
-            print(
-                "Resume replaced successfully:",
-                resume.id
-            )
-
-        # =====================================
-        # FIRST UPLOAD
-        # =====================================
-
-        except Resume.DoesNotExist:
-
-            resume = serializer.save(
-                candidate=candidate
+                "STARTING RESUME PARSING"
             )
 
             print(
-                "New resume created:",
-                resume.id
+                "FILE:",
+                resume.resume_file.path
             )
 
-        # =====================================
-        # PARSE RESUME + ATS
-        # =====================================
+            print(
+                "================================="
+            )
 
-        try:
+            # =====================================
+            # PARSE RESUME
+            # =====================================
 
             result = parse_resume(
                 resume.resume_file.path
             )
 
             print(
-                "RESUME PARSER RESULT:",
+                "PARSER RESULT:",
                 result
             )
 
@@ -238,22 +198,24 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
             ats = calculate_ats(result)
 
-            resume.ats_score = ats["score"]
-
-            resume.save()
-
             print(
-                "ATS SCORE:",
-                ats["score"]
+                "ATS RESULT:",
+                ats
             )
 
-            print(
-                "ATS FEEDBACK:",
-                ats["feedback"]
+            resume.ats_score = ats.get(
+                "score",
+                0
+            )
+
+            resume.save(
+                update_fields=[
+                    "ats_score"
+                ]
             )
 
             # =====================================
-            # UPDATE CANDIDATE SKILLS
+            # UPDATE SKILLS
             # =====================================
 
             if result.get("skills"):
@@ -295,21 +257,251 @@ class ResumeViewSet(viewsets.ModelViewSet):
             candidate.save()
 
             print(
-                "Candidate updated successfully."
+                "CANDIDATE UPDATED SUCCESSFULLY"
+            )
+
+            print(
+                "ATS SCORE:",
+                resume.ats_score
+            )
+
+            print(
+                "ATS FEEDBACK:",
+                ats.get("feedback")
+            )
+
+            print(
+                "================================="
             )
 
         except Exception as e:
 
-            # Do not destroy the uploaded resume
-            # if parsing/ATS has a problem.
+            print(
+                "================================="
+            )
 
             print(
                 "RESUME PARSING / ATS ERROR:",
-                e
+                repr(e)
+            )
+
+            print(
+                "================================="
             )
 
     # =====================================
-    # VIEW RESUME
+    # CREATE / REPLACE RESUME
+    # =====================================
+
+    def perform_create(self, serializer):
+
+        # =====================================
+        # GET CANDIDATE
+        # =====================================
+
+        candidate = self.get_candidate()
+
+        # =====================================
+        # GET NEW FILE
+        # =====================================
+
+        new_file = serializer.validated_data.get(
+            "resume_file"
+        )
+
+        if not new_file:
+
+            raise serializers.ValidationError({
+                "resume_file":
+                "Please upload a resume file."
+            })
+
+        # =====================================
+        # CHECK EXISTING RESUME
+        # =====================================
+
+        try:
+
+            resume = Resume.objects.get(
+                candidate=candidate
+            )
+
+            print(
+                "EXISTING RESUME FOUND:",
+                resume.id
+            )
+
+            # =====================================
+            # DELETE OLD FILE
+            # =====================================
+
+            if resume.resume_file:
+
+                old_file = resume.resume_file
+
+                try:
+
+                    old_file.delete(
+                        save=False
+                    )
+
+                    print(
+                        "OLD FILE DELETED"
+                    )
+
+                except Exception as e:
+
+                    print(
+                        "OLD FILE DELETE ERROR:",
+                        repr(e)
+                    )
+
+            # =====================================
+            # SAVE NEW FILE
+            # =====================================
+
+            resume.resume_file = new_file
+
+            # Reset ATS before processing
+
+            resume.ats_score = 0
+
+            resume.save()
+
+            print(
+                "RESUME REPLACED:",
+                resume.id
+            )
+
+        except Resume.DoesNotExist:
+
+            # =====================================
+            # FIRST UPLOAD
+            # =====================================
+
+            resume = serializer.save(
+                candidate=candidate
+            )
+
+            print(
+                "FIRST RESUME CREATED:",
+                resume.id
+            )
+
+        # =====================================
+        # PARSE + ATS
+        # =====================================
+
+        self.process_resume(
+            resume,
+            candidate
+        )
+
+    # =====================================
+    # UPDATE / REPLACE RESUME
+    # =====================================
+
+    def perform_update(self, serializer):
+
+        candidate = self.get_candidate()
+
+        # =====================================
+        # GET EXISTING RESUME
+        # =====================================
+
+        resume = self.get_object()
+
+        # Security check
+        # Make sure resume belongs to logged-in candidate
+
+        if resume.candidate_id != candidate.id:
+
+            raise serializers.ValidationError({
+                "detail":
+                "You cannot modify this resume."
+            })
+
+        # =====================================
+        # GET NEW FILE
+        # =====================================
+
+        new_file = serializer.validated_data.get(
+            "resume_file"
+        )
+
+        # =====================================
+        # IF NEW FILE EXISTS
+        # =====================================
+
+        if new_file:
+
+            print(
+                "REPLACING RESUME:",
+                resume.id
+            )
+
+            # =====================================
+            # DELETE OLD FILE
+            # =====================================
+
+            if resume.resume_file:
+
+                old_file = resume.resume_file
+
+                try:
+
+                    old_file.delete(
+                        save=False
+                    )
+
+                    print(
+                        "OLD RESUME FILE DELETED"
+                    )
+
+                except Exception as e:
+
+                    print(
+                        "OLD FILE DELETE ERROR:",
+                        repr(e)
+                    )
+
+            # =====================================
+            # ASSIGN NEW FILE
+            # =====================================
+
+            resume.resume_file = new_file
+
+            # Reset ATS
+
+            resume.ats_score = 0
+
+            resume.save()
+
+            print(
+                "NEW RESUME FILE SAVED"
+            )
+
+            # =====================================
+            # PARSE NEW RESUME
+            # =====================================
+
+            self.process_resume(
+                resume,
+                candidate
+            )
+
+        else:
+
+            # =====================================
+            # NORMAL UPDATE
+            # =====================================
+
+            serializer.save(
+                candidate=candidate
+            )
+
+    # =====================================
+    # VIEW RESUME FILE
     # =====================================
 
     @action(
@@ -332,14 +524,36 @@ class ResumeViewSet(viewsets.ModelViewSet):
                     "detail":
                     "Resume file not found."
                 },
-                status=status.HTTP_404_NOT_FOUND,
+                status=status.HTTP_404_NOT_FOUND
             )
 
         original_path = resume.resume_file.path
 
+        # =====================================
+        # CHECK PHYSICAL FILE
+        # =====================================
+
+        if not os.path.exists(original_path):
+
+            return Response(
+                {
+                    "detail":
+                    "Resume file does not exist."
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # =====================================
+        # FILE NAME
+        # =====================================
+
         file_name = os.path.basename(
             original_path
         )
+
+        # =====================================
+        # EXTENSION
+        # =====================================
 
         extension = os.path.splitext(
             file_name
@@ -360,7 +574,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                     ),
                     content_type="application/pdf",
                     as_attachment=False,
-                    filename=file_name,
+                    filename=file_name
                 )
 
             except FileNotFoundError:
@@ -370,7 +584,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                         "detail":
                         "Resume file not found."
                     },
-                    status=status.HTTP_404_NOT_FOUND,
+                    status=status.HTTP_404_NOT_FOUND
                 )
 
         # =====================================
@@ -384,11 +598,17 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
             try:
 
-                temp_directory = (
-                    tempfile.mkdtemp()
-                )
+                # =====================================
+                # TEMP DIRECTORY
+                # =====================================
 
-                subprocess.run(
+                temp_directory = tempfile.mkdtemp()
+
+                # =====================================
+                # CONVERT TO PDF
+                # =====================================
+
+                result = subprocess.run(
                     [
                         SOFFICE_PATH,
                         "--headless",
@@ -396,12 +616,21 @@ class ResumeViewSet(viewsets.ModelViewSet):
                         "pdf",
                         "--outdir",
                         temp_directory,
-                        original_path,
+                        original_path
                     ],
                     check=True,
                     capture_output=True,
-                    text=True,
+                    text=True
                 )
+
+                print(
+                    "LIBREOFFICE OUTPUT:",
+                    result.stdout
+                )
+
+                # =====================================
+                # PDF NAME
+                # =====================================
 
                 pdf_name = (
                     os.path.splitext(
@@ -416,7 +645,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                 )
 
                 # =====================================
-                # CHECK CONVERSION
+                # CHECK PDF
                 # =====================================
 
                 if not os.path.exists(
@@ -428,8 +657,12 @@ class ResumeViewSet(viewsets.ModelViewSet):
                             "detail":
                             "Unable to convert Word document to PDF."
                         },
-                        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                        status=status.HTTP_500_INTERNAL_SERVER_ERROR
                     )
+
+                # =====================================
+                # RETURN PDF
+                # =====================================
 
                 return FileResponse(
                     open(
@@ -438,7 +671,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                     ),
                     content_type="application/pdf",
                     as_attachment=False,
-                    filename=pdf_name,
+                    filename=pdf_name
                 )
 
             except subprocess.CalledProcessError as error:
@@ -453,7 +686,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                         "detail":
                         "Word document conversion failed."
                     },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
             except FileNotFoundError:
@@ -463,7 +696,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                         "detail":
                         "LibreOffice executable not found."
                     },
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
         # =====================================
@@ -475,7 +708,7 @@ class ResumeViewSet(viewsets.ModelViewSet):
                 "detail":
                 "Unsupported file type."
             },
-            status=status.HTTP_400_BAD_REQUEST,
+            status=status.HTTP_400_BAD_REQUEST
         )
 
 
@@ -483,11 +716,17 @@ class ResumeViewSet(viewsets.ModelViewSet):
 # JOB RECOMMENDATIONS
 # =====================================
 
-class JobViewSet(viewsets.ReadOnlyModelViewSet):
+class JobViewSet(
+    viewsets.ReadOnlyModelViewSet
+):
 
     serializer_class = JobSerializer
 
     permission_classes = [IsAuthenticated]
+
+    # =====================================
+    # GET RECOMMENDED JOBS
+    # =====================================
 
     def get_queryset(self):
 
@@ -505,8 +744,7 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
 
             return Job.objects.none()
 
-        # Store candidate so JobSerializer
-        # can access it
+        # Store candidate for serializer
 
         self.request._swipe_candidate = candidate
 
@@ -532,10 +770,14 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
             if skill.strip()
         ]
 
+        # =====================================
+        # RECOMMENDED JOB IDS
+        # =====================================
+
         recommended_jobs = []
 
         # =====================================
-        # CHECK EVERY JOB
+        # CHECK JOBS
         # =====================================
 
         for job in Job.objects.all():
@@ -559,7 +801,7 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
             ]
 
             # =====================================
-            # SKILL MATCH
+            # MATCH SKILLS
             # =====================================
 
             matched_skills = [
@@ -578,6 +820,10 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
                     job.id
                 )
 
+        # =====================================
+        # RETURN JOBS
+        # =====================================
+
         return Job.objects.filter(
             id__in=recommended_jobs
         )
@@ -587,17 +833,19 @@ class JobViewSet(viewsets.ReadOnlyModelViewSet):
 # JOB SWIPE
 # =====================================
 
-class JobSwipeViewSet(viewsets.ModelViewSet):
+class JobSwipeViewSet(
+    viewsets.ModelViewSet
+):
 
     serializer_class = JobSwipeSerializer
 
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    # =====================================
+    # GET SWIPES
+    # =====================================
 
-        # =====================================
-        # GET CANDIDATE
-        # =====================================
+    def get_queryset(self):
 
         try:
 
@@ -611,13 +859,19 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
 
         return JobSwipe.objects.filter(
             candidate=candidate
-        ).select_related("job")
+        ).select_related(
+            "job"
+        )
 
     # =====================================
     # CREATE / UPDATE SWIPE
     # =====================================
 
     def perform_create(self, serializer):
+
+        # =====================================
+        # GET CANDIDATE
+        # =====================================
 
         try:
 
@@ -627,20 +881,30 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
 
         except Candidate.DoesNotExist:
 
-            raise serializers.ValidationError(
-                {
-                    "detail":
-                    "Candidate profile not found."
-                }
-            )
+            raise serializers.ValidationError({
+                "detail":
+                "Candidate profile not found."
+            })
+
+        # =====================================
+        # GET JOB
+        # =====================================
 
         job = serializer.validated_data[
             "job"
         ]
 
+        # =====================================
+        # GET DECISION
+        # =====================================
+
         decision = serializer.validated_data[
             "decision"
         ]
+
+        # =====================================
+        # CREATE OR UPDATE
+        # =====================================
 
         JobSwipe.objects.update_or_create(
             candidate=candidate,
@@ -655,7 +919,9 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
 # APPLICATION
 # =====================================
 
-class ApplicationViewSet(viewsets.ModelViewSet):
+class ApplicationViewSet(
+    viewsets.ModelViewSet
+):
 
     serializer_class = ApplicationSerializer
 
@@ -675,6 +941,8 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
             return Application.objects.filter(
                 candidate=candidate
+            ).select_related(
+                "job"
             )
 
         except Candidate.DoesNotExist:
@@ -695,13 +963,23 @@ class ApplicationViewSet(viewsets.ModelViewSet):
 
         except Candidate.DoesNotExist:
 
-            raise serializers.ValidationError(
-                {
-                    "detail":
-                    "Candidate profile not found."
-                }
-            )
+            raise serializers.ValidationError({
+                "detail":
+                "Candidate profile not found."
+            })
+
+        # =====================================
+        # SAVE APPLICATION
+        # =====================================
 
         serializer.save(
             candidate=candidate
         )
+
+    # =====================================
+    # UPDATE APPLICATION
+    # =====================================
+
+    def perform_update(self, serializer):
+
+        serializer.save()

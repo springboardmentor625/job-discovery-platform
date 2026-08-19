@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import api from "../services/api";
 
 function EditProfile() {
@@ -24,7 +25,7 @@ function EditProfile() {
   const [saving, setSaving] = useState(false);
 
   // =========================
-  // LOAD LOGGED-IN PROFILE
+  // LOAD PROFILE
   // =========================
 
   useEffect(() => {
@@ -35,29 +36,46 @@ function EditProfile() {
     try {
       const response = await api.get("candidates/");
 
-      console.log("CANDIDATE RESPONSE:", response.data);
+      console.log(
+        "CANDIDATE RESPONSE:",
+        response.data
+      );
 
-      if (!response.data || response.data.length === 0) {
-        alert("Candidate profile not found.");
+      if (
+        !response.data ||
+        response.data.length === 0
+      ) {
+        toast.error(
+          "Candidate profile not found."
+        );
+
         navigate("/profile");
         return;
       }
 
-      const candidate = response.data[0];
+      const candidate =
+        response.data[0];
 
       setProfile({
         id: candidate.id,
-        full_name: candidate.full_name || "",
-        email: candidate.email || "",
-        phone: candidate.phone || "",
-        skills: candidate.skills || "",
-        experience: candidate.experience || "",
-        education: candidate.education || "",
-        projects: candidate.projects || "",
-        certifications: candidate.certifications || "",
+        full_name:
+          candidate.full_name || "",
+        email:
+          candidate.email || "",
+        phone:
+          candidate.phone || "",
+        skills:
+          candidate.skills || "",
+        experience:
+          candidate.experience || "",
+        education:
+          candidate.education || "",
+        projects:
+          candidate.projects || "",
+        certifications:
+          candidate.certifications || "",
       });
 
-      // Convert backend skills string into array
       setSkills(
         candidate.skills
           ? candidate.skills
@@ -66,13 +84,18 @@ function EditProfile() {
               .filter((skill) => skill)
           : []
       );
+
     } catch (error) {
+
       console.error(
         "LOAD PROFILE ERROR:",
         error.response?.data || error
       );
 
-      alert("Unable to load profile.");
+      toast.error(
+        "Unable to load profile."
+      );
+
     } finally {
       setLoading(false);
     }
@@ -98,15 +121,18 @@ function EditProfile() {
   const addSkill = () => {
     const skill = skillInput.trim();
 
-    const skillRegex = /^[A-Za-z+#.\-\s]{2,30}$/;
+    const skillRegex =
+      /^[A-Za-z+#.\-\s]{2,30}$/;
 
     if (!skill) {
-      alert("Please enter a skill.");
+      toast.error(
+        "Please enter a skill."
+      );
       return;
     }
 
     if (!skillRegex.test(skill)) {
-      alert(
+      toast.error(
         "Enter a valid professional skill (Example: Python, React, C++, SQL)."
       );
       return;
@@ -115,15 +141,26 @@ function EditProfile() {
     if (
       skills.some(
         (existingSkill) =>
-          existingSkill.toLowerCase() === skill.toLowerCase()
+          existingSkill.toLowerCase() ===
+          skill.toLowerCase()
       )
     ) {
-      alert("Skill already added.");
+      toast.error(
+        "Skill already added."
+      );
       return;
     }
 
-    setSkills([...skills, skill]);
+    setSkills([
+      ...skills,
+      skill,
+    ]);
+
     setSkillInput("");
+
+    toast.success(
+      `${skill} added`
+    );
   };
 
   // =========================
@@ -131,7 +168,18 @@ function EditProfile() {
   // =========================
 
   const removeSkill = (index) => {
-    setSkills(skills.filter((_, i) => i !== index));
+    const removedSkill =
+      skills[index];
+
+    setSkills(
+      skills.filter(
+        (_, i) => i !== index
+      )
+    );
+
+    toast.success(
+      `${removedSkill} removed`
+    );
   };
 
   // =========================
@@ -142,7 +190,9 @@ function EditProfile() {
     e.preventDefault();
 
     if (!profile.id) {
-      alert("Candidate profile ID not found.");
+      toast.error(
+        "Candidate profile ID not found."
+      );
       return;
     }
 
@@ -150,28 +200,48 @@ function EditProfile() {
     // VALIDATION
     // =========================
 
-    if (profile.full_name.trim().length < 2) {
-      alert("Please enter your full name.");
+    if (
+      profile.full_name.trim().length < 2
+    ) {
+      toast.error(
+        "Please enter your full name."
+      );
       return;
     }
 
-    if (!/^[6-9]\d{9}$/.test(profile.phone.trim())) {
-      alert("Enter a valid 10-digit mobile number.");
+    if (
+      !/^[6-9]\d{9}$/.test(
+        profile.phone.trim()
+      )
+    ) {
+      toast.error(
+        "Enter a valid 10-digit mobile number."
+      );
       return;
     }
 
     if (skills.length < 2) {
-      alert("Please add at least 2 professional skills.");
+      toast.error(
+        "Please add at least 2 professional skills."
+      );
       return;
     }
 
-    if (profile.education.trim().length < 10) {
-      alert("Please enter valid education details.");
+    if (
+      profile.education.trim().length < 10
+    ) {
+      toast.error(
+        "Please enter valid education details."
+      );
       return;
     }
 
-    if (profile.projects.trim().length < 20) {
-      alert("Please provide a meaningful project description.");
+    if (
+      profile.projects.trim().length < 20
+    ) {
+      toast.error(
+        "Please provide a meaningful project description."
+      );
       return;
     }
 
@@ -179,41 +249,66 @@ function EditProfile() {
       profile.certifications &&
       profile.certifications.trim().length < 5
     ) {
-      alert("Please enter a valid certification.");
+      toast.error(
+        "Please enter a valid certification."
+      );
       return;
     }
 
     try {
+
       setSaving(true);
 
       const updateData = {
-        full_name: profile.full_name,
-        email: profile.email,
-        phone: profile.phone,
-
-        // Convert skill array back to backend string
-        skills: skills.join(", "),
-
-        experience: profile.experience,
-        education: profile.education,
-        projects: profile.projects,
-        certifications: profile.certifications,
+        full_name:
+          profile.full_name,
+        email:
+          profile.email,
+        phone:
+          profile.phone,
+        skills:
+          skills.join(", "),
+        experience:
+          profile.experience,
+        education:
+          profile.education,
+        projects:
+          profile.projects,
+        certifications:
+          profile.certifications,
       };
 
-      console.log("UPDATING CANDIDATE:", profile.id);
-      console.log("UPDATE DATA:", updateData);
+      console.log(
+        "UPDATING CANDIDATE:",
+        profile.id
+      );
 
-      const response = await api.put(
-        `candidates/${profile.id}/`,
+      console.log(
+        "UPDATE DATA:",
         updateData
       );
 
-      console.log("UPDATE RESPONSE:", response.data);
+      const response =
+        await api.put(
+          `candidates/${profile.id}/`,
+          updateData
+        );
 
-      alert("Profile Updated Successfully!");
+      console.log(
+        "UPDATE RESPONSE:",
+        response.data
+      );
 
-      navigate("/view-profile");
+      toast.success(
+        "Profile Updated Successfully!"
+      );
+
+      navigate(
+        "/view-profile"
+      );
+
     } catch (error) {
+
       console.error(
         "UPDATE PROFILE ERROR:",
         error
@@ -230,28 +325,37 @@ function EditProfile() {
       );
 
       if (!error.response) {
-        alert("Unable to connect to backend.");
+        toast.error(
+          "Unable to connect to backend."
+        );
         return;
       }
 
-      const data = error.response.data;
+      const data =
+        error.response.data;
 
       if (typeof data === "string") {
-        alert(data);
+        toast.error(data);
         return;
       }
 
-      const message = Object.entries(data)
-        .map(([key, value]) =>
-          `${key}: ${
-            Array.isArray(value)
-              ? value.join(", ")
-              : value
-          }`
-        )
-        .join("\n");
+      const message =
+        Object.entries(data)
+          .map(
+            ([key, value]) =>
+              `${key}: ${
+                Array.isArray(value)
+                  ? value.join(", ")
+                  : value
+              }`
+          )
+          .join("\n");
 
-      alert(message || "Unable to update profile.");
+      toast.error(
+        message ||
+        "Unable to update profile."
+      );
+
     } finally {
       setSaving(false);
     }
@@ -264,9 +368,11 @@ function EditProfile() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+
         <p className="text-xl text-gray-600">
           Loading profile...
         </p>
+
       </div>
     );
   }
@@ -324,10 +430,13 @@ function EditProfile() {
 
           <select
             name="experience"
-            value={profile.experience || ""}
+            value={
+              profile.experience || ""
+            }
             onChange={handleChange}
             className="border p-3 rounded bg-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
           >
+
             <option value="">
               Select Experience
             </option>
@@ -355,6 +464,7 @@ function EditProfile() {
             <option value="8+ Years">
               8+ Years
             </option>
+
           </select>
 
           {/* SKILLS */}
@@ -367,7 +477,9 @@ function EditProfile() {
                 type="text"
                 value={skillInput}
                 onChange={(e) =>
-                  setSkillInput(e.target.value)
+                  setSkillInput(
+                    e.target.value
+                  )
                 }
                 onKeyDown={(e) => {
                   if (e.key === "Enter") {
@@ -391,22 +503,30 @@ function EditProfile() {
 
             <div className="flex flex-wrap gap-2 mt-3">
 
-              {skills.map((skill, index) => (
-                <div
-                  key={index}
-                  className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full flex items-center gap-2"
-                >
-                  {skill}
+              {skills.map(
+                (skill, index) => (
 
-                  <button
-                    type="button"
-                    onClick={() => removeSkill(index)}
-                    className="text-red-500 font-bold"
+                  <div
+                    key={index}
+                    className="bg-indigo-100 text-indigo-700 px-3 py-1 rounded-full flex items-center gap-2"
                   >
-                    ×
-                  </button>
-                </div>
-              ))}
+
+                    {skill}
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        removeSkill(index)
+                      }
+                      className="text-red-500 font-bold"
+                    >
+                      ×
+                    </button>
+
+                  </div>
+
+                )
+              )}
 
             </div>
 
@@ -416,7 +536,9 @@ function EditProfile() {
 
           <textarea
             name="education"
-            value={profile.education}
+            value={
+              profile.education
+            }
             onChange={handleChange}
             className="border p-3 rounded md:col-span-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="Education"
@@ -427,7 +549,9 @@ function EditProfile() {
 
           <textarea
             name="projects"
-            value={profile.projects}
+            value={
+              profile.projects
+            }
             onChange={handleChange}
             className="border p-3 rounded md:col-span-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="Projects"
@@ -438,14 +562,16 @@ function EditProfile() {
 
           <textarea
             name="certifications"
-            value={profile.certifications}
+            value={
+              profile.certifications
+            }
             onChange={handleChange}
             className="border p-3 rounded md:col-span-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             placeholder="Certifications"
             rows="3"
           />
 
-          {/* UPDATE BUTTON */}
+          {/* UPDATE */}
 
           <button
             type="submit"
@@ -463,7 +589,9 @@ function EditProfile() {
 
         <button
           type="button"
-          onClick={() => navigate("/view-profile")}
+          onClick={() =>
+            navigate("/view-profile")
+          }
           className="mt-5 text-indigo-600 hover:text-indigo-800 font-semibold"
         >
           ← Back to Profile

@@ -3,16 +3,17 @@ import { Link, useNavigate } from "react-router-dom";
 
 import {
   FaUser,
-  FaEye,
   FaChartLine,
   FaFileAlt,
   FaFileUpload,
   FaSignOutAlt,
   FaCheckCircle,
+  FaEye,
+  FaRobot,
+  FaChartBar,
   FaBriefcase,
-  FaHeart,
-  FaTimes,
-  FaStar,
+  FaEnvelope,
+  FaBrain,
 } from "react-icons/fa";
 
 import api from "../services/api";
@@ -30,11 +31,6 @@ function Profile() {
   const [resume, setResume] = useState(null);
   const [loadingResume, setLoadingResume] = useState(true);
 
-  const [jobs, setJobs] = useState([]);
-  const [loadingJobs, setLoadingJobs] = useState(true);
-
-  const [swipingJobId, setSwipingJobId] = useState(null);
-
   // =====================================
   // LOAD DATA
   // =====================================
@@ -42,7 +38,6 @@ function Profile() {
   useEffect(() => {
     fetchCandidate();
     fetchResume();
-    fetchJobs();
   }, []);
 
   // =====================================
@@ -55,7 +50,10 @@ function Profile() {
 
       console.log("CANDIDATE RESPONSE:", response.data);
 
-      if (response.data && response.data.length > 0) {
+      if (
+        response.data &&
+        response.data.length > 0
+      ) {
         setCandidate(response.data[0]);
       } else {
         setCandidate(null);
@@ -82,7 +80,10 @@ function Profile() {
 
       console.log("RESUME RESPONSE:", response.data);
 
-      if (response.data && response.data.length > 0) {
+      if (
+        response.data &&
+        response.data.length > 0
+      ) {
         setResume(response.data[0]);
       } else {
         setResume(null);
@@ -96,29 +97,6 @@ function Profile() {
       setResume(null);
     } finally {
       setLoadingResume(false);
-    }
-  };
-
-  // =====================================
-  // LOAD JOBS
-  // =====================================
-
-  const fetchJobs = async () => {
-    try {
-      const response = await api.get("jobs/");
-
-      console.log("JOBS RESPONSE:", response.data);
-
-      setJobs(response.data || []);
-    } catch (error) {
-      console.error(
-        "LOAD JOBS ERROR:",
-        error.response?.data || error
-      );
-
-      setJobs([]);
-    } finally {
-      setLoadingJobs(false);
     }
   };
 
@@ -142,12 +120,13 @@ function Profile() {
       candidate.profile_picture,
     ];
 
-    const completedFields = fields.filter(
-      (field) =>
-        field !== null &&
-        field !== undefined &&
-        String(field).trim() !== ""
-    ).length;
+    const completedFields =
+      fields.filter(
+        (field) =>
+          field !== null &&
+          field !== undefined &&
+          String(field).trim() !== ""
+      ).length;
 
     return Math.round(
       (completedFields / fields.length) * 100
@@ -155,43 +134,19 @@ function Profile() {
   };
 
   // =====================================
-  // SWIPE JOB
+  // PROFILE COMPLETION COLOR
   // =====================================
 
-  const handleSwipe = async (jobId, decision) => {
-    try {
-      setSwipingJobId(jobId);
-
-      console.log("SWIPING JOB:", jobId);
-      console.log("DECISION:", decision);
-
-      const response = await api.post("swipes/", {
-        job: jobId,
-        decision: decision,
-      });
-
-      console.log("SWIPE RESPONSE:", response.data);
-
-      // Remove job from current list
-      setJobs((previousJobs) =>
-        previousJobs.filter(
-          (job) => job.id !== jobId
-        )
-      );
-    } catch (error) {
-      console.error(
-        "SWIPE ERROR:",
-        error.response?.data || error
-      );
-
-      alert(
-        error.response?.data
-          ? JSON.stringify(error.response.data)
-          : "Unable to save swipe."
-      );
-    } finally {
-      setSwipingJobId(null);
+  const getCompletionColor = (percentage) => {
+    if (percentage >= 80) {
+      return "bg-green-500";
     }
+
+    if (percentage >= 50) {
+      return "bg-yellow-500";
+    }
+
+    return "bg-cyan-500";
   };
 
   // =====================================
@@ -220,42 +175,21 @@ function Profile() {
   };
 
   // =====================================
-  // MATCH COLOR
+  // FUTURE FEATURE CLICK
   // =====================================
 
-  const getMatchColor = (percentage) => {
-    if (percentage >= 80) {
-      return "text-green-600 bg-green-100";
-    }
-
-    if (percentage >= 60) {
-      return "text-yellow-600 bg-yellow-100";
-    }
-
-    return "text-red-600 bg-red-100";
+  const comingSoon = (feature) => {
+    alert(
+      `${feature} will be available in the next milestone.`
+    );
   };
 
   // =====================================
-  // PROFILE COMPLETION COLOR
+  // PROFILE COMPLETION
   // =====================================
 
-  const getCompletionColor = (percentage) => {
-    if (percentage >= 80) {
-      return "bg-green-500";
-    }
-
-    if (percentage >= 50) {
-      return "bg-yellow-500";
-    }
-
-    return "bg-cyan-500";
-  };
-
-  // =====================================
-  // CURRENT PROFILE COMPLETION
-  // =====================================
-
-  const profileCompletion = getProfileCompletion();
+  const profileCompletion =
+    getProfileCompletion();
 
   // =====================================
   // PAGE
@@ -268,37 +202,46 @@ function Profile() {
       {/* SIDEBAR */}
       {/* ================================= */}
 
-      <div
+      <aside
         className="
           w-72
+          min-h-screen
           bg-gradient-to-b
           from-indigo-700
           via-indigo-800
           to-slate-900
           text-white
           p-8
+          flex
+          flex-col
         "
       >
 
-        <h1
-          className="
-            text-4xl
-            font-extrabold
-            tracking-wide
-          "
-        >
-          SwipeX
-        </h1>
+        {/* LOGO */}
 
-        <p
-          className="
-            text-gray-300
-            text-sm
-            mt-2
-          "
-        >
-          Candidate Portal
-        </p>
+        <div>
+
+          <h1
+            className="
+              text-4xl
+              font-extrabold
+              tracking-wide
+            "
+          >
+            SwipeX
+          </h1>
+
+          <p
+            className="
+              text-gray-300
+              text-sm
+              mt-2
+            "
+          >
+            Candidate Portal
+          </p>
+
+        </div>
 
         <hr
           className="
@@ -307,28 +250,36 @@ function Profile() {
           "
         />
 
-        <div className="space-y-6">
+        {/* ================================= */}
+        {/* SIDEBAR MENU */}
+        {/* ================================= */}
 
-          {/* Dashboard */}
+        <nav className="space-y-3">
+
+          {/* DASHBOARD */}
 
           <div
             className="
               flex
               items-center
               gap-4
-              hover:text-cyan-300
-              transition
-              cursor-pointer
+              bg-indigo-600
+              px-4
+              py-3
+              rounded-xl
+              text-cyan-200
             "
           >
-            <FaChartLine size={22} />
 
-            <span className="text-lg">
+            <FaChartLine size={20} />
+
+            <span className="text-base font-semibold">
               Dashboard
             </span>
+
           </div>
 
-          {/* My Profile */}
+          {/* MY PROFILE */}
 
           <Link to="/view-profile">
 
@@ -337,63 +288,295 @@ function Profile() {
                 flex
                 items-center
                 gap-4
-                hover:text-cyan-300
+                px-4
+                py-3
+                rounded-xl
+                hover:bg-indigo-600
+                hover:text-cyan-200
                 transition
                 cursor-pointer
               "
             >
 
-              <FaUser size={22} />
+              <FaUser size={20} />
 
-              <span className="text-lg">
+              <span className="text-base">
                 My Profile
               </span>
 
             </div>
 
           </Link>
-          <Link to="/applications">
-            <div className="flex items-center gap-4 hover:text-cyan-300 transition cursor-pointer">
-              <FaBriefcase size={22} />
-                <span className="text-lg">Applications</span>
+
+          {/* MY RESUME */}
+
+          <Link to="/my-resume">
+
+            <div
+              className="
+                flex
+                items-center
+                gap-4
+                px-4
+                py-3
+                rounded-xl
+                hover:bg-indigo-600
+                hover:text-cyan-200
+                transition
+                cursor-pointer
+              "
+            >
+
+              <FaFileAlt size={20} />
+
+              <span className="text-base">
+                My Resume
+              </span>
+
             </div>
+
           </Link>
-          {/* Job Matches */}
+
+          {/* ================================= */}
+          {/* FUTURE FEATURES */}
+          {/* ================================= */}
+
+          {/* AI ANALYSIS */}
 
           <button
-            onClick={() => {
-              document
-                .getElementById("recommended-jobs")
-                ?.scrollIntoView({
-                  behavior: "smooth",
-                });
-            }}
+            onClick={() =>
+              comingSoon("AI Analysis")
+            }
             className="
+              w-full
               flex
               items-center
+              justify-between
               gap-4
-              hover:text-cyan-300
+              px-4
+              py-3
+              rounded-xl
+              hover:bg-indigo-600
               transition
-              cursor-pointer
-              w-full
               text-left
             "
           >
 
-            <FaBriefcase size={22} />
+            <div className="flex items-center gap-4">
 
-            <span className="text-lg">
-              Job Matches
+              <FaRobot size={20} />
+
+              <span className="text-base">
+                AI Analysis
+              </span>
+
+            </div>
+
+            <span
+              className="
+                text-[10px]
+                bg-indigo-500
+                px-2
+                py-1
+                rounded-full
+              "
+            >
+              Soon
             </span>
 
           </button>
 
-          {/* Logout */}
+          {/* ATS SCORE */}
+
+          <button
+            onClick={() =>
+              comingSoon("ATS Score")
+            }
+            className="
+              w-full
+              flex
+              items-center
+              justify-between
+              gap-4
+              px-4
+              py-3
+              rounded-xl
+              hover:bg-indigo-600
+              transition
+              text-left
+            "
+          >
+
+            <div className="flex items-center gap-4">
+
+              <FaChartBar size={20} />
+
+              <span className="text-base">
+                ATS Score
+              </span>
+
+            </div>
+
+            <span
+              className="
+                text-[10px]
+                bg-indigo-500
+                px-2
+                py-1
+                rounded-full
+              "
+            >
+              Soon
+            </span>
+
+          </button>
+
+          {/* JOB MATCHES */}
+
+          <button
+            onClick={() =>
+              comingSoon("Job Matches")
+            }
+            className="
+              w-full
+              flex
+              items-center
+              justify-between
+              gap-4
+              px-4
+              py-3
+              rounded-xl
+              hover:bg-indigo-600
+              transition
+              text-left
+            "
+          >
+
+            <div className="flex items-center gap-4">
+
+              <FaBriefcase size={20} />
+
+              <span className="text-base">
+                Job Matches
+              </span>
+
+            </div>
+
+            <span
+              className="
+                text-[10px]
+                bg-indigo-500
+                px-2
+                py-1
+                rounded-full
+              "
+            >
+              Soon
+            </span>
+
+          </button>
+
+          {/* APPLICATIONS */}
+
+          <button
+            onClick={() =>
+              comingSoon("Applications")
+            }
+            className="
+              w-full
+              flex
+              items-center
+              justify-between
+              gap-4
+              px-4
+              py-3
+              rounded-xl
+              hover:bg-indigo-600
+              transition
+              text-left
+            "
+          >
+
+            <div className="flex items-center gap-4">
+
+              <FaEnvelope size={20} />
+
+              <span className="text-base">
+                Applications
+              </span>
+
+            </div>
+
+            <span
+              className="
+                text-[10px]
+                bg-indigo-500
+                px-2
+                py-1
+                rounded-full
+              "
+            >
+              Soon
+            </span>
+
+          </button>
+
+          {/* MISSING SKILLS */}
+
+          <button
+            onClick={() =>
+              comingSoon("Missing Skills")
+            }
+            className="
+              w-full
+              flex
+              items-center
+              justify-between
+              gap-4
+              px-4
+              py-3
+              rounded-xl
+              hover:bg-indigo-600
+              transition
+              text-left
+            "
+          >
+
+            <div className="flex items-center gap-4">
+
+              <FaBrain size={20} />
+
+              <span className="text-base">
+                Missing Skills
+              </span>
+
+            </div>
+
+            <span
+              className="
+                text-[10px]
+                bg-indigo-500
+                px-2
+                py-1
+                rounded-full
+              "
+            >
+              Soon
+            </span>
+
+          </button>
+
+        </nav>
+
+        {/* ================================= */}
+        {/* LOGOUT */}
+        {/* ================================= */}
+
+        <div className="mt-auto pt-8">
 
           <button
             onClick={logout}
             className="
-              mt-10
               w-full
               bg-red-500
               py-3
@@ -416,31 +599,40 @@ function Profile() {
 
         </div>
 
-      </div>
+      </aside>
 
       {/* ================================= */}
       {/* MAIN CONTENT */}
       {/* ================================= */}
 
-      <div className="flex-1 p-10">
+      <main className="flex-1 p-10 overflow-y-auto">
 
-        <h2
-          className="
-            text-4xl
-            font-bold
-          "
-        >
-          Welcome Back 👋
-        </h2>
+        {/* ================================= */}
+        {/* HEADER */}
+        {/* ================================= */}
 
-        <p
-          className="
-            text-gray-500
-            mt-2
-          "
-        >
-          Manage your SwipeX profile, resume and discover matching jobs.
-        </p>
+        <div>
+
+          <h2
+            className="
+              text-4xl
+              font-bold
+              text-gray-800
+            "
+          >
+            Welcome Back 👋
+          </h2>
+
+          <p
+            className="
+              text-gray-500
+              mt-2
+            "
+          >
+            Manage your SwipeX profile and resume.
+          </p>
+
+        </div>
 
         {/* ================================= */}
         {/* PROFILE COMPLETION */}
@@ -464,11 +656,21 @@ function Profile() {
             "
           >
 
-            <span className="font-semibold">
+            <span
+              className="
+                font-semibold
+                text-gray-700
+              "
+            >
               Profile Completion
             </span>
 
-            <span className="font-semibold">
+            <span
+              className="
+                font-semibold
+                text-gray-700
+              "
+            >
 
               {loadingCandidate
                 ? "..."
@@ -489,7 +691,9 @@ function Profile() {
 
             <div
               className={`
-                ${getCompletionColor(profileCompletion)}
+                ${getCompletionColor(
+                  profileCompletion
+                )}
                 h-3
                 rounded-full
                 transition-all
@@ -503,13 +707,21 @@ function Profile() {
           </div>
 
           {!loadingCandidate && (
-            <p className="text-gray-500 text-sm mt-3">
+
+            <p
+              className="
+                text-gray-500
+                text-sm
+                mt-3
+              "
+            >
 
               {profileCompletion === 100
                 ? "Your profile is complete."
-                : "Complete your profile to improve your job matches."}
+                : "Complete your profile to keep your information up to date."}
 
             </p>
+
           )}
 
         </div>
@@ -521,7 +733,7 @@ function Profile() {
         <div
           className="
             grid
-            md:grid-cols-3
+            md:grid-cols-2
             gap-6
             mt-10
           "
@@ -538,9 +750,9 @@ function Profile() {
                 bg-white
                 rounded-xl
                 shadow-lg
-                p-6
+                p-8
                 hover:shadow-2xl
-                hover:scale-105
+                hover:scale-[1.02]
                 transition
                 duration-300
                 cursor-pointer
@@ -552,14 +764,15 @@ function Profile() {
                 className="
                   text-5xl
                   text-blue-600
-                  mb-4
+                  mb-5
                 "
               />
 
               <h3
                 className="
-                  text-xl
+                  text-2xl
                   font-bold
+                  text-gray-800
                 "
               >
                 My Profile
@@ -568,11 +781,23 @@ function Profile() {
               <p
                 className="
                   text-gray-500
-                  mt-2
+                  mt-3
                 "
               >
-                View and update your candidate profile.
+                View and update your candidate
+                profile, personal information,
+                skills and experience.
               </p>
+
+              <div
+                className="
+                  mt-6
+                  text-blue-600
+                  font-semibold
+                "
+              >
+                View Profile →
+              </div>
 
             </div>
 
@@ -587,754 +812,382 @@ function Profile() {
               bg-white
               rounded-xl
               shadow-lg
-              p-6
+              p-8
               hover:shadow-2xl
               transition
               duration-300
-              md:col-span-2
             "
           >
 
-            <div
+            <FaFileAlt
               className="
-                flex
-                items-start
-                gap-5
+                text-5xl
+                text-purple-600
+                mb-5
+              "
+            />
+
+            <h3
+              className="
+                text-2xl
+                font-bold
+                text-gray-800
               "
             >
+              My Resume
+            </h3>
 
-              <div>
+            {/* LOADING */}
 
-                <FaFileAlt
+            {loadingResume ? (
+
+              <p
+                className="
+                  text-gray-500
+                  mt-4
+                "
+              >
+                Checking resume...
+              </p>
+
+            ) : resume ? (
+
+              /* =================================
+                 RESUME EXISTS
+              ================================= */
+
+              <>
+
+                <div
                   className="
-                    text-5xl
-                    text-purple-600
-                  "
-                />
-
-              </div>
-
-              <div className="flex-1">
-
-                <h3
-                  className="
-                    text-2xl
-                    font-bold
+                    flex
+                    items-center
+                    gap-2
+                    mt-4
                   "
                 >
-                  My Resume
-                </h3>
 
-                {loadingResume ? (
+                  <FaCheckCircle
+                    className="
+                      text-green-500
+                    "
+                  />
 
                   <p
                     className="
-                      text-gray-500
-                      mt-2
+                      text-gray-700
+                      font-medium
+                      break-all
                     "
                   >
-                    Checking resume...
+                    {getFileName()}
                   </p>
 
-                ) : resume ? (
+                </div>
 
-                  <>
+                <p
+                  className="
+                    text-green-600
+                    text-sm
+                    font-semibold
+                    mt-3
+                  "
+                >
+                  Resume uploaded successfully.
+                </p>
 
-                    {/* FILE */}
+                {/* BUTTONS */}
 
-                    <div
-                      className="
-                        flex
-                        items-center
-                        gap-2
-                        mt-3
-                      "
-                    >
+                <div
+                  className="
+                    flex
+                    flex-wrap
+                    gap-3
+                    mt-6
+                  "
+                >
 
-                      <FaCheckCircle
-                        className="text-green-500"
-                      />
+                  {/* VIEW */}
 
-                      <p
-                        className="
-                          text-gray-700
-                          font-medium
-                          break-all
-                        "
-                      >
-                        {getFileName()}
-                      </p>
+                  <button
+                    onClick={() =>
+                      navigate("/my-resume")
+                    }
+                    className="
+                      bg-indigo-600
+                      text-white
+                      px-5
+                      py-2
+                      rounded-lg
+                      hover:bg-indigo-700
+                      transition
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
 
-                    </div>
+                    <FaEye />
 
-                    {/* ATS SCORE */}
+                    View Resume
 
-                    <div
-                      className="
-                        mt-3
-                        inline-flex
-                        items-center
-                        bg-green-100
-                        text-green-700
-                        px-4
-                        py-2
-                        rounded-full
-                        font-semibold
-                      "
-                    >
+                  </button>
 
-                      <FaStar className="mr-2" />
+                  {/* REPLACE */}
 
-                      ATS Score:{" "}
-                      {resume.ats_score ?? 0}%
+                  <button
+                    onClick={() =>
+                      navigate("/resume-upload")
+                    }
+                    className="
+                      bg-purple-600
+                      text-white
+                      px-5
+                      py-2
+                      rounded-lg
+                      hover:bg-purple-700
+                      transition
+                      flex
+                      items-center
+                      gap-2
+                    "
+                  >
 
-                    </div>
+                    <FaFileUpload />
 
-                    {/* BUTTONS */}
+                    Replace Resume
 
-                    <div
-                      className="
-                        flex
-                        flex-wrap
-                        gap-3
-                        mt-5
-                      "
-                    >
+                  </button>
 
-                      {/* VIEW RESUME */}
+                </div>
 
-                      <button
-                        onClick={() =>
-                          navigate("/my-resume")
-                        }
-                        className="
-                          bg-indigo-600
-                          text-white
-                          px-5
-                          py-2
-                          rounded-lg
-                          hover:bg-indigo-700
-                          transition
-                          flex
-                          items-center
-                          gap-2
-                        "
-                      >
+              </>
 
-                        <FaEye />
+            ) : (
 
-                        View Resume
+              /* =================================
+                 NO RESUME
+              ================================= */
 
-                      </button>
+              <>
 
-                      {/* REPLACE RESUME */}
+                <p
+                  className="
+                    text-gray-500
+                    mt-4
+                  "
+                >
+                  No resume uploaded yet.
+                </p>
 
-                      <button
-                        onClick={() =>
-                          navigate("/resume-upload")
-                        }
-                        className="
-                          bg-purple-600
-                          text-white
-                          px-5
-                          py-2
-                          rounded-lg
-                          hover:bg-purple-700
-                          transition
-                          flex
-                          items-center
-                          gap-2
-                        "
-                      >
+                <button
+                  onClick={() =>
+                    navigate("/resume-upload")
+                  }
+                  className="
+                    mt-6
+                    bg-purple-600
+                    text-white
+                    px-5
+                    py-2
+                    rounded-lg
+                    hover:bg-purple-700
+                    transition
+                    flex
+                    items-center
+                    gap-2
+                  "
+                >
 
-                        <FaFileUpload />
+                  <FaFileUpload />
 
-                        Replace Resume
+                  Upload Resume
 
-                      </button>
+                </button>
 
-                    </div>
+              </>
 
-                  </>
-
-                ) : (
-
-                  <>
-
-                    <p
-                      className="
-                        text-gray-500
-                        mt-2
-                      "
-                    >
-                      No resume uploaded yet.
-                    </p>
-
-                    <button
-                      onClick={() =>
-                        navigate("/resume-upload")
-                      }
-                      className="
-                        mt-5
-                        bg-purple-600
-                        text-white
-                        px-5
-                        py-2
-                        rounded-lg
-                        hover:bg-purple-700
-                        transition
-                        flex
-                        items-center
-                        gap-2
-                      "
-                    >
-
-                      <FaFileUpload />
-
-                      Upload Resume
-
-                    </button>
-
-                  </>
-
-                )}
-
-              </div>
-
-            </div>
+            )}
 
           </div>
 
         </div>
 
-        {/* ========================================= */}
-        {/* RECOMMENDED JOBS */}
-        {/* ========================================= */}
+        {/* ================================= */}
+        {/* CURRENT STATUS */}
+        {/* ================================= */}
 
         <div
-          id="recommended-jobs"
-          className="mt-12"
+          className="
+            bg-white
+            rounded-xl
+            shadow-lg
+            p-8
+            mt-8
+          "
         >
+
+          <h3
+            className="
+              text-2xl
+              font-bold
+              text-gray-800
+            "
+          >
+            Current Status
+          </h3>
 
           <div
             className="
-              flex
-              items-center
-              justify-between
-              mb-6
+              grid
+              md:grid-cols-2
+              gap-4
+              mt-6
             "
           >
 
-            <div>
-
-              <h2
-                className="
-                  text-3xl
-                  font-bold
-                  text-gray-800
-                "
-              >
-                Recommended Jobs
-              </h2>
-
-              <p
-                className="
-                  text-gray-500
-                  mt-1
-                "
-              >
-                Swipe right if you're interested.
-              </p>
-
-            </div>
-
-            <FaBriefcase
-              className="
-                text-4xl
-                text-indigo-600
-              "
-            />
-
-          </div>
-
-          {/* ================================= */}
-          {/* LOADING */}
-          {/* ================================= */}
-
-          {loadingJobs && (
+            {/* PROFILE STATUS */}
 
             <div
               className="
-                bg-white
+                bg-blue-50
+                border
+                border-blue-100
                 rounded-xl
-                shadow
-                p-8
-                text-center
+                p-5
               "
             >
 
-              <p
+              <div
                 className="
-                  text-gray-500
-                  text-lg
+                  flex
+                  items-center
+                  gap-3
                 "
               >
-                Finding jobs for you...
-              </p>
 
-            </div>
+                <FaUser
+                  className="text-blue-600"
+                />
 
-          )}
+                <span
+                  className="
+                    font-semibold
+                    text-gray-700
+                  "
+                >
+                  Candidate Profile
+                </span>
 
-          {/* ================================= */}
-          {/* NO JOBS */}
-          {/* ================================= */}
-
-          {!loadingJobs && jobs.length === 0 && (
-
-            <div
-              className="
-                bg-white
-                rounded-xl
-                shadow
-                p-10
-                text-center
-              "
-            >
-
-              <FaBriefcase
-                className="
-                  text-5xl
-                  text-gray-300
-                  mx-auto
-                  mb-4
-                "
-              />
-
-              <h3
-                className="
-                  text-xl
-                  font-bold
-                  text-gray-700
-                "
-              >
-                No matching jobs yet
-              </h3>
+              </div>
 
               <p
                 className="
+                  text-sm
                   text-gray-500
                   mt-2
                 "
               >
-                Upload your resume and make sure your
-                profile contains your skills.
+                {candidate
+                  ? "Profile created successfully."
+                  : "Profile not created yet."}
               </p>
 
             </div>
 
-          )}
-
-          {/* ================================= */}
-          {/* JOB CARDS */}
-          {/* ================================= */}
-
-          {!loadingJobs && jobs.length > 0 && (
+            {/* RESUME STATUS */}
 
             <div
               className="
-                grid
-                md:grid-cols-2
-                xl:grid-cols-3
-                gap-6
+                bg-purple-50
+                border
+                border-purple-100
+                rounded-xl
+                p-5
               "
             >
 
-              {jobs.map((job) => (
+              <div
+                className="
+                  flex
+                  items-center
+                  gap-3
+                "
+              >
 
-                <div
-                  key={job.id}
+                <FaFileAlt
+                  className="text-purple-600"
+                />
+
+                <span
                   className="
-                    bg-white
-                    rounded-2xl
-                    shadow-lg
-                    p-6
-                    hover:shadow-2xl
-                    transition
-                    duration-300
-                    border
-                    border-gray-100
+                    font-semibold
+                    text-gray-700
                   "
                 >
-
-                  {/* JOB HEADER */}
-
-                  <div
-                    className="
-                      flex
-                      justify-between
-                      items-start
-                      gap-4
-                    "
-                  >
-
-                    <div>
-
-                      <h3
-                        className="
-                          text-xl
-                          font-bold
-                          text-gray-800
-                        "
-                      >
-                        {job.title}
-                      </h3>
-
-                      <p
-                        className="
-                          text-indigo-600
-                          font-semibold
-                          mt-1
-                        "
-                      >
-                        {job.company}
-                      </p>
-
-                      <p
-                        className="
-                          text-gray-500
-                          text-sm
-                          mt-1
-                        "
-                      >
-                        📍 {job.location}
-                      </p>
-
-                    </div>
-
-                    {/* MATCH */}
-
-                    <div
-                      className={`
-                        px-3
-                        py-2
-                        rounded-full
-                        font-bold
-                        text-sm
-                        whitespace-nowrap
-                        ${getMatchColor(
-                          job.match_percentage ?? 0
-                        )}
-                      `}
-                    >
-
-                      {job.match_percentage ?? 0}%
-                      Match
-
-                    </div>
-
-                  </div>
-
-                  {/* ATS */}
-
-                  <div
-                    className="
-                      mt-5
-                      bg-gray-50
-                      rounded-lg
-                      p-4
-                    "
-                  >
-
-                    <div
-                      className="
-                        flex
-                        justify-between
-                        items-center
-                      "
-                    >
-
-                      <span
-                        className="
-                          text-gray-600
-                          font-medium
-                        "
-                      >
-                        ATS Score
-                      </span>
-
-                      <span
-                        className="
-                          font-bold
-                          text-indigo-600
-                        "
-                      >
-                        {job.ats_score ?? 0}%
-                      </span>
-
-                    </div>
-
-                    <div
-                      className="
-                        mt-2
-                        w-full
-                        h-2
-                        bg-gray-200
-                        rounded-full
-                      "
-                    >
-
-                      <div
-                        className="
-                          h-2
-                          bg-indigo-600
-                          rounded-full
-                        "
-                        style={{
-                          width: `${Math.min(
-                            job.ats_score ?? 0,
-                            100
-                          )}%`,
-                        }}
-                      />
-
-                    </div>
-
-                  </div>
-
-                  {/* MATCHED SKILLS */}
-
-                  <div className="mt-5">
-
-                    <p
-                      className="
-                        font-semibold
-                        text-gray-700
-                        mb-2
-                      "
-                    >
-                      Your Matching Skills
-                    </p>
-
-                    <div
-                      className="
-                        flex
-                        flex-wrap
-                        gap-2
-                      "
-                    >
-
-                      {job.matched_skills &&
-                      job.matched_skills.length > 0 ? (
-
-                        job.matched_skills.map(
-                          (skill, index) => (
-
-                            <span
-                              key={index}
-                              className="
-                                bg-green-100
-                                text-green-700
-                                px-3
-                                py-1
-                                rounded-full
-                                text-sm
-                                font-medium
-                              "
-                            >
-                              ✓ {skill}
-                            </span>
-
-                          )
-                        )
-
-                      ) : (
-
-                        <span
-                          className="
-                            text-gray-400
-                            text-sm
-                          "
-                        >
-                          No matching skills
-                        </span>
-
-                      )}
-
-                    </div>
-
-                  </div>
-
-                  {/* MISSING SKILLS */}
-
-                  {job.missing_skills &&
-                  job.missing_skills.length > 0 && (
-
-                    <div className="mt-4">
-
-                      <p
-                        className="
-                          font-semibold
-                          text-gray-700
-                          mb-2
-                        "
-                      >
-                        Skills to Improve
-                      </p>
-
-                      <div
-                        className="
-                          flex
-                          flex-wrap
-                          gap-2
-                        "
-                      >
-
-                        {job.missing_skills.map(
-                          (skill, index) => (
-
-                            <span
-                              key={index}
-                              className="
-                                bg-red-100
-                                text-red-600
-                                px-3
-                                py-1
-                                rounded-full
-                                text-sm
-                              "
-                            >
-                              + {skill}
-                            </span>
-
-                          )
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  )}
-
-                  {/* REQUIRED SKILLS */}
-
-                  <div className="mt-4">
-
-                    <p
-                      className="
-                        text-xs
-                        text-gray-400
-                      "
-                    >
-                      Required Skills
-                    </p>
-
-                    <p
-                      className="
-                        text-sm
-                        text-gray-600
-                        mt-1
-                      "
-                    >
-                      {job.required_skills}
-                    </p>
-
-                  </div>
-
-                  {/* SWIPE BUTTONS */}
-
-                  <div
-                    className="
-                      flex
-                      gap-3
-                      mt-6
-                    "
-                  >
-
-                    {/* PASS */}
-
-                    <button
-                      disabled={
-                        swipingJobId === job.id
-                      }
-                      onClick={() =>
-                        handleSwipe(
-                          job.id,
-                          "left"
-                        )
-                      }
-                      className="
-                        flex-1
-                        border-2
-                        border-red-400
-                        text-red-500
-                        py-3
-                        rounded-xl
-                        font-bold
-                        hover:bg-red-50
-                        transition
-                        flex
-                        items-center
-                        justify-center
-                        gap-2
-                        disabled:opacity-50
-                      "
-                    >
-
-                      <FaTimes />
-
-                      Pass
-
-                    </button>
-
-                    {/* INTERESTED */}
-
-                    <button
-                      disabled={
-                        swipingJobId === job.id
-                      }
-                      onClick={() =>
-                        handleSwipe(
-                          job.id,
-                          "right"
-                        )
-                      }
-                      className="
-                        flex-1
-                        bg-green-500
-                        text-white
-                        py-3
-                        rounded-xl
-                        font-bold
-                        hover:bg-green-600
-                        transition
-                        flex
-                        items-center
-                        justify-center
-                        gap-2
-                        disabled:opacity-50
-                      "
-                    >
-
-                      <FaHeart />
-
-                      Interested
-
-                    </button>
-
-                  </div>
-
-                </div>
-
-              ))}
+                  Resume
+                </span>
+
+              </div>
+
+              <p
+                className="
+                  text-sm
+                  text-gray-500
+                  mt-2
+                "
+              >
+                {resume
+                  ? "Resume uploaded successfully."
+                  : "Resume upload pending."}
+              </p>
 
             </div>
 
-          )}
+          </div>
 
         </div>
 
-      </div>
+        {/* ================================= */}
+        {/* FUTURE FEATURES MESSAGE */}
+        {/* ================================= */}
+
+        <div
+          className="
+            bg-indigo-50
+            border
+            border-indigo-100
+            rounded-xl
+            p-6
+            mt-8
+          "
+        >
+
+          <h3
+            className="
+              text-lg
+              font-bold
+              text-indigo-800
+            "
+          >
+            More features coming soon
+          </h3>
+
+          <p
+            className="
+              text-indigo-600
+              text-sm
+              mt-2
+            "
+          >
+            AI Analysis, ATS Score, Job Matches,
+            Applications and Missing Skills will
+            be added in upcoming milestones.
+          </p>
+
+        </div>
+
+      </main>
 
     </div>
   );
