@@ -1,64 +1,76 @@
-# job-discovery-platform
+# SwipeX — Swipe-Based Intelligent Job Discovery & Career Assistance Platform
 
-# SwipeX 🚀
+SwipeX is a full-stack job discovery and career assistance platform designed to help candidates discover relevant job opportunities through profile-based matching, resume analysis, and a swipe-based job discovery experience.
 
-### Swipe-Based Intelligent Job Discovery and Career Assistance Platform
+The platform ranks jobs according to the candidate's skills, experience, location, and salary preferences, allowing candidates to quickly explore, save, like, reject, and apply for relevant opportunities.
 
-SwipeX is a job discovery platform that helps candidates discover suitable job opportunities through profile-based matching and a swipe-based job interaction system.
+---
 
-## 🎯 Features
+## 🚀 Current Development Status
 
-- 🔐 Candidate Registration & Login
-- 👤 Candidate Profile Management
-- 📄 Resume Upload & Replacement
-- 💼 Job Discovery
-- 🎯 Candidate-Job Matching
-- 👆 Like / Reject Jobs
-- ❤️ Matched Jobs
-- 📝 Job Applications
-- 📊 Application Tracking
+### Candidate Module — Completed
 
-## 🧠 Job Matching
+The current version of SwipeX focuses on completing the Candidate Workflow.
 
-Jobs are currently matched using:
+Implemented:
 
-| Criteria     | Weight |
-|----------    |--------|
-| Skills       | 50%    |
-| Experience   | 20%    |
-| Location     | 15%    |
-| Salary       | 15%    |
+- User Registration
+- User Login & Authentication
+- Candidate Profile Management
+- Resume Upload
+- PDF/DOCX Resume Parsing
+- ATS Resume Analysis
+- Resume Skill Detection
+- Resume Section Analysis
+- Job Dataset Integration
+- Candidate-Based Job Matching
+- Match Score Calculation
+- Swipe-Based Job Discovery
+- Like Job
+- Reject Job
+- Save Job
+- Unsave Job
+- Saved Jobs
+- Job Details
+- Apply for Job
+- Duplicate Application Prevention
+- My Applications
+- Application Status Tracking
+- Candidate Dashboard
 
-A temporary Kaggle job dataset is used to test and validate the matching functionality.
+Recruiter and Admin modules are planned for the next development phase.
 
-## 🛠️ Tech Stack
+---
 
-### Frontend
-- React.js
-- JavaScript
-- React Router
-- Axios
-- CSS
-
-### Backend
-- Python
-- FastAPI
-- SQLAlchemy
-- Pydantic
-- Uvicorn
-
-### Database
-- PostgreSQL
-
-## 🏗️ Architecture
+# 🔄 Candidate Workflow
 
 ```text
-React Frontend
-      ↓
-FastAPI Backend
-      ↓
-SQLAlchemy
-      ↓
-PostgreSQL
-      ↓
-Job Matching Engine
+Registration
+     ↓
+Login
+     ↓
+Candidate Dashboard
+     ↓
+Complete Candidate Profile
+     ↓
+Upload Resume
+     ↓
+Resume Parsing
+     ↓
+ATS Resume Analysis
+     ↓
+Job Matching
+     ↓
+Discover Jobs
+     ↓
+┌───────────────┬───────────────┬───────────────┐
+│     Reject    │      Save     │      Like     │
+└───────────────┴───────────────┴───────────────┘
+                       ↓
+                  Saved Jobs
+                       ↓
+                  View Job
+                       ↓
+                  Apply Job
+                       ↓
+               My Applications
