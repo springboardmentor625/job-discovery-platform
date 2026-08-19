@@ -6,31 +6,36 @@ The Candidate Workflow allows users to register, create their profile, upload an
 
 ---
 
-## 2. Complete Candidate Flow
+ ## 2. Complete Candidate Flow
 
-
+```text
 Register / Login
        ↓
 Candidate Dashboard
        ↓
-Profile
+Candidate Profile
        ↓
 Resume & ATS
        ↓
 AI Job Matching
        ↓
-Job Cards
-       ↓
-┌────────────┬────────────┬────────────┐
-│  ← LEFT    │  ↓ DOWN    │  RIGHT →   │
-│   SKIP     │   SAVE     │   APPLY    │
-└────────────┴────────────┴────────────┘
-       │           │            │
-       ↓           ↓            ↓
-    Next Job   Saved Jobs   Applications
-                              │
-                              ↓
-                       Application Status
+┌───────────────────────────────┐
+│          JOB CARD             │
+└───────────────────────────────┘
+       │
+       ├── ← LEFT ──→ SKIP
+       │                 ↓
+       │              Next Job
+       │
+       ├── ↓ DOWN ──→ SAVE
+       │                 ↓
+       │             Saved Jobs
+       │
+       └── → RIGHT ─→ APPLY
+                         ↓
+                    Applications
+                         ↓
+                 Application Status       
     
 ## 3. Authentication
 
