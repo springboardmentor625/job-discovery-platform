@@ -1,0 +1,71 @@
+Frontend Validations Implemented in SwipeX
+
+The following validations have been implemented in the SwipeX candidate workflow frontend developed using React.js:
+
+1. Registration Validations — Register.jsx
+
+Full Name: Cannot be left empty.
+Email: Required and must be entered in a valid email format. Duplicate email check will happen in backend.
+Phone Number: Must contain exactly 10 digits and numbers only.
+Phone Number: Accepts numbers only; alphabets and special characters are not allowed.
+Password: Required field.
+Password Strength: Password must be 8–20 characters
+Password must contain:
+at least 1 uppercase letter
+at least 1 lowercase letter
+at least 1 number
+at least 1 special character
+Confirm Password: Required and must match the entered password.
+Preferred Location: Optional field; the user can leave it empty.
+Preferred Job Role: Optional field; the user can leave it empty.
+
+Duplicate/invalid form submission: Account creation is prevented when required fields contain invalid data.
+
+2. Login Validations — Login.jsx
+
+Email: Required field.
+Email: Must be entered in a valid email format.
+Password: Required field.
+Password Visibility: An eye icon is provided to allow the user to show or hide the entered password.
+
+Invalid Login: Login is prevented when the entered credentials are invalid.
+
+
+3. Complete Profile Validations — CompleteProfile.jsx
+
+Required profile fields: Required fields cannot be left empty.
+Phone Number: Must contain exactly 10 digits and numbers only.
+Experience: Must be selected/entered according to the available experience options.
+Salary: Accepts numeric values only.
+Salary Minimum Value: Salary cannot be 0 or 1; a valid minimum salary range is enforced.
+Preferred Job Role: Must be selected from the existing/available job roles rather than accepting an arbitrary invalid role.
+Preferred Location: Optional field.
+Skills: Skills are matched against the existing skill list while typing.
+Skill Suggestions: Matching existing skills are displayed as suggestions.
+Custom Skills: If a required skill is not available in the existing list, the user can add the skill manually.
+Duplicate Skills: The same skill cannot be unnecessarily added multiple times.
+
+Profile Submission: The profile cannot be submitted until the required information passes validation.
+
+4. Resume Upload Validations — UploadResume.jsx
+
+Resume Selection: The user must select a resume before proceeding.
+File Type: Only supported(pdf,doc,docx) resume formats are accepted.
+File Size: The uploaded resume must be within the specified maximum file-size limit(5MB).
+Invalid File: Unsupported or invalid files are rejected with an appropriate validation message.
+Upload Status: The user receives feedback regarding the selected/uploaded resume.
+Continue Without Resume: The workflow does not proceed to resume-processing until a valid resume has been selected.
+
+5. Swipe Actions Validations — Job Recommendation/Swipe Component
+
+Swipe Right: Represents the Apply action for a recommended job.
+Swipe Left: Represents the Skip action and moves to another recommended job.
+Save/Favorite: Jobs can be saved/favorited through the swipe-based interaction.
+Duplicate Actions: The same job is not unnecessarily processed multiple times.
+Keyboard Navigation: Arrow-key controls are supported for swipe actions where implemented.
+Job Availability: Swipe actions are performed only when a recommended job is available.
+
+Overall Frontend Validation:
+
+The frontend validates user input before allowing the candidate to proceed to the next stage of the workflow. This helps prevent incomplete, invalid, or incorrectly formatted information from being submitted.
+
