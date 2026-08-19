@@ -4,8 +4,11 @@ from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .schemas import UserCreate, CompanyCreate
 from .models import User, Company
-
+from .jobs import router as jobs_router
+from .resumes import router as resumes_router
 app = FastAPI()
+app.include_router(jobs_router)
+app.include_router(resumes_router)
 
 
 def get_db():

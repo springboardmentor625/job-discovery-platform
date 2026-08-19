@@ -102,6 +102,12 @@ class ResumeCreate(BaseModel):
     extracted_skills: Optional[Any] = None
     is_default: bool = False
 
+class ResumeUpdate(BaseModel):
+    user_id: Optional[int] = None
+    resume_name: Optional[str] = None
+    file_path: Optional[str] = None
+    extracted_skills: Optional[Any] = None
+    is_default: Optional[bool] = None
 
 class ResumeResponse(BaseModel):
     resume_id: int
@@ -146,3 +152,15 @@ class CandidateProfileResponse(BaseModel):
     certifications: Optional[Any] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class JobUpdate(BaseModel):
+    company_id: Optional[int] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    location: Optional[str] = None
+    employment_type: Optional[str] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    experience_required: Optional[str] = None
+    required_skills: Optional[Any] = None
+    status: Optional[str] = None
