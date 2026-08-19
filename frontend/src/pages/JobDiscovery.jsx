@@ -7,35 +7,162 @@ function JobDiscovery() {
   const navigate = useNavigate();
 
   const [jobs, setJobs] = useState([]);
-  const [currentIndex, setCurrentIndex] = useState(0);
+
+  const [savedJobs, setSavedJobs] = useState(
+    new Set()
+  );
 
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
 
-  const [actionLoading, setActionLoading] = useState(false);
+  const [actionLoading, setActionLoading] =
+    useState(null);
+
+  const [saveError, setSaveError] =
+    useState("");
 
 
   // ==========================================
-  // LOAD MATCHED JOBS
+  // LOAD MATCHED JOBS + SAVED JOBS
   // ==========================================
 
   useEffect(() => {
 
-    const fetchMatchedJobs = async () => {
+    const fetchJobs = async () => {
 
       try {
 
-        const response = await api.get(
-          "/api/jobs/matched"
+        setLoading(true);
+        setError("");
+
+
+        // ======================================
+        // LOAD MATCHED JOBS
+        // ======================================
+
+        const jobsResponse =
+          await api.get(
+            "/api/jobs/matched"
+          );
+
+
+        console.log(
+          "========== SWIPEX JOB DEBUG =========="
         );
 
-        setJobs(response.data || []);
+        console.log(
+          "Matched jobs response:",
+          jobsResponse.data
+        );
+
+        console.log(
+          "Is array:",
+          Array.isArray(
+            jobsResponse.data
+          )
+        );
+
+        console.log(
+          "Job count:",
+          jobsResponse.data?.length
+        );
+
+
+        if (
+          Array.isArray(
+            jobsResponse.data
+          )
+        ) {
+
+          setJobs(
+            jobsResponse.data
+          );
+
+        } else {
+
+          setJobs([]);
+
+        }
+
+
+        // ======================================
+        // LOAD SAVED JOBS
+        // ======================================
+
+        try {
+
+          const savedResponse =
+            await api.get(
+              "/api/saved-jobs"
+            );
+
+
+          console.log(
+            "SwipeX saved jobs:",
+            savedResponse.data
+          );
+
+
+          if (
+            Array.isArray(
+              savedResponse.data
+            )
+          ) {
+
+            const savedIds =
+              new Set(
+                savedResponse.data.map(
+                  savedJob =>
+                    savedJob.job_id
+                )
+              );
+
+
+            setSavedJobs(
+              savedIds
+            );
+
+          } else {
+
+            setSavedJobs(
+              new Set()
+            );
+
+          }
+
+        } catch (savedError) {
+
+          console.error(
+            "SwipeX saved jobs loading error:",
+            savedError
+          );
+
+
+          // Don't break Discover Jobs
+          // if saved jobs fail to load.
+
+          setSavedJobs(
+            new Set()
+          );
+
+        }
 
       } catch (err) {
 
-        console.error(err);
+        console.error(
+          "SwipeX job loading error:",
+          err
+        );
 
-        if (err.response?.status === 401) {
+
+        // ======================================
+        // AUTH ERROR
+        // ======================================
+
+        if (
+          err.response?.status === 401
+        ) {
 
           localStorage.removeItem(
             "access_token"
@@ -52,9 +179,17 @@ function JobDiscovery() {
           navigate("/login");
 
           return;
+
         }
 
-        if (err.response?.status === 404) {
+
+        // ======================================
+        // PROFILE NOT FOUND
+        // ======================================
+
+        if (
+          err.response?.status === 404
+        ) {
 
           setError(
             "Please complete your candidate profile first."
@@ -78,67 +213,102 @@ function JobDiscovery() {
     };
 
 
-    fetchMatchedJobs();
+    fetchJobs();
 
   }, [navigate]);
 
 
   // ==========================================
-  // CURRENT JOB
+  // LIKE / REJECT JOB
   // ==========================================
 
-  const currentJob =
-    jobs[currentIndex];
+  const handleSwipe = async (
+    jobId,
+    action
+  ) => {
+
+    if (
+      actionLoading
+    ) {
+
+      return;
+
+    }
 
 
-  const nextJob = () => {
-
-    setCurrentIndex(
-      (previous) =>
-        previous + 1
+    setActionLoading(
+      jobId
     );
 
-  };
-
-
-  // ==========================================
-  // LIKE
-  // ==========================================
-
-  const handleLike = async () => {
-
-    if (
-      !currentJob ||
-      actionLoading
-    ) {
-      return;
-    }
-
-
-    setActionLoading(true);
-
 
     try {
 
       await api.post(
-        `/api/jobs/${currentJob.job_id}/swipe`,
+        `/api/jobs/${jobId}/swipe`,
         {
-          action: "like"
+          action
         }
       );
+
+
+      // ======================================
+      // REMOVE FROM DISCOVER JOBS
+      // ======================================
+
+      setJobs(
+        previousJobs =>
+          previousJobs.filter(
+            job =>
+              job.job_id !== jobId
+          )
+      );
+
 
     } catch (err) {
 
       console.error(
-        "Like error:",
+        "SwipeX swipe error:",
         err
+      );
+
+
+      // ======================================
+      // AUTH ERROR
+      // ======================================
+
+      if (
+        err.response?.status === 401
+      ) {
+
+        localStorage.removeItem(
+          "access_token"
+        );
+
+        localStorage.removeItem(
+          "user_id"
+        );
+
+        localStorage.removeItem(
+          "role"
+        );
+
+        navigate("/login");
+
+        return;
+
+      }
+
+
+      console.error(
+        "Swipe error response:",
+        err.response?.data
       );
 
     } finally {
 
-      setActionLoading(false);
-
-      nextJob();
+      setActionLoading(
+        null
+      );
 
     }
 
@@ -146,43 +316,189 @@ function JobDiscovery() {
 
 
   // ==========================================
-  // REJECT
+  // SAVE / UNSAVE JOB
   // ==========================================
 
-  const handleReject = async () => {
+  const handleSaveJob = async (
+    jobId
+  ) => {
 
     if (
-      !currentJob ||
       actionLoading
     ) {
+
       return;
+
     }
 
 
-    setActionLoading(true);
+    setSaveError("");
+
+    setActionLoading(
+      jobId
+    );
+
+
+    const isSaved =
+      savedJobs.has(
+        jobId
+      );
 
 
     try {
 
-      await api.post(
-        `/api/jobs/${currentJob.job_id}/swipe`,
-        {
-          action: "reject"
-        }
-      );
+      // ======================================
+      // REMOVE SAVED JOB
+      // ======================================
+
+      if (isSaved) {
+
+        console.log(
+          `SwipeX removing saved job: ${jobId}`
+        );
+
+
+        await api.delete(
+          `/api/saved-jobs/${jobId}`
+        );
+
+
+        setSavedJobs(
+          previous => {
+
+            const updated =
+              new Set(
+                previous
+              );
+
+
+            updated.delete(
+              jobId
+            );
+
+
+            return updated;
+
+          }
+        );
+
+
+        console.log(
+          "SwipeX job removed from saved jobs"
+        );
+
+      }
+
+
+      // ======================================
+      // SAVE JOB
+      // ======================================
+
+      else {
+
+        console.log(
+          `SwipeX saving job: ${jobId}`
+        );
+
+
+        await api.post(
+          `/api/saved-jobs/${jobId}`
+        );
+
+
+        setSavedJobs(
+          previous => {
+
+            const updated =
+              new Set(
+                previous
+              );
+
+
+            updated.add(
+              jobId
+            );
+
+
+            return updated;
+
+          }
+        );
+
+
+        console.log(
+          "SwipeX job saved successfully"
+        );
+
+      }
 
     } catch (err) {
 
       console.error(
-        "Reject error:",
+        "SwipeX save job error:",
         err
       );
 
+
+      console.error(
+        "Save API response:",
+        err.response?.data
+      );
+
+
+      // ======================================
+      // AUTH ERROR
+      // ======================================
+
+      if (
+        err.response?.status === 401
+      ) {
+
+        localStorage.removeItem(
+          "access_token"
+        );
+
+        localStorage.removeItem(
+          "user_id"
+        );
+
+        localStorage.removeItem(
+          "role"
+        );
+
+        navigate("/login");
+
+        return;
+
+      }
+
+
+      // ======================================
+      // LOCAL SAVE ERROR
+      // ======================================
+
+      setSaveError(
+        err.response?.data?.detail ||
+        "Unable to save the job."
+      );
+
+
+      // IMPORTANT:
+      // We DON'T call setError() here.
+      //
+      // Otherwise the entire Discover Jobs
+      // page becomes:
+      //
+      // Something went wrong
+      // Update Profile
+      //
+      // which is incorrect for a Save error.
+
     } finally {
 
-      setActionLoading(false);
-
-      nextJob();
+      setActionLoading(
+        null
+      );
 
     }
 
@@ -224,7 +540,7 @@ function JobDiscovery() {
 
 
   // ==========================================
-  // ERROR
+  // MAIN ERROR
   // ==========================================
 
   if (error) {
@@ -255,7 +571,9 @@ function JobDiscovery() {
               )
             }
           >
+
             Update Profile
+
           </button>
 
         </div>
@@ -268,12 +586,11 @@ function JobDiscovery() {
 
 
   // ==========================================
-  // ALL JOBS FINISHED
+  // NO JOBS
   // ==========================================
 
   if (
-    jobs.length === 0 ||
-    currentIndex >= jobs.length
+    jobs.length === 0
   ) {
 
     return (
@@ -291,17 +608,21 @@ function JobDiscovery() {
           </h2>
 
           <p>
-            We've shown you all the jobs
-            currently matching your profile.
+            There are no more matching jobs
+            available right now.
           </p>
 
           <button
             className="primary-job-button"
             onClick={() =>
-              navigate("/candidate")
+              navigate(
+                "/candidate"
+              )
             }
           >
+
             Back to Dashboard
+
           </button>
 
         </div>
@@ -314,17 +635,463 @@ function JobDiscovery() {
 
 
   // ==========================================
-  // MATCH PERCENTAGE
+  // JOB CARD
   // ==========================================
 
-  const matchScore =
-    Math.round(
-      currentJob.match_score || 0
+  const renderJobCard = (
+    job
+  ) => {
+
+    const matchScore =
+      Math.round(
+        Number(
+          job.match_score || 0
+        )
+      );
+
+
+    const isSaved =
+      savedJobs.has(
+        job.job_id
+      );
+
+
+    const isLoading =
+      actionLoading ===
+      job.job_id;
+
+
+    return (
+
+      <div
+        className="swipex-job-card"
+        key={job.job_id}
+      >
+
+
+        {/* ==================================
+            CARD HEADER
+        =================================== */}
+
+        <div className="swipex-job-header">
+
+
+          <div className="swipex-company-logo">
+
+            {job.company
+              ? job.company
+                  .charAt(0)
+                  .toUpperCase()
+              : "J"}
+
+          </div>
+
+
+          <div className="swipex-company-info">
+
+            <span>
+              {job.company ||
+                "Company"}
+            </span>
+
+            <h2>
+              {job.title ||
+                "Untitled Job"}
+            </h2>
+
+          </div>
+
+
+          {/* MATCH SCORE */}
+
+          <div
+            className={`swipex-match-score ${
+              matchScore >= 80
+                ? "excellent"
+                : matchScore >= 60
+                ? "good"
+                : "average"
+            }`}
+          >
+
+            <strong>
+              {matchScore}%
+            </strong>
+
+            <span>
+              Match
+            </span>
+
+          </div>
+
+        </div>
+
+
+        {/* ==================================
+            JOB DETAILS
+        =================================== */}
+
+        <div className="swipex-job-details">
+
+
+          <div>
+
+            <span>
+              📍
+            </span>
+
+            <div>
+
+              <small>
+                Location
+              </small>
+
+              <strong>
+                {job.location ||
+                  "Not specified"}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              💼
+            </span>
+
+            <div>
+
+              <small>
+                Employment
+              </small>
+
+              <strong>
+                {job.employment_type ||
+                  "Not specified"}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              💰
+            </span>
+
+            <div>
+
+              <small>
+                Salary
+              </small>
+
+              <strong>
+                {job.salary ||
+                  "Not specified"}
+              </strong>
+
+            </div>
+
+          </div>
+
+
+          <div>
+
+            <span>
+              🎯
+            </span>
+
+            <div>
+
+              <small>
+                Experience
+              </small>
+
+              <strong>
+                {job.experience_required ||
+                  "Not specified"}
+              </strong>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        {/* ==================================
+            MATCHED SKILLS
+        =================================== */}
+
+        {job.matched_skills?.length > 0 && (
+
+          <div className="swipex-matched-section">
+
+            <div className="swipex-section-title">
+
+              ✦ Skills matching your profile
+
+            </div>
+
+
+            <div className="swipex-skills">
+
+              {job.matched_skills.map(
+                skill => (
+
+                  <span
+                    key={skill}
+                    className="swipex-matched-skill"
+                  >
+
+                    ✓ {skill}
+
+                  </span>
+
+                )
+              )}
+
+            </div>
+
+          </div>
+
+        )}
+
+
+        {/* ==================================
+            REQUIRED SKILLS
+        =================================== */}
+
+        {job.skills && (
+
+          <div className="swipex-required-section">
+
+            <span>
+              Required Skills
+            </span>
+
+
+            <div className="swipex-skills">
+
+              {job.skills
+                .split(",")
+                .map(
+                  skill =>
+                    skill.trim()
+                )
+                .filter(Boolean)
+                .slice(0, 8)
+                .map(
+                  skill => (
+
+                    <span
+                      key={skill}
+                      className="swipex-normal-skill"
+                    >
+
+                      {skill}
+
+                    </span>
+
+                  )
+                )}
+
+            </div>
+
+          </div>
+
+        )}
+
+
+        {/* ==================================
+            DESCRIPTION
+        =================================== */}
+
+        <div className="swipex-description">
+
+          <span>
+            ABOUT THE ROLE
+          </span>
+
+          <p>
+
+            {job.description ||
+              "No description available."}
+
+          </p>
+
+        </div>
+
+
+        {/* ==================================
+            VIEW DETAILS
+        =================================== */}
+
+        <button
+          type="button"
+          className="swipex-view-button"
+          onClick={() =>
+            navigate(
+              `/candidate/jobs/${job.job_id}`
+            )
+          }
+        >
+
+          View Job Details →
+
+        </button>
+
+
+        {/* ==================================
+            ACTIONS
+        ================================== */}
+
+        <div className="swipex-actions">
+
+
+          {/* ==================================
+              REJECT
+          ================================== */}
+
+          <button
+            type="button"
+            className="swipex-reject"
+            onClick={() =>
+              handleSwipe(
+                job.job_id,
+                "reject"
+              )
+            }
+            disabled={isLoading}
+            title="Not interested"
+          >
+
+            {isLoading
+              ? "..."
+              : "✕"}
+
+          </button>
+
+
+          {/* ==================================
+              SAVE
+          ================================== */}
+
+          <button
+            type="button"
+            className={
+              isSaved
+                ? "swipex-save saved"
+                : "swipex-save"
+            }
+            onClick={() =>
+              handleSaveJob(
+                job.job_id
+              )
+            }
+            disabled={isLoading}
+            title={
+              isSaved
+                ? "Remove from saved jobs"
+                : "Save job"
+            }
+            aria-label={
+              isSaved
+                ? "Remove from saved jobs"
+                : "Save job"
+            }
+          >
+
+            {isLoading
+              ? "..."
+              : "🔖"}
+
+          </button>
+
+
+          {/* ==================================
+              LIKE
+          ================================== */}
+
+          <button
+            type="button"
+            className="swipex-like"
+            onClick={() =>
+              handleSwipe(
+                job.job_id,
+                "like"
+              )
+            }
+            disabled={isLoading}
+            title="Interested"
+          >
+
+            {isLoading
+              ? "..."
+              : "♥"}
+
+          </button>
+
+        </div>
+
+
+        {/* ==================================
+            ACTION LABEL
+        ================================== */}
+
+        <div className="swipex-action-hint">
+
+          <span>
+            ✕ Reject
+          </span>
+
+          <span
+            className={
+              isSaved
+                ? "saved-hint"
+                : ""
+            }
+          >
+
+            🔖{" "}
+            {isSaved
+              ? "Saved"
+              : "Save"}
+
+          </span>
+
+          <span>
+            ♥ Like
+          </span>
+
+        </div>
+
+
+        {/* ==================================
+            SAVE ERROR
+        ================================== */}
+
+        {isLoading &&
+          saveError && (
+            <div className="swipex-save-error">
+              {saveError}
+            </div>
+          )}
+
+      </div>
+
     );
 
+  };
+
 
   // ==========================================
-  // UI
+  // MAIN UI
   // ==========================================
 
   return (
@@ -341,10 +1108,14 @@ function JobDiscovery() {
         <button
           className="modern-back-button"
           onClick={() =>
-            navigate("/candidate")
+            navigate(
+              "/candidate"
+            )
           }
         >
+
           ← Dashboard
+
         </button>
 
 
@@ -368,14 +1139,16 @@ function JobDiscovery() {
           </div>
 
 
+          {/* JOB COUNT */}
+
           <div className="job-counter">
 
             <strong>
-              {currentIndex + 1}
+              {jobs.length}
             </strong>
 
             <span>
-              / {jobs.length}
+              Jobs
             </span>
 
           </div>
@@ -386,335 +1159,41 @@ function JobDiscovery() {
 
 
       {/* ======================================
-          CARD AREA
+          SAVE ERROR MESSAGE
       ======================================= */}
 
-      <div className="modern-job-area">
-
-
-        {/* Background card */}
-
-        {jobs[currentIndex + 1] && (
-
-          <div className="modern-job-card next-card">
-
-            <div className="next-card-content">
-              Next opportunity
-            </div>
-
-          </div>
-
-        )}
-
-
-        {/* Current card */}
-
-        <div className="modern-job-card">
-
-
-          {/* ==================================
-              TOP
-          =================================== */}
-
-          <div className="modern-job-top">
-
-
-            <div className="modern-company-logo">
-
-              {currentJob.company
-                ? currentJob.company
-                    .charAt(0)
-                    .toUpperCase()
-                : "J"}
-
-            </div>
-
-
-            <div className="modern-company-info">
-
-              <span>
-                {currentJob.company ||
-                  "Company"}
-              </span>
-
-              <h2>
-                {currentJob.title}
-              </h2>
-
-            </div>
-
-
-            <div
-              className={`match-badge ${
-                matchScore >= 80
-                  ? "excellent"
-                  : matchScore >= 60
-                  ? "good"
-                  : "average"
-              }`}
-            >
-
-              <strong>
-                {matchScore}%
-              </strong>
-
-              <span>
-                Match
-              </span>
-
-            </div>
-
-          </div>
-
-
-          {/* ==================================
-              DETAILS
-          =================================== */}
-
-          <div className="modern-job-details">
-
-
-            <div className="modern-detail">
-
-              <span>📍</span>
-
-              <div>
-
-                <small>
-                  Location
-                </small>
-
-                <strong>
-                  {currentJob.location ||
-                    "Not specified"}
-                </strong>
-
-              </div>
-
-            </div>
-
-
-            <div className="modern-detail">
-
-              <span>💼</span>
-
-              <div>
-
-                <small>
-                  Employment
-                </small>
-
-                <strong>
-                  {currentJob.employment_type ||
-                    "Not specified"}
-                </strong>
-
-              </div>
-
-            </div>
-
-
-            <div className="modern-detail">
-
-              <span>💰</span>
-
-              <div>
-
-                <small>
-                  Salary
-                </small>
-
-                <strong>
-                  {currentJob.salary ||
-                    "Not specified"}
-                </strong>
-
-              </div>
-
-            </div>
-
-
-            <div className="modern-detail">
-
-              <span>🎯</span>
-
-              <div>
-
-                <small>
-                  Experience
-                </small>
-
-                <strong>
-                  {currentJob.experience_required ||
-                    "Not specified"}
-                </strong>
-
-              </div>
-
-            </div>
-
-          </div>
-
-
-          {/* ==================================
-              MATCHED SKILLS
-          =================================== */}
-
-          {currentJob.matched_skills?.length > 0 && (
-
-            <div className="matched-section">
-
-              <div className="matched-title">
-
-                <span>
-                  ✦
-                </span>
-
-                Skills matching your profile
-
-              </div>
-
-
-              <div className="modern-skills">
-
-                {currentJob.matched_skills.map(
-                  (skill) => (
-
-                    <span
-                      className="matched-skill"
-                      key={skill}
-                    >
-                      ✓ {skill}
-                    </span>
-
-                  )
-                )}
-
-              </div>
-
-            </div>
-
-          )}
-
-
-          {/* ==================================
-              JOB SKILLS
-          =================================== */}
-
-          {currentJob.skills && (
-
-            <div className="all-skills-section">
-
-              <span className="skills-label">
-                Required Skills
-              </span>
-
-
-              <div className="modern-skills">
-
-                {currentJob.skills
-                  .split(",")
-                  .map(
-                    (skill) =>
-                      skill.trim()
-                  )
-                  .filter(Boolean)
-                  .slice(0, 10)
-                  .map(
-                    (skill) => (
-
-                      <span
-                        className="normal-skill"
-                        key={skill}
-                      >
-                        {skill}
-                      </span>
-
-                    )
-                  )}
-
-              </div>
-
-            </div>
-
-          )}
-
-
-          {/* ==================================
-              DESCRIPTION
-          =================================== */}
-
-          <div className="modern-description">
-
-            <span>
-              ABOUT THE ROLE
-            </span>
-
-            <p>
-              {currentJob.description ||
-                "No description available."}
-            </p>
-
-          </div>
-
-
-          {/* ==================================
-              ACTIONS
-          =================================== */}
-
-          <div className="modern-actions">
-
-            <button
-              className="modern-reject"
-              onClick={handleReject}
-              disabled={actionLoading}
-              title="Not interested"
-            >
-              ✕
-            </button>
-
-
-            <div className="swipe-action-label">
-              <span>
-                SwipeX
-              </span>
-
-              <small>
-                Choose your opportunity
-              </small>
-            </div>
-
-
-            <button
-              className="modern-like"
-              onClick={handleLike}
-              disabled={actionLoading}
-              title="Interested"
-            >
-              ♥
-            </button>
-
-          </div>
-
-
-          <div className="modern-hint">
-            <span>
-              ✕
-            </span>
-            Not interested
-            <span>
-              •
-            </span>
-            <span>
-              ♥
-            </span>
-            Interested
-          </div>
-
+      {saveError && !actionLoading && (
+
+        <div className="swipex-global-save-error">
+
+          {saveError}
+
+          <button
+            type="button"
+            onClick={() =>
+              setSaveError("")
+            }
+          >
+            ×
+          </button>
 
         </div>
 
+      )}
+
+
+      {/* ======================================
+          JOB GRID
+      ======================================= */}
+
+      <div className="swipex-jobs-grid">
+
+        {jobs.map(
+          renderJobCard
+        )}
+
       </div>
+
 
     </div>
 

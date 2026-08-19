@@ -13,7 +13,7 @@ import Resume from "./pages/Resume";
 import JobDiscovery from "./pages/JobDiscovery";
 import Applications from "./pages/Applications";
 import Matches from "./pages/Matches";
-
+import SavedJobs from "./pages/SavedJobs";
 
 function App() {
 
@@ -40,6 +40,10 @@ function App() {
           element={<CandidateDashboard />}
         />
         <Route
+          path="/candidate/saved-jobs"
+          element={<SavedJobs />}
+        />       
+                <Route
           path="/candidate/profile/edit"
            element={<EditProfile />}
         />

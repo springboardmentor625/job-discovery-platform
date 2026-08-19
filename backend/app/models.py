@@ -152,10 +152,33 @@ class Resume(Base):
         nullable=False
     )
 
+    # ==========================================
+    # EXTRACTED RESUME DATA
+    # ==========================================
+
     extracted_text = Column(
         String,
         nullable=True
     )
+
+    extracted_skills = Column(
+        String(2000),
+        nullable=True
+    )
+
+    extracted_experience = Column(
+        String(2000),
+        nullable=True
+    )
+
+    extracted_education = Column(
+        String(2000),
+        nullable=True
+    )
+
+    # ==========================================
+    # RESUME STATUS
+    # ==========================================
 
     is_primary = Column(
         Boolean,
@@ -260,6 +283,32 @@ class JobSwipe(Base):
     )
 
     created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+class SavedJob(Base):
+
+    __tablename__ = "saved_jobs"
+
+    saved_job_id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    user_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    job_id = Column(
+        Integer,
+        nullable=False,
+        index=True
+    )
+
+    saved_at = Column(
         DateTime,
         default=datetime.utcnow
     )

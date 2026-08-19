@@ -124,6 +124,7 @@ function CandidateDashboard() {
           {/* Dashboard */}
 
           <button
+            type="button"
             className="nav-item active"
             onClick={() =>
               navigate("/candidate")
@@ -136,6 +137,7 @@ function CandidateDashboard() {
           {/* Discover Jobs */}
 
           <button
+            type="button"
             className="nav-item"
             onClick={() =>
               navigate("/candidate/jobs")
@@ -148,18 +150,33 @@ function CandidateDashboard() {
           {/* Matches */}
 
           <button
+            type="button"
             className="nav-item"
             onClick={() =>
-            navigate("/candidate/matches")
-          }
+              navigate("/candidate/matches")
+            }
           >
             Matches
+          </button>
+
+
+          {/* Saved Jobs */}
+
+          <button
+            type="button"
+            className="nav-item"
+            onClick={() =>
+              navigate("/candidate/saved-jobs")
+            }
+          >
+            Saved Jobs
           </button>
 
 
           {/* Applications */}
 
           <button
+            type="button"
             className="nav-item"
             onClick={() =>
               navigate("/candidate/applications")
@@ -172,6 +189,7 @@ function CandidateDashboard() {
           {/* Profile */}
 
           <button
+            type="button"
             className="nav-item"
             onClick={() =>
               navigate(
@@ -186,6 +204,7 @@ function CandidateDashboard() {
           {/* Resume */}
 
           <button
+            type="button"
             className="nav-item"
             onClick={() =>
               navigate("/candidate/resume")
@@ -200,6 +219,7 @@ function CandidateDashboard() {
         {/* Logout */}
 
         <button
+          type="button"
           className="logout-button"
           onClick={logout}
         >
@@ -267,6 +287,7 @@ function CandidateDashboard() {
 
 
               <button
+                type="button"
                 className="edit-button"
                 onClick={() =>
                   navigate(
@@ -356,9 +377,7 @@ function CandidateDashboard() {
                 </div>
 
 
-                {/* =================================
-                    SKILLS
-                ================================== */}
+                {/* SKILLS */}
 
                 <div className="profile-field">
 
@@ -490,6 +509,7 @@ function CandidateDashboard() {
             </p>
 
             <button
+              type="button"
               onClick={() =>
                 navigate(
                   "/candidate/profile/edit"
@@ -538,6 +558,27 @@ function CandidateDashboard() {
               <p>
                 Find jobs that match your
                 skills and preferences.
+              </p>
+
+            </div>
+
+
+            {/* Saved Jobs */}
+
+            <div
+              className="quick-card"
+              onClick={() =>
+                navigate("/candidate/saved-jobs")
+              }
+            >
+
+              <h3>
+                Saved Jobs
+              </h3>
+
+              <p>
+                View jobs you saved and
+                continue exploring them later.
               </p>
 
             </div>

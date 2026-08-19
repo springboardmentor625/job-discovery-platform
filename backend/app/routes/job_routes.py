@@ -1,3 +1,5 @@
+import re
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -10,7 +12,8 @@ from ..database import get_db
 from ..models import (
     Job,
     CandidateProfile,
-    JobSwipe
+    JobSwipe,
+    Resume
 )
 from ..auth import get_current_user
 
@@ -19,6 +22,113 @@ router = APIRouter(
     prefix="/api/jobs",
     tags=["Jobs"]
 )
+
+
+# ==========================================
+# HELPER: CONVERT SKILLS TO SET
+# ==========================================
+
+def skills_to_set(skills):
+
+    if not skills:
+        return set()
+
+    return {
+        skill.strip().lower()
+        for skill in str(skills).split(",")
+        if skill.strip()
+    }
+
+
+# ==========================================
+# HELPER: GET JOB SKILLS
+# ==========================================
+
+def get_job_skills(job):
+
+    return skills_to_set(
+        job.skills
+    )
+
+
+# ==========================================
+# HELPER: EXTRACT SALARY NUMBERS
+# ==========================================
+
+def extract_salary_numbers(salary):
+
+    if not salary:
+        return []
+
+    numbers = re.findall(
+        r"[\d,]+",
+        str(salary)
+    )
+
+    return [
+
+        int(
+            number.replace(",", "")
+        )
+
+        for number in numbers
+
+        if number.replace(
+            ",",
+            ""
+        ).isdigit()
+
+    ]
+
+
+# ==========================================
+# HELPER: EXPERIENCE YEARS
+# ==========================================
+
+def extract_experience_years(text):
+
+    if not text:
+        return []
+
+    text = str(text).lower()
+
+    matches = re.findall(
+
+        r"(\d+(?:\.\d+)?)\s*"
+        r"(?:\+?\s*)?"
+        r"(?:years?|yrs?)",
+
+        text
+
+    )
+
+    years = [
+
+        float(match)
+
+        for match in matches
+
+    ]
+
+    # Fallback if text doesn't contain
+    # "years" or "yrs"
+
+    if not years:
+
+        number = re.search(
+            r"(\d+(?:\.\d+)?)",
+            text
+        )
+
+        if number:
+
+            years.append(
+                float(
+                    number.group(1)
+                )
+            )
+
+    return years
 
 
 # ==========================================
@@ -60,6 +170,7 @@ def create_job(
         skills=skills,
 
         status="active"
+
     )
 
     db.add(job)
@@ -165,8 +276,7 @@ def get_matched_jobs(
         CandidateProfile
     ).filter(
 
-        CandidateProfile.user_id
-        == user_id
+        CandidateProfile.user_id == user_id
 
     ).first()
 
@@ -177,38 +287,73 @@ def get_matched_jobs(
 
             status_code=404,
 
-            detail=
-                "Candidate profile not found"
+            detail="Candidate profile not found"
 
         )
 
 
     # ======================================
-    # CANDIDATE SKILLS
+    # GET PRIMARY RESUME
     # ======================================
 
-    candidate_skills = set()
+    resume = db.query(
+        Resume
+    ).filter(
 
+        Resume.user_id == user_id,
 
-    if profile.skills:
+        Resume.is_primary == True
 
-        candidate_skills = {
+    ).order_by(
 
-            skill.strip().lower()
+        Resume.uploaded_at.desc()
 
-            for skill
-            in profile.skills.split(",")
-
-            if skill.strip()
-
-        }
+    ).first()
 
 
     # ======================================
-    # CANDIDATE EXPERIENCE
+    # PROFILE SKILLS
     # ======================================
 
-    candidate_experience = (
+    profile_skills = skills_to_set(
+        profile.skills
+    )
+
+
+    # ======================================
+    # RESUME SKILLS
+    # ======================================
+
+    resume_skills = set()
+
+
+    if resume:
+
+        resume_skills = skills_to_set(
+
+            resume.extracted_skills
+
+        )
+
+
+    # ======================================
+    # COMBINE PROFILE + RESUME SKILLS
+    # ======================================
+
+    candidate_skills = (
+
+        profile_skills
+        |
+        resume_skills
+
+    )
+
+
+    # ======================================
+    # EXPERIENCE
+    # ======================================
+
+    profile_experience = (
 
         profile.experience
         or ""
@@ -216,8 +361,29 @@ def get_matched_jobs(
     ).lower().strip()
 
 
+    resume_experience = ""
+
+
+    if resume:
+
+        resume_experience = (
+
+            resume.extracted_experience
+            or ""
+
+        ).lower().strip()
+
+
+    candidate_experience = (
+
+        f"{profile_experience} "
+        f"{resume_experience}"
+
+    ).strip()
+
+
     # ======================================
-    # PREFERRED LOCATION
+    # LOCATION
     # ======================================
 
     preferred_location = (
@@ -244,13 +410,11 @@ def get_matched_jobs(
 
 
     # ======================================
-    # GET ALREADY SWIPED JOBS
+    # GET SWIPE HISTORY
     # ======================================
 
-    swiped_jobs = db.query(
-
-        JobSwipe.job_id
-
+    swipe_history = db.query(
+        JobSwipe
     ).filter(
 
         JobSwipe.user_id == user_id
@@ -258,11 +422,105 @@ def get_matched_jobs(
     ).all()
 
 
+    # ======================================
+    # GET LIKED / REJECTED JOB IDS
+    # ======================================
+
+    liked_job_ids = {
+
+        swipe.job_id
+
+        for swipe in swipe_history
+
+        if swipe.action == "like"
+
+    }
+
+
+    rejected_job_ids = {
+
+        swipe.job_id
+
+        for swipe in swipe_history
+
+        if swipe.action == "reject"
+
+    }
+
+
+    # ======================================
+    # BUILD PREFERRED SKILLS
+    # FROM LIKED JOBS
+    # ======================================
+
+    liked_job_skills = set()
+
+
+    if liked_job_ids:
+
+        liked_jobs = db.query(
+            Job
+        ).filter(
+
+            Job.job_id.in_(
+                liked_job_ids
+            )
+
+        ).all()
+
+
+        for liked_job in liked_jobs:
+
+            liked_job_skills.update(
+
+                get_job_skills(
+                    liked_job
+                )
+
+            )
+
+
+    # ======================================
+    # BUILD AVOIDED SKILLS
+    # FROM REJECTED JOBS
+    # ======================================
+
+    rejected_job_skills = set()
+
+
+    if rejected_job_ids:
+
+        rejected_jobs = db.query(
+            Job
+        ).filter(
+
+            Job.job_id.in_(
+                rejected_job_ids
+            )
+
+        ).all()
+
+
+        for rejected_job in rejected_jobs:
+
+            rejected_job_skills.update(
+
+                get_job_skills(
+                    rejected_job
+                )
+
+            )
+
+
+    # ======================================
+    # GET ALREADY SWIPED JOBS
+    # ======================================
+
     swiped_job_ids = {
 
         swipe.job_id
 
-        for swipe in swiped_jobs
+        for swipe in swipe_history
 
     }
 
@@ -279,10 +537,6 @@ def get_matched_jobs(
 
     )
 
-
-    # --------------------------------------
-    # Exclude already swiped jobs
-    # --------------------------------------
 
     if swiped_job_ids:
 
@@ -307,7 +561,7 @@ def get_matched_jobs(
 
     for job in jobs:
 
-        score = 0
+        base_score = 0
 
         matched_skills = []
 
@@ -316,21 +570,9 @@ def get_matched_jobs(
         # JOB SKILLS
         # ==================================
 
-        job_skills = set()
-
-
-        if job.skills:
-
-            job_skills = {
-
-                skill.strip().lower()
-
-                for skill
-                in job.skills.split(",")
-
-                if skill.strip()
-
-            }
+        job_skills = get_job_skills(
+            job
+        )
 
 
         # ==================================
@@ -338,8 +580,13 @@ def get_matched_jobs(
         # ==================================
 
         if (
+
             candidate_skills
-            and job_skills
+
+            and
+
+            job_skills
+
         ):
 
             matched_skills = sorted(
@@ -362,12 +609,9 @@ def get_matched_jobs(
             ) * 50
 
 
-            score += min(
-
+            base_score += min(
                 skill_score,
-
                 50
-
             )
 
 
@@ -376,8 +620,13 @@ def get_matched_jobs(
         # ==================================
 
         if (
+
             candidate_experience
-            and job.experience_required
+
+            and
+
+            job.experience_required
+
         ):
 
             job_experience = (
@@ -387,15 +636,10 @@ def get_matched_jobs(
                 )
 
                 .lower()
-
                 .strip()
 
             )
 
-
-            # --------------------------------
-            # DIRECT MATCH
-            # --------------------------------
 
             if (
 
@@ -409,86 +653,64 @@ def get_matched_jobs(
 
             ):
 
-                score += 20
-
+                base_score += 20
 
             else:
 
-                # --------------------------------
-                # COMPARE EXPERIENCE YEARS
-                # --------------------------------
-
-                import re
-
-
-                candidate_years_match = re.search(
-
-                    r"(\d+(?:\.\d+)?)",
-
-                    candidate_experience
-
+                candidate_years = (
+                    extract_experience_years(
+                        candidate_experience
+                    )
                 )
 
-
-                job_years_match = re.search(
-
-                    r"(\d+(?:\.\d+)?)",
-
-                    job_experience
-
+                job_years = (
+                    extract_experience_years(
+                        job_experience
+                    )
                 )
 
 
                 if (
 
-                    candidate_years_match
+                    candidate_years
 
                     and
 
-                    job_years_match
+                    job_years
 
                 ):
 
-                    candidate_years = float(
-
-                        candidate_years_match.group(1)
-
+                    candidate_max_years = max(
+                        candidate_years
                     )
 
-
-                    job_years = float(
-
-                        job_years_match.group(1)
-
+                    required_years = max(
+                        job_years
                     )
 
-
-                    # Candidate has enough experience
 
                     if (
 
-                        candidate_years
-                        >= job_years
+                        candidate_max_years
+                        >= required_years
 
                     ):
 
-                        score += 20
-
-
-                    # Close experience match
+                        base_score += 20
 
                     elif (
 
                         abs(
-                            candidate_years
-                            - job_years
-                        )
 
-                        <= 1
+                            candidate_max_years
+                            -
+                            required_years
+
+                        ) <= 1
 
                     ):
 
-                        score += 10
+                        base_score += 10
 
 
         # ==================================
@@ -517,7 +739,7 @@ def get_matched_jobs(
 
             ):
 
-                score += 15
+                base_score += 15
 
 
         # ==================================
@@ -534,36 +756,11 @@ def get_matched_jobs(
 
         ):
 
-            import re
-
-
-            salary_numbers = re.findall(
-
-                r"[\d,]+",
-
-                str(job.salary)
-
-            )
-
-
-            salary_numbers = [
-
-                int(
-                    number.replace(
-                        ",",
-                        ""
-                    )
+            salary_numbers = (
+                extract_salary_numbers(
+                    job.salary
                 )
-
-                for number
-                in salary_numbers
-
-                if number.replace(
-                    ",",
-                    ""
-                ).isdigit()
-
-            ]
+            )
 
 
             if salary_numbers:
@@ -573,8 +770,6 @@ def get_matched_jobs(
                 )
 
 
-                # Full salary match
-
                 if (
 
                     maximum_salary
@@ -582,10 +777,7 @@ def get_matched_jobs(
 
                 ):
 
-                    score += 15
-
-
-                # Partial salary match
+                    base_score += 15
 
                 elif (
 
@@ -594,7 +786,122 @@ def get_matched_jobs(
 
                 ):
 
-                    score += 8
+                    base_score += 8
+
+
+        # ==================================
+        # SWIPE PERSONALIZATION
+        # ==================================
+
+        personalization_score = 0
+
+
+        # ----------------------------------
+        # POSITIVE PREFERENCE
+        # ----------------------------------
+
+        liked_skill_matches = (
+
+            job_skills.intersection(
+                liked_job_skills
+            )
+
+        )
+
+
+        if liked_skill_matches:
+
+            # Maximum +10
+
+            positive_ratio = (
+
+                len(
+                    liked_skill_matches
+                )
+
+                /
+
+                max(
+                    len(job_skills),
+                    1
+                )
+
+            )
+
+
+            personalization_score += min(
+
+                positive_ratio * 10,
+
+                10
+
+            )
+
+
+        # ----------------------------------
+        # NEGATIVE PREFERENCE
+        # ----------------------------------
+
+        rejected_skill_matches = (
+
+            job_skills.intersection(
+                rejected_job_skills
+            )
+
+        )
+
+
+        if rejected_skill_matches:
+
+            # Maximum -5
+
+            negative_ratio = (
+
+                len(
+                    rejected_skill_matches
+                )
+
+                /
+
+                max(
+                    len(job_skills),
+                    1
+                )
+
+            )
+
+
+            personalization_score -= min(
+
+                negative_ratio * 5,
+
+                5
+
+            )
+
+
+        # ==================================
+        # FINAL SWIPEX SCORE
+        # ==================================
+
+        final_score = (
+
+            base_score
+            +
+            personalization_score
+
+        )
+
+
+        # Keep score within a sensible range
+
+        final_score = max(
+            0,
+            min(
+                final_score,
+                110
+            )
+        )
 
 
         # ==================================
@@ -632,12 +939,34 @@ def get_matched_jobs(
 
             "match_score":
                 round(
-                    score,
+                    final_score,
+                    2
+                ),
+
+            "base_match_score":
+                round(
+                    base_score,
+                    2
+                ),
+
+            "personalization_score":
+                round(
+                    personalization_score,
                     2
                 ),
 
             "matched_skills":
                 matched_skills,
+
+            "liked_preference_skills":
+                sorted(
+                    liked_skill_matches
+                ),
+
+            "rejected_preference_skills":
+                sorted(
+                    rejected_skill_matches
+                ),
 
             "created_at":
                 job.created_at
@@ -646,7 +975,7 @@ def get_matched_jobs(
 
 
     # ======================================
-    # SORT BY MATCH SCORE
+    # SORT BY FINAL SWIPEX SCORE
     # ======================================
 
     matched_jobs.sort(
@@ -660,7 +989,7 @@ def get_matched_jobs(
 
 
     # ======================================
-    # RETURN TOP 50 JOBS
+    # RETURN TOP 50
     # ======================================
 
     return matched_jobs[:50]
