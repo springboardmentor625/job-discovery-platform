@@ -1,11 +1,15 @@
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from . import models, schemas, crud
+from .database import get_db
+from sqlalchemy.orm import Session
 from .database import SessionLocal
 from .schemas import UserCreate, CompanyCreate
 from .models import User, Company
 from .jobs import router as jobs_router
 from .resumes import router as resumes_router
+from .auth import hash_password, verify_password, create_access_token, get_current_user
+
 app = FastAPI()
 app.include_router(jobs_router)
 app.include_router(resumes_router)
@@ -23,6 +27,17 @@ def get_db():
 def home():
     return {"message": "Welcome to SwipeX API"}
 
+@app.get("/me")
+def get_current_user_info(
+    current_user: User = Depends(get_current_user)
+):
+    return {
+        "user_id": current_user.user_id,
+        "full_name": current_user.full_name,
+        "email": current_user.email,
+        "role": current_user.role
+    }
+
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
@@ -30,7 +45,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     new_user = User(
         full_name=user.full_name,
         email=user.email,
-        password_hash=user.password,
+        password_hash=hash_password(user.password),
         role=user.role,
         phone=user.phone
     )
@@ -43,6 +58,41 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
         "message": "User registered successfully",
         "user_id": new_user.user_id
     }
+
+@app.post("/login", response_model=schemas.TokenResponse)
+def login(user: schemas.LoginRequest, db: Session = Depends(get_db)):
+
+    db_user = db.query(User).filter(
+        User.email == user.email
+    ).first()
+
+    if db_user is None:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    if not verify_password(
+        user.password,
+        db_user.password_hash
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid email or password"
+        )
+
+    access_token = create_access_token(
+        data={
+            "sub": str(db_user.user_id),
+            "role": db_user.role
+        }
+    )
+
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
 @app.post("/companies")
 def create_company(company: CompanyCreate, db: Session = Depends(get_db)):
 
@@ -78,3 +128,31 @@ def get_company(company_id: int, db: Session = Depends(get_db)):
         return {"message": "Company not found"}
 
     return company
+
+@app.post("/applications", response_model=schemas.ApplicationResponse)
+def create_application(
+    application: schemas.ApplicationCreate,
+    db: Session = Depends(get_db)
+):
+    return crud.create_application(db, application)
+
+
+@app.get("/applications", response_model=list[schemas.ApplicationResponse])
+def get_applications(db: Session = Depends(get_db)):
+    return crud.get_applications(db)
+
+
+@app.get("/applications/{application_id}", response_model=schemas.ApplicationResponse)
+def get_application(
+    application_id: int,
+    db: Session = Depends(get_db)
+):
+    application = crud.get_application(db, application_id)
+
+    if application is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Application not found"
+        )
+
+    return application

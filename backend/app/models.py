@@ -1,6 +1,7 @@
-from sqlalchemy import Column, Integer, String, Boolean, Text, TIMESTAMP, ForeignKey, JSON
+from sqlalchemy import Column, Integer, String, Boolean, Text, TIMESTAMP, ForeignKey, JSON, DateTime
 from sqlalchemy.sql import func
 from .database import Base
+from datetime import datetime, timezone
 
 class User(Base):
     __tablename__ = "users"
@@ -71,4 +72,17 @@ class Job(Base):
     required_skills = Column(JSON)
     posted_date = Column(TIMESTAMP, server_default=func.current_timestamp())
     status = Column(String(50))
-       
+
+class Application(Base):
+    __tablename__ = "applications"
+
+    application_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False)
+    resume_id = Column(Integer, ForeignKey("resumes.resume_id"), nullable=False)
+
+    status = Column(String(50))
+    applied_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc)
+    )    
