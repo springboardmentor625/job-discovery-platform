@@ -1,0 +1,21 @@
+services:
+  backend:
+    build: ./backend
+    container_name: swipx_backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      - DJANGO_SETTINGS_MODULE=config.settings
+
+  frontend:
+    build: ./frontend
+    container_name: swipx_frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    depends_on:
+      - backend
