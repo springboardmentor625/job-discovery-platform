@@ -1,20 +1,7 @@
 import { useState } from "react";
-import Login from "./Login";
-import Dashboard from "./Dashboard";
-import VerifyEmail from "./VerifyEmail";
 import axios from "axios";
-import "./App.css";
 
-function App() {
-  const [showLogin, setShowLogin] = useState(false);
-  const [showDashboard, setShowDashboard] = useState(false);
-  const [loggedInUser, setLoggedInUser] = useState(null);
-
-  const [showVerifyEmail, setShowVerifyEmail] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState("");
-
-  const [fullName, setFullName] = useState("");
-  const [phone, setPhone] = useState("");
+function Login({ onBackToRegister, onLoginSuccess }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -22,7 +9,7 @@ function App() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleRegister = async (event) => {
+  const handleLogin = async (event) => {
     event.preventDefault();
 
     setMessage("");
@@ -31,25 +18,19 @@ function App() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/api/register/",
+        "http://127.0.0.1:8000/api/login/",
         {
-          full_name: fullName,
-          phone: phone,
           email: email,
           password: password,
         }
       );
 
-      setRegisteredEmail(email);
-      setShowVerifyEmail(true);
+      setMessage(response.data.message);
 
-      setFullName("");
-      setPhone("");
-      setEmail("");
-      setPassword("");
+      console.log("Login successful:", response.data);
 
-      if (response.data?.message) {
-        setMessage(response.data.message);
+      if (onLoginSuccess) {
+        onLoginSuccess(response.data.user);
       }
     } catch (error) {
       if (error.response?.data) {
@@ -68,63 +49,10 @@ function App() {
     }
   };
 
-  /* =========================
-     DASHBOARD
-  ========================= */
-
-  if (showDashboard) {
-    return (
-      <Dashboard
-        user={loggedInUser}
-        onLogout={() => {
-          setLoggedInUser(null);
-          setShowDashboard(false);
-        }}
-      />
-    );
-  }
-
-  /* =========================
-     LOGIN
-  ========================= */
-
-  if (showLogin) {
-    return (
-      <Login
-        onBackToRegister={() => setShowLogin(false)}
-        onLoginSuccess={(user) => {
-          setLoggedInUser(user);
-          setShowLogin(false);
-          setShowDashboard(true);
-        }}
-      />
-    );
-  }
-
-  /* =========================
-     EMAIL VERIFICATION
-  ========================= */
-
-  if (showVerifyEmail) {
-    return (
-      <VerifyEmail
-        email={registeredEmail}
-        onVerified={() => {
-          setShowVerifyEmail(false);
-          setShowLogin(true);
-        }}
-      />
-    );
-  }
-
-  /* =========================
-     REGISTER PAGE
-  ========================= */
-
   return (
     <div className="register-page">
 
-      {/* Decorative background elements */}
+      {/* Decorative background */}
       <div className="background-circle circle-one"></div>
       <div className="background-circle circle-two"></div>
       <div className="background-circle circle-three"></div>
@@ -132,7 +60,7 @@ function App() {
       <div className="register-container">
 
         {/* =========================
-            LEFT BRANDING SECTION
+            LEFT BRANDING
         ========================= */}
 
         <div className="register-brand">
@@ -146,38 +74,51 @@ function App() {
             <div className="brand-line"></div>
 
             <h1>
-              Discover your
-              <span> next opportunity.</span>
+              Welcome
+              <span>back.</span>
             </h1>
 
             <p className="brand-description">
-              Find the right jobs, discover new opportunities,
-              and take the next step toward your career goals.
+              Continue your journey with SWIPEX and
+              discover opportunities that match your
+              career goals.
             </p>
 
             <div className="brand-features">
 
               <div className="feature-item">
                 <div className="feature-icon">✓</div>
+
                 <div>
                   <strong>Discover Opportunities</strong>
-                  <p>Explore opportunities that match your goals.</p>
+                  <p>
+                    Explore opportunities that match
+                    your goals.
+                  </p>
                 </div>
               </div>
 
               <div className="feature-item">
                 <div className="feature-icon">✓</div>
+
                 <div>
                   <strong>Build Your Career</strong>
-                  <p>Create your profile and showcase your skills.</p>
+                  <p>
+                    Keep growing and move closer to
+                    your career goals.
+                  </p>
                 </div>
               </div>
 
               <div className="feature-item">
                 <div className="feature-icon">✓</div>
+
                 <div>
                   <strong>Find Your Match</strong>
-                  <p>Connect with opportunities that fit you.</p>
+                  <p>
+                    Connect with opportunities that
+                    fit you.
+                  </p>
                 </div>
               </div>
 
@@ -192,7 +133,7 @@ function App() {
         </div>
 
         {/* =========================
-            RIGHT REGISTER SECTION
+            LOGIN FORM
         ========================= */}
 
         <div className="register-card">
@@ -203,10 +144,12 @@ function App() {
               SWIPEX
             </div>
 
-            <h2>Create your account</h2>
+            <h2>
+              Welcome Back
+            </h2>
 
             <p>
-              Get started with SWIPEX today
+              Login to continue to your account
             </p>
 
           </div>
@@ -216,7 +159,10 @@ function App() {
           {message && (
             <div className="success-message">
               <span className="message-icon">✓</span>
-              <span>{message}</span>
+
+              <span>
+                {message}
+              </span>
             </div>
           )}
 
@@ -225,77 +171,22 @@ function App() {
           {error && (
             <div className="error-message">
               <span className="message-icon">!</span>
-              <span>{error}</span>
+
+              <span>
+                {error}
+              </span>
             </div>
           )}
 
-          {/* REGISTER FORM */}
+          {/* LOGIN FORM */}
 
-          <form onSubmit={handleRegister}>
-
-            {/* FULL NAME */}
-
-            <div className="form-group">
-
-              <label htmlFor="fullName">
-                Full Name
-              </label>
-
-              <div className="input-wrapper">
-
-                <span className="input-icon">
-                  👤
-                </span>
-
-                <input
-                  id="fullName"
-                  type="text"
-                  value={fullName}
-                  onChange={(event) =>
-                    setFullName(event.target.value)
-                  }
-                  placeholder="Enter your full name"
-                  required
-                />
-
-              </div>
-
-            </div>
-
-            {/* MOBILE NUMBER */}
-
-            <div className="form-group">
-
-              <label htmlFor="phone">
-                Mobile Number
-              </label>
-
-              <div className="input-wrapper">
-
-                <span className="input-icon">
-                  📱
-                </span>
-
-                <input
-                  id="phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(event) =>
-                    setPhone(event.target.value)
-                  }
-                  placeholder="Enter your mobile number"
-                  required
-                />
-
-              </div>
-
-            </div>
+          <form onSubmit={handleLogin}>
 
             {/* EMAIL */}
 
             <div className="form-group">
 
-              <label htmlFor="email">
+              <label htmlFor="login-email">
                 Email Address
               </label>
 
@@ -306,7 +197,7 @@ function App() {
                 </span>
 
                 <input
-                  id="email"
+                  id="login-email"
                   type="email"
                   value={email}
                   onChange={(event) =>
@@ -324,7 +215,7 @@ function App() {
 
             <div className="form-group">
 
-              <label htmlFor="password">
+              <label htmlFor="login-password">
                 Password
               </label>
 
@@ -335,13 +226,13 @@ function App() {
                 </span>
 
                 <input
-                  id="password"
+                  id="login-password"
                   type="password"
                   value={password}
                   onChange={(event) =>
                     setPassword(event.target.value)
                   }
-                  placeholder="Create a password"
+                  placeholder="Enter your password"
                   required
                 />
 
@@ -349,7 +240,7 @@ function App() {
 
             </div>
 
-            {/* REGISTER BUTTON */}
+            {/* LOGIN BUTTON */}
 
             <button
               className="register-button"
@@ -359,11 +250,11 @@ function App() {
               {loading ? (
                 <>
                   <span className="spinner"></span>
-                  Creating Account...
+                  Logging in...
                 </>
               ) : (
                 <>
-                  Create Account
+                  Login
                   <span className="button-arrow">→</span>
                 </>
               )}
@@ -371,25 +262,25 @@ function App() {
 
           </form>
 
-          {/* LOGIN LINK */}
+          {/* CREATE ACCOUNT */}
 
           <div className="switch-page">
 
             <span>
-              Already have an account?
+              Don't have an account?
             </span>
 
             <button
               className="link-button"
-              onClick={() => setShowLogin(true)}
+              onClick={onBackToRegister}
             >
-              Login
+              Create Account
             </button>
 
           </div>
 
           <div className="terms-text">
-            By creating an account, you agree to our
+            By continuing, you agree to our
             <span> Terms of Service </span>
             and
             <span> Privacy Policy.</span>
@@ -403,4 +294,4 @@ function App() {
   );
 }
 
-export default App;
+export default Login;
