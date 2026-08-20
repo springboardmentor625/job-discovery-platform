@@ -139,3 +139,6 @@ db.sqlite3-journal
 .spyderproject
 .spyproject
 .ropeproject
+
+
+db_backup/
