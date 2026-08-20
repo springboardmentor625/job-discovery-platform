@@ -84,7 +84,7 @@ DATABASES = {
         'NAME': 'SwipeX_db',
         'USER': 'postgres',
         'PASSWORD': 'Praveena$3',
-        'HOST': 'host.docker.internal',
+        'HOST': 'db',
         'PORT': '5432',
     }
 }

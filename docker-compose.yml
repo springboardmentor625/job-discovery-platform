@@ -1,4 +1,17 @@
 services:
+  db:
+    image: postgres:16
+    container_name: swipex_db
+    restart: always
+    environment:
+      POSTGRES_DB: SwipeX_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Praveena$3
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   backend:
     build: ./backend
     container_name: swipx_backend
@@ -8,6 +21,8 @@ services:
       - ./backend:/app
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings
+    depends_on:
+      - db
 
   frontend:
     build: ./frontend
@@ -19,3 +34,6 @@ services:
       - /app/node_modules
     depends_on:
       - backend
+
+volumes:
+  postgres_data:
