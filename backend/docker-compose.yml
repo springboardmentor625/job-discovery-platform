@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:///./data/swipex.db
+      JWT_SECRET: local-development-secret
+      CORS_ORIGINS: http://localhost:5173
+    volumes:
+      - ./data:/app/data

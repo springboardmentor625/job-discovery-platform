@@ -1,0 +1,10 @@
+{
+  "name": "swipex-backend",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "py -3.14 -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8001",
+    "start": "py -3.14 -m uvicorn app.main:app --host 127.0.0.1 --port 8001",
+    "test": "py -3.14 -m pytest -q"
+  }
+}
