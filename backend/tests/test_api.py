@@ -139,3 +139,38 @@ def test_ats_workflow_execution():
     assert "End" in step_titles
 
 
+def test_skill_dna_workflow():
+    candidate_token = token("candidate@swipex.dev", "candidate123")
+    headers = {"Authorization": f"Bearer {candidate_token}"}
+
+    # Add a Skill DNA entry
+    res = client.post("/api/skill-dna", headers=headers, json={
+        "category": "Technical",
+        "skill_name": "FastAPI",
+        "proficiency_level": 4,
+        "years_experience": 2.5
+    })
+    assert res.status_code == 200
+    data = res.json()
+    assert data["skill_name"] == "FastAPI"
+    assert data["verified"] is True
+    skill_id = data["id"]
+
+    # Retrieve Skill DNA profile
+    profile_res = client.get("/api/skill-dna", headers=headers)
+    assert profile_res.status_code == 200
+    profile = profile_res.json()
+    assert profile["total_skills"] >= 1
+    assert "Technical" in profile["radar_metrics"]
+
+    # Endorse by Recruiter
+    recruiter_token = token("hr@swipex.dev", "recruiter123")
+    recruiter_headers = {"Authorization": f"Bearer {recruiter_token}"}
+    endorse_res = client.post(f"/api/skill-dna/{skill_id}/endorse", headers=recruiter_headers, json={
+        "rating": 5,
+        "comment": "Exceptional backend API design skills"
+    })
+    assert endorse_res.status_code == 200
+    assert endorse_res.json()["rating"] == 5
+
+

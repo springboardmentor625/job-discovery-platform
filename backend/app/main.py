@@ -149,6 +149,32 @@ class ATSReport(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
 
 
+class CandidateSkillDNA(Base):
+    __tablename__ = "candidate_skill_dna"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    category: Mapped[str] = mapped_column(String(50), default="Technical")  # Technical, Domain, Soft, Tooling
+    skill_name: Mapped[str] = mapped_column(String(100), index=True)
+    proficiency_level: Mapped[int] = mapped_column(Integer, default=3)  # 1 (Beginner) to 5 (Expert)
+    years_experience: Mapped[float] = mapped_column(Float, default=1.0)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    ai_confidence_score: Mapped[float] = mapped_column(Float, default=0.85)
+    endorsements_count: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+class SkillEndorsement(Base):
+    __tablename__ = "skill_endorsements"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    skill_dna_id: Mapped[int] = mapped_column(ForeignKey("candidate_skill_dna.id"), index=True)
+    endorser_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    comment: Mapped[str] = mapped_column(Text, default="")
+    rating: Mapped[int] = mapped_column(Integer, default=5)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc))
+
+
+Base.metadata.create_all(bind=engine)
+
 
 class RegisterIn(BaseModel):
     name: str = Field(min_length=2, max_length=120)
@@ -259,6 +285,48 @@ class ATSReportOut(BaseModel):
 class ATSWorkflowIn(BaseModel):
     job_id: int
     application_id: Optional[int] = None
+
+
+class SkillDNAIn(BaseModel):
+    category: str = Field(default="Technical", description="Category: Technical, Domain, Soft, Tooling")
+    skill_name: str = Field(min_length=1, max_length=100)
+    proficiency_level: int = Field(default=3, ge=1, le=5)
+    years_experience: float = Field(default=1.0, ge=0.0)
+
+
+class SkillDNAOut(BaseModel):
+    id: int
+    user_id: int
+    category: str
+    skill_name: str
+    proficiency_level: int
+    years_experience: float
+    verified: bool
+    ai_confidence_score: float
+    endorsements_count: int
+    created_at: datetime
+
+
+class SkillEndorsementIn(BaseModel):
+    rating: int = Field(default=5, ge=1, le=5)
+    comment: str = ""
+
+
+class SkillEndorsementOut(BaseModel):
+    id: int
+    skill_dna_id: int
+    endorser_id: int
+    comment: str
+    rating: int
+    created_at: datetime
+
+
+class SkillDNAProfileOut(BaseModel):
+    user_id: int
+    skills: list[SkillDNAOut]
+    radar_metrics: dict[str, float]
+    total_verified: int
+    total_skills: int
 
 
 
@@ -1025,4 +1093,122 @@ def get_ats_report(report_id: int, db: Session = Depends(db_session), user: User
     if not report:
         raise HTTPException(status_code=404, detail="ATS Report not found")
     return ats_report_out(db, report)
+
+
+def skill_dna_out(item: CandidateSkillDNA) -> SkillDNAOut:
+    return SkillDNAOut(
+        id=item.id,
+        user_id=item.user_id,
+        category=item.category,
+        skill_name=item.skill_name,
+        proficiency_level=item.proficiency_level,
+        years_experience=item.years_experience,
+        verified=item.verified,
+        ai_confidence_score=item.ai_confidence_score,
+        endorsements_count=item.endorsements_count,
+        created_at=item.created_at,
+    )
+
+
+def compute_skill_dna_profile(db: Session, user_id: int) -> SkillDNAProfileOut:
+    skills = db.scalars(select(CandidateSkillDNA).where(CandidateSkillDNA.user_id == user_id).order_by(CandidateSkillDNA.proficiency_level.desc())).all()
+    categories = ["Technical", "Domain", "Soft", "Tooling"]
+    radar = {cat: 0.0 for cat in categories}
+    counts = {cat: 0 for cat in categories}
+
+    for s in skills:
+        cat = s.category if s.category in radar else "Technical"
+        radar[cat] += s.proficiency_level * 20.0  # scale 1-5 to 20-100
+        counts[cat] += 1
+
+    for cat in categories:
+        if counts[cat] > 0:
+            radar[cat] = round(radar[cat] / counts[cat], 1)
+        else:
+            radar[cat] = 20.0  # default baseline
+
+    total_verified = sum(1 for s in skills if s.verified or s.endorsements_count > 0)
+    return SkillDNAProfileOut(
+        user_id=user_id,
+        skills=[skill_dna_out(s) for s in skills],
+        radar_metrics=radar,
+        total_verified=total_verified,
+        total_skills=len(skills),
+    )
+
+
+@app.get("/api/skill-dna", response_model=SkillDNAProfileOut)
+def get_my_skill_dna(db: Session = Depends(db_session), user: User = Depends(current_user)) -> SkillDNAProfileOut:
+    return compute_skill_dna_profile(db, user.id)
+
+
+@app.get("/api/candidates/{candidate_id}/skill-dna", response_model=SkillDNAProfileOut)
+def get_candidate_skill_dna(candidate_id: int, db: Session = Depends(db_session), user: User = Depends(current_user)) -> SkillDNAProfileOut:
+    candidate = db.get(User, candidate_id)
+    if not candidate:
+        raise HTTPException(status_code=404, detail="Candidate not found")
+    return compute_skill_dna_profile(db, candidate.id)
+
+
+@app.post("/api/skill-dna", response_model=SkillDNAOut)
+def create_or_update_skill_dna(payload: SkillDNAIn, db: Session = Depends(db_session), user: User = Depends(require_roles(Role.seeker))) -> SkillDNAOut:
+    existing = db.scalar(
+        select(CandidateSkillDNA).where(
+            CandidateSkillDNA.user_id == user.id,
+            func.lower(CandidateSkillDNA.skill_name) == payload.skill_name.strip().lower(),
+        )
+    )
+    if existing:
+        existing.category = payload.category
+        existing.proficiency_level = payload.proficiency_level
+        existing.years_experience = payload.years_experience
+        db.commit()
+        db.refresh(existing)
+        return skill_dna_out(existing)
+
+    item = CandidateSkillDNA(
+        user_id=user.id,
+        category=payload.category,
+        skill_name=payload.skill_name.strip(),
+        proficiency_level=payload.proficiency_level,
+        years_experience=payload.years_experience,
+        verified=payload.years_experience >= 2.0 or payload.proficiency_level >= 4,
+        ai_confidence_score=round(min(0.95, 0.70 + (payload.proficiency_level * 0.05)), 2),
+        endorsements_count=0,
+    )
+    db.add(item)
+    record_activity(db, user.id, "skill_dna_added", "skill_dna", None, {"skill": payload.skill_name})
+    db.commit()
+    db.refresh(item)
+    return skill_dna_out(item)
+
+
+@app.post("/api/skill-dna/{skill_id}/endorse", response_model=SkillEndorsementOut)
+def endorse_candidate_skill(skill_id: int, payload: SkillEndorsementIn, db: Session = Depends(db_session), user: User = Depends(current_user)) -> SkillEndorsementOut:
+    skill = db.get(CandidateSkillDNA, skill_id)
+    if not skill:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    if skill.user_id == user.id:
+        raise HTTPException(status_code=400, detail="You cannot endorse your own skill")
+
+    endorsement = SkillEndorsement(
+        skill_dna_id=skill.id,
+        endorser_id=user.id,
+        comment=payload.comment.strip(),
+        rating=payload.rating,
+    )
+    skill.endorsements_count += 1
+    skill.verified = True
+    db.add(endorsement)
+    record_activity(db, user.id, "skill_endorsed", "skill_dna", skill.id, {"rating": payload.rating})
+    db.commit()
+    db.refresh(endorsement)
+    return SkillEndorsementOut(
+        id=endorsement.id,
+        skill_dna_id=endorsement.skill_dna_id,
+        endorser_id=endorsement.endorser_id,
+        comment=endorsement.comment,
+        rating=endorsement.rating,
+        created_at=endorsement.created_at,
+    )
 
