@@ -216,3 +216,26 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Node & Frontend
+node_modules/
+dist/
+build/
+.npm
+*.log
+
+# Databases
+*.db
+*.sqlite
+*.sqlite3
+swipex.db
+test_swipex.db
+
+# Legacy Directories
+swipex-backend/
+swipex-frontend/
+
+# Secrets & Env
+.env
+.env.local
+.env.*.local
