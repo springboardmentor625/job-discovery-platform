@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User
+from .models import User,Resume,CandidateProfile
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -33,7 +33,7 @@ class RegisterSerializer(serializers.ModelSerializer):
             )
 
         return value
-        
+
     def create(self, validated_data):
         password = validated_data.pop("password")
 
@@ -95,3 +95,51 @@ class VerifyEmailSerializer(serializers.Serializer):
 
         data["user"] = user
         return data
+
+class ResumeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Resume
+        fields = [
+            "id",
+            "resume_file",
+            "extracted_text",
+            "skills",
+            "experience",
+            "education",
+            "uploaded_at",
+            "updated_at",
+        ]
+        read_only_fields = [
+            "id",
+            "extracted_text",
+            "skills",
+            "experience",
+            "education",
+            "uploaded_at",
+            "updated_at",
+        ]
+
+class CandidateProfileSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = CandidateProfile
+        fields = [
+            "id",
+            "profile_photo",
+            "headline",
+            "location",
+            "bio",
+            "career_goal",
+            "preferred_job_role",
+            "linkedin_url",
+            "github_url",
+            "portfolio_url",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
+        ]

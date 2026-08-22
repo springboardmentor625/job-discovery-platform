@@ -28,6 +28,8 @@ function Login({ onBackToRegister, onLoginSuccess }) {
       setMessage(response.data.message);
 
       console.log("Login successful:", response.data);
+  
+      localStorage.setItem("swipex_token", response.data.token);
 
       if (onLoginSuccess) {
         onLoginSuccess(response.data.user);

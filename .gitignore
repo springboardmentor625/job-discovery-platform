@@ -232,3 +232,6 @@ frontend/.vite/
 # Environment files
 frontend/.env
 frontend/.env.*
+
+backend/resumes/
+backend/profile_pictures/
