@@ -1,368 +1,204 @@
-\# SWIPEX – Job Discovery Platform
+# SWIPEX – Job Discovery Platform
 
+## Project Overview
 
+SWIPEX is a full-stack job discovery platform that helps candidates create their career profile, upload resumes, and discover suitable job opportunities.
 
-\## Project Overview
+The project uses React for the frontend and Django REST Framework for the backend.
 
+---
 
+## Technology Stack
 
-SWIPEX is a full-stack job discovery platform designed to help users discover career opportunities through a simple and user-friendly web application.
+- Frontend: React, Vite, JavaScript, HTML, CSS, Axios
+- Backend: Python, Django, Django REST Framework
+- Database: SQLite (development)
+- Tools: VS Code, Git, GitHub, Postman, Python Virtual Environment
 
+---
 
-
-The project is being developed using a React frontend and Django REST API backend.
-
-
-
-\---
-
-
-
-\## Technology Stack
-
-
-
-\### Frontend
-
-\- React
-
-\- Vite
-
-\- JavaScript
-
-\- HTML5
-
-\- CSS3
-
-\- Axios
-
-
-
-\### Backend
-
-\- Python
-
-\- Django
-
-\- Django REST Framework
-
-
-
-\### Database
-
-\- SQLite (current development setup)
-
-
-
-\### Tools
-
-\- VS Code
-
-\- Git \& GitHub
-
-\- npm
-
-\- Python Virtual Environment
-
-
-
-\---
-
-
-
-\## Project Structure
-
-
+## Project Structure
 
 ```text
-
 job-discovery-platform/
-
 │
-
 ├── frontend/
-
-│   ├── src/
-
-│   │   ├── App.jsx
-
-│   │   ├── App.css
-
-│   │   ├── Login.jsx
-
-│   │   ├── Dashboard.jsx
-
-│   │   ├── Dashboard.css
-
-│   │   └── VerifyEmail.jsx
-
-│   └── package.json
-
+│   └── src/
+│       ├── App.jsx
+│       ├── Login.jsx
+│       ├── Dashboard.jsx
+│       ├── Dashboard.css
+│       └── VerifyEmail.jsx
 │
-
 ├── backend/
-
 │   ├── config/
-
 │   ├── users/
-
 │   └── manage.py
-
 │
-
 └── docs/
 
-&#x20;   └── README.md
+Work Completed
+1. Candidate Authentication
 
+Implemented the complete candidate authentication workflow.
 
+Register
+   ↓
+Email Verification
+   ↓
+Login
+   ↓
+Dashboard
+Registration
 
-
-
-Work Completed So Far
-
-1\. Frontend Setup
-
-Created React + Vite frontend.
-
-Designed the initial SWIPEX user interface.
-
-Added responsive authentication pages.
-
-Improved the overall UI with modern layouts, rounded cards, gradients, icons, buttons and form styling.
-
-2\. User Registration
-
-
-
-Implemented a complete registration form with:
-
-
+Candidates can register using:
 
 Full Name
-
 Mobile Number
-
 Email
-
 Password
 
-Form validation
-
-Loading state
-
-Success and error messages
-
-
-
-The frontend communicates with the backend through:
-
-
+The React frontend sends registration data to Django through:
 
 POST /api/register/
 
-3\. User Login
-
-
-
-Implemented the login functionality using:
-
-
-
-POST /api/login/
-
-
-
-The login page includes:
-
-
-
-Email and password fields
-
-Form validation
-
-Loading state
-
-Error handling
-
-Successful login handling
-
-Navigation to the Dashboard
-
-4\. Email Verification
-
-
-
-Implemented an email verification step after registration.
-
-
-
-Current flow:
-
-
-
-Register
-
-&#x20;  ↓
+The backend uses a custom Django User model to store candidate information.
 
 Email Verification
 
-&#x20;  ↓
+After registration, an OTP is sent to the candidate's email.
+
+The candidate verifies the email using the OTP before continuing to the login process.
+
+The email sending is handled using the project's configured email service.
 
 Login
 
-&#x20;  ↓
-
-Dashboard
-
-
-
-The backend includes OTP and email verification fields required for this workflow.
-
-
-
-5\. Dashboard
-
-
-
-Implemented a basic user Dashboard.
-
-
-
-After successful login:
-
-
-
-User information is passed to the Dashboard.
-
-The Dashboard is displayed.
-
-Logout functionality is available.
-
-Logout returns the user to the authentication flow.
-
-6\. Django Backend
-
-
-
-Created the Django backend with:
-
-
-
-Django project configuration
-
-users application
-
-Custom User model
-
-Serializers
-
-API views
-
-API URL configuration
-
-Django migrations
-
-Authentication-related functionality
-
-7\. Frontend–Backend Integration
-
-
-
-Connected the React frontend with the Django backend using Axios.
-
-
-
-Current development servers:
-
-
-
-Frontend: http://localhost:5173/
-
-Backend:  http://127.0.0.1:8000/
-
-
-
-Authentication APIs:
-
-
-
-POST /api/register/
+Candidates log in using their email and password through:
 
 POST /api/login/
 
-8\. Database \& Migrations
+After successful authentication, the candidate is taken to the Dashboard.
 
+2. Candidate Dashboard
 
+Created the main SWIPEX candidate dashboard using React.
 
-Implemented the initial database structure using Django migrations.
+The dashboard currently provides navigation for:
 
+Dashboard
+Find Jobs
+My Resume
+ATS Analysis
+AI Recommendations
+My Applications
+Saved Jobs
+Profile
 
+The dashboard also displays candidate information and provides logout functionality.
 
-Current migrations include changes related to:
+Candidate Profile Workflow
+3. Resume Upload and Parsing
 
+Implemented resume upload as part of the candidate workflow.
 
+Candidates can upload PDF or DOCX resumes.
 
-User model
+The Django backend:
 
-Email verification
+Receives the uploaded resume.
+Extracts the text from the resume.
+Processes the extracted content.
+Identifies important candidate information.
+Stores the extracted information in the database.
 
-OTP
+Currently extracted information includes:
 
-Phone number
+Skills
+Experience
+Education
+Complete extracted resume text
 
+The extracted information is displayed in the My Resume section of the dashboard.
 
+4. Resume Database
 
-Migration files are maintained in the repository so the database structure can be recreated consistently.
+Created a dedicated Resume model connected to each candidate.
 
+The model stores:
 
+Resume file
+Extracted text
+Skills
+Experience
+Education
+Upload/update timestamps
 
-9\. GitHub \& Version Control
+This allows SWIPEX to reuse the candidate's resume information later for features such as ATS analysis and job recommendations.
 
+5. Professional Candidate Profile
 
+Created a separate CandidateProfile model for information that is not necessarily extracted from the resume.
+
+The profile contains:
+
+Profile photo
+Professional headline
+Location
+Bio
+Career goal
+Preferred job role
+LinkedIn
+GitHub
+Portfolio
+
+Candidates can view and edit this information directly from the Dashboard.
+
+Profile photos are uploaded through the Django backend and stored as media files.
+
+Frontend–Backend Integration
+
+React communicates with Django REST APIs using Axios.
+
+Current development servers:
+
+Frontend: http://localhost:5173/
+Backend:  http://127.0.0.1:8000/
+
+The frontend sends authenticated requests to the backend and displays the returned candidate data dynamically.
+
+Database & Version Control
+
+Django migrations are used to maintain the database structure.
+
+Current important models include:
+
+User
+Resume
+CandidateProfile
 
 The project is maintained using Git and GitHub.
 
-
-
 Current development branch:
-
-
 
 bhanu-teja-rajana
 
-
-
-The completed frontend and backend work has been committed and pushed to the GitHub repository.
-
-
+The completed candidate authentication, resume and profile workflow has been committed and pushed to the branch.
 
 Current Status
-
 Completed
-
-&#x20;React + Vite frontend
-
-&#x20;Django backend
-
-&#x20;Custom user model
-
-&#x20;Registration
-
-&#x20;Login
-
-&#x20;Email verification workflow
-
-&#x20;Dashboard
-
-&#x20;Logout
-
-&#x20;Axios API integration
-
-&#x20;Database migrations
-
-&#x20;Authentication UI design
-
-&#x20;Error and loading handling
-
-&#x20;GitHub integration
-
+Candidate registration
+Email OTP verification
+Candidate login
+Dashboard
+Logout
+Resume upload
+Resume text extraction
+Skills extraction
+Experience extraction
+Education extraction
+Resume database storage
+Candidate professional profile
+Profile photo upload
+Profile editing
+GitHub version control
