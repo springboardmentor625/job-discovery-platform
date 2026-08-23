@@ -1,15 +1,66 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
+import Toast from "../components/Toast";
+
 
 function SavedJobs() {
 
   const navigate = useNavigate();
 
+
+  // ==========================================
+  // STATE
+  // ==========================================
+
   const [savedJobs, setSavedJobs] = useState([]);
+
   const [loading, setLoading] = useState(true);
+
   const [error, setError] = useState("");
+
   const [removingId, setRemovingId] = useState(null);
+
+
+  // ==========================================
+  // SWIPEX TOAST
+  // ==========================================
+
+  const [toast, setToast] = useState({
+    message: "",
+    type: "success"
+  });
+
+
+  // ==========================================
+  // SHOW TOAST
+  // ==========================================
+
+  const showToast = (
+    message,
+    type = "success"
+  ) => {
+
+    setToast({
+      message,
+      type
+    });
+
+  };
+
+
+  // ==========================================
+  // CLOSE TOAST
+  // ==========================================
+
+  const closeToast = () => {
+
+    setToast({
+      message: "",
+      type: "success"
+    });
+
+  };
 
 
   // ==========================================
@@ -32,7 +83,15 @@ function SavedJobs() {
 
       } catch (err) {
 
-        console.error(err);
+        console.error(
+          "SwipeX saved jobs loading error:",
+          err
+        );
+
+
+        // ======================================
+        // AUTH ERROR
+        // ======================================
 
         if (
           err.response?.status === 401
@@ -53,7 +112,9 @@ function SavedJobs() {
           navigate("/login");
 
           return;
+
         }
+
 
         setError(
           err.response?.data?.detail ||
@@ -78,26 +139,68 @@ function SavedJobs() {
   // REMOVE SAVED JOB
   // ==========================================
 
-  const handleRemove = async (jobId) => {
+  const handleRemove = async (
+    jobId
+  ) => {
 
-    setRemovingId(jobId);
+    if (removingId !== null) {
+      return;
+    }
+
+
+    setRemovingId(
+      jobId
+    );
+
+
+    setError("");
+
 
     try {
+
+      // ======================================
+      // DELETE FROM BACKEND
+      // ======================================
 
       await api.delete(
         `/api/saved-jobs/${jobId}`
       );
 
+
+      // ======================================
+      // UPDATE FRONTEND
+      // ======================================
+
       setSavedJobs(
         previousJobs =>
           previousJobs.filter(
-            job => job.job_id !== jobId
+            job =>
+              job.job_id !== jobId
           )
       );
 
+
+      // ======================================
+      // SWIPEX SUCCESS NOTIFICATION
+      // ======================================
+
+      showToast(
+        "Job removed from saved jobs.",
+        "info"
+      );
+
+
     } catch (err) {
 
-      console.error(err);
+      console.error(
+        "SwipeX remove saved job error:",
+        err
+      );
+
+
+      // ======================================
+      // AUTH ERROR
+      // ======================================
 
       if (
         err.response?.status === 401
@@ -118,16 +221,38 @@ function SavedJobs() {
         navigate("/login");
 
         return;
+
       }
 
-      setError(
+
+      // ======================================
+      // ERROR MESSAGE
+      // ======================================
+
+      const errorMessage =
         err.response?.data?.detail ||
-        "Unable to remove saved job."
+        "Unable to remove saved job.";
+
+
+      setError(
+        errorMessage
+      );
+
+
+      // ======================================
+      // SWIPEX ERROR NOTIFICATION
+      // ======================================
+
+      showToast(
+        errorMessage,
+        "error"
       );
 
     } finally {
 
-      setRemovingId(null);
+      setRemovingId(
+        null
+      );
 
     }
 
@@ -161,6 +286,18 @@ function SavedJobs() {
 
     <div className="saved-jobs-page">
 
+
+      {/* =====================================
+          SWIPEX TOAST
+      ====================================== */}
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={closeToast}
+      />
+
+
       <div className="saved-jobs-container">
 
 
@@ -170,6 +307,7 @@ function SavedJobs() {
 
         <div className="saved-jobs-header">
 
+
           <button
             type="button"
             className="back-button"
@@ -177,22 +315,30 @@ function SavedJobs() {
               navigate("/candidate")
             }
           >
+
             ← Back to Dashboard
+
           </button>
 
 
           <p className="section-label">
+
             CANDIDATE WORKSPACE
+
           </p>
 
 
           <h1>
+
             Saved Jobs
+
           </h1>
 
 
           <p>
+
             Jobs you've saved for later.
+
           </p>
 
         </div>
@@ -205,7 +351,9 @@ function SavedJobs() {
         {error && (
 
           <div className="login-error">
+
             {error}
+
           </div>
 
         )}
@@ -220,19 +368,29 @@ function SavedJobs() {
 
             <div className="empty-saved-jobs">
 
+
               <div className="empty-saved-icon">
+
                 ☆
+
               </div>
 
+
               <h2>
+
                 No saved jobs yet
+
               </h2>
 
+
               <p>
+
                 Save interesting jobs while
                 discovering opportunities and
                 come back to them later.
+
               </p>
+
 
               <button
                 type="button"
@@ -243,8 +401,11 @@ function SavedJobs() {
                   )
                 }
               >
+
                 Discover Jobs
+
               </button>
+
 
             </div>
 
@@ -259,175 +420,251 @@ function SavedJobs() {
 
           <div className="saved-jobs-grid">
 
-            {savedJobs.map((job) => (
 
-              <div
-                className="saved-job-card"
-                key={job.saved_job_id}
-              >
+            {savedJobs.map(
+              (job) => (
 
-
-                {/* TOP */}
-                <div className="saved-job-top">
-
-                  <div className="saved-job-icon">
-                    💼
-                  </div>
-
-                  <span className="saved-badge">
-                    ★ Saved
-                  </span>
-
-                </div>
+                <div
+                  className="saved-job-card"
+                  key={
+                    job.saved_job_id
+                  }
+                >
 
 
-                {/* JOB TITLE */}
+                  {/* ==========================
+                      TOP
+                  =========================== */}
 
-                <h2>
-                  {job.title ||
-                    "Untitled Position"}
-                </h2>
-
-
-                {/* COMPANY */}
-
-                <h3>
-                  {job.company ||
-                    "Company not specified"}
-                </h3>
+                  <div className="saved-job-top">
 
 
-                {/* DETAILS */}
+                    <div className="saved-job-icon">
 
-                <div className="saved-job-details">
+                      💼
 
-                  <span>
-                    📍{" "}
-                    {job.location ||
-                      "Location not specified"}
-                  </span>
-
-                  <span>
-                    💼{" "}
-                    {job.employment_type ||
-                      "Not specified"}
-                  </span>
-
-                  <span>
-                    💰{" "}
-                    {job.salary ||
-                      "Salary not specified"}
-                  </span>
-
-                </div>
+                    </div>
 
 
-                {/* SKILLS */}
+                    <span className="saved-badge">
 
-                {job.skills && (
+                      ★ Saved
 
-                  <div className="saved-job-skills">
+                    </span>
 
-                    {job.skills
-                      .split(",")
-                      .map(skill =>
-                        skill.trim()
-                      )
-                      .filter(Boolean)
-                      .map(skill => (
-
-                        <span
-                          key={skill}
-                          className="saved-job-skill"
-                        >
-                          {skill}
-                        </span>
-
-                      ))}
 
                   </div>
 
-                )}
+
+                  {/* ==========================
+                      JOB TITLE
+                  =========================== */}
+
+                  <h2>
+
+                    {job.title ||
+                      "Untitled Position"}
+
+                  </h2>
 
 
-                {/* DESCRIPTION */}
+                  {/* ==========================
+                      COMPANY
+                  =========================== */}
 
-                <p className="saved-job-description">
+                  <h3>
 
-                  {job.description
-                    ? job.description.length > 180
-                      ? `${job.description.substring(
-                          0,
-                          180
-                        )}...`
-                      : job.description
-                    : "No description available."}
+                    {job.company ||
+                      "Company not specified"}
 
-                </p>
+                  </h3>
 
 
-                {/* ACTIONS */}
+                  {/* ==========================
+                      DETAILS
+                  =========================== */}
 
-                <div className="saved-job-actions">
-
-                  <button
-                    type="button"
-                    className="view-saved-job-button"
-                    onClick={() =>
-                      navigate(
-                        `/candidate/jobs/${job.job_id}`
-                      )
-                    }
-                  >
-                    View Job →
-                  </button>
+                  <div className="saved-job-details">
 
 
-                  <button
-                    type="button"
-                    className="remove-saved-job-button"
-                    onClick={() =>
-                      handleRemove(
+                    <span>
+
+                      📍{" "}
+
+                      {job.location ||
+                        "Location not specified"}
+
+                    </span>
+
+
+                    <span>
+
+                      💼{" "}
+
+                      {job.employment_type ||
+                        "Not specified"}
+
+                    </span>
+
+
+                    <span>
+
+                      💰{" "}
+
+                      {job.salary ||
+                        "Salary not specified"}
+
+                    </span>
+
+
+                  </div>
+
+
+                  {/* ==========================
+                      SKILLS
+                  =========================== */}
+
+                  {job.skills && (
+
+                    <div className="saved-job-skills">
+
+
+                      {job.skills
+                        .split(",")
+                        .map(
+                          skill =>
+                            skill.trim()
+                        )
+                        .filter(Boolean)
+                        .map(
+                          skill => (
+
+                            <span
+                              key={skill}
+                              className="saved-job-skill"
+                            >
+
+                              {skill}
+
+                            </span>
+
+                          )
+                        )}
+
+
+                    </div>
+
+                  )}
+
+
+                  {/* ==========================
+                      DESCRIPTION
+                  =========================== */}
+
+                  <p className="saved-job-description">
+
+
+                    {job.description
+
+                      ? job.description.length > 180
+
+                        ? `${job.description.substring(
+                            0,
+                            180
+                          )}...`
+
+                        : job.description
+
+                      : "No description available."}
+
+
+                  </p>
+
+
+                  {/* ==========================
+                      ACTIONS
+                  =========================== */}
+
+                  <div className="saved-job-actions">
+
+
+                    {/* VIEW JOB */}
+
+                    <button
+                      type="button"
+                      className="view-saved-job-button"
+                      onClick={() =>
+                        navigate(
+                          `/candidate/jobs/${job.job_id}`
+                        )
+                      }
+                    >
+
+                      View Job →
+
+                    </button>
+
+
+                    {/* REMOVE */}
+
+                    <button
+                      type="button"
+                      className="remove-saved-job-button"
+                      onClick={() =>
+                        handleRemove(
+                          job.job_id
+                        )
+                      }
+                      disabled={
+                        removingId ===
                         job.job_id
-                      )
-                    }
-                    disabled={
-                      removingId === job.job_id
-                    }
-                  >
+                      }
+                    >
 
-                    {removingId === job.job_id
-                      ? "Removing..."
-                      : "Remove"}
+                      {removingId ===
+                      job.job_id
 
-                  </button>
+                        ? "Removing..."
+
+                        : "Remove"}
+
+                    </button>
+
+
+                  </div>
+
+
+                  {/* ==========================
+                      SAVED DATE
+                  =========================== */}
+
+                  <small className="saved-job-date">
+
+                    Saved on{" "}
+
+                    {job.saved_at
+
+                      ? new Date(
+                          job.saved_at
+                        ).toLocaleDateString(
+                          "en-IN"
+                        )
+
+                      : "N/A"}
+
+                  </small>
+
 
                 </div>
 
+              )
+            )}
 
-                {/* SAVED DATE */}
-
-                <small className="saved-job-date">
-
-                  Saved on{" "}
-
-                  {job.saved_at
-                    ? new Date(
-                        job.saved_at
-                      ).toLocaleDateString(
-                        "en-IN"
-                      )
-                    : "N/A"}
-
-                </small>
-
-              </div>
-
-            ))}
 
           </div>
 
         )}
+
 
       </div>
 
@@ -436,5 +673,6 @@ function SavedJobs() {
   );
 
 }
+
 
 export default SavedJobs;

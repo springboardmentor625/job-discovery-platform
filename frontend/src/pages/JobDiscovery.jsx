@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
+import Toast from "../components/Toast";
 
 function JobDiscovery() {
 
@@ -21,6 +22,46 @@ function JobDiscovery() {
 
   const [saveError, setSaveError] =
     useState("");
+
+  // ==========================================
+  // SWIPEX TOAST NOTIFICATION
+  // ==========================================
+
+  const [toast, setToast] = useState({
+    message: "",
+    type: "success"
+  });
+
+
+  // ==========================================
+  // SHOW TOAST
+  // ==========================================
+
+  const showToast = (
+    message,
+    type = "success"
+  ) => {
+
+    setToast({
+      message,
+      type
+    });
+
+  };
+
+
+  // ==========================================
+  // CLOSE TOAST
+  // ==========================================
+
+  const closeToast = () => {
+
+    setToast({
+      message: "",
+      type: "success"
+    });
+
+  };
 
 
   // ==========================================
@@ -252,6 +293,27 @@ function JobDiscovery() {
 
 
       // ======================================
+      // SHOW NOTIFICATION
+      // ======================================
+
+      if (action === "like") {
+
+        showToast(
+          "Job liked — added to your matches.",
+          "success"
+        );
+
+      } else {
+
+        showToast(
+          "Job rejected — we won't show it again.",
+          "info"
+        );
+
+      }
+
+
+      // ======================================
       // REMOVE FROM DISCOVER JOBS
       // ======================================
 
@@ -297,6 +359,13 @@ function JobDiscovery() {
         return;
 
       }
+
+
+      showToast(
+        err.response?.data?.detail ||
+        "Unable to update this job.",
+        "error"
+      );
 
 
       console.error(
@@ -383,6 +452,16 @@ function JobDiscovery() {
         );
 
 
+        // ====================================
+        // REMOVE NOTIFICATION
+        // ====================================
+
+        showToast(
+          "Job removed from saved jobs.",
+          "info"
+        );
+
+
         console.log(
           "SwipeX job removed from saved jobs"
         );
@@ -423,6 +502,16 @@ function JobDiscovery() {
             return updated;
 
           }
+        );
+
+
+        // ====================================
+        // SAVE NOTIFICATION
+        // ====================================
+
+        showToast(
+          "Job saved successfully.",
+          "success"
         );
 
 
@@ -477,22 +566,27 @@ function JobDiscovery() {
       // LOCAL SAVE ERROR
       // ======================================
 
-      setSaveError(
+      const errorMessage =
         err.response?.data?.detail ||
-        "Unable to save the job."
+        "Unable to save the job.";
+
+
+      setSaveError(
+        errorMessage
+      );
+
+
+      showToast(
+        errorMessage,
+        "error"
       );
 
 
       // IMPORTANT:
-      // We DON'T call setError() here.
+      // We don't call setError().
       //
-      // Otherwise the entire Discover Jobs
-      // page becomes:
-      //
-      // Something went wrong
-      // Update Profile
-      //
-      // which is incorrect for a Save error.
+      // Save errors should NOT replace
+      // the complete Discover Jobs page.
 
     } finally {
 
@@ -549,6 +643,12 @@ function JobDiscovery() {
 
       <div className="job-discovery-modern">
 
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={closeToast}
+        />
+
         <div className="jobs-empty-card">
 
           <div className="empty-icon">
@@ -596,6 +696,12 @@ function JobDiscovery() {
     return (
 
       <div className="job-discovery-modern">
+
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={closeToast}
+        />
 
         <div className="jobs-empty-card">
 
@@ -949,7 +1055,7 @@ function JobDiscovery() {
 
         {/* ==================================
             ACTIONS
-        ================================== */}
+        =================================== */}
 
         <div className="swipex-actions">
 
@@ -1059,6 +1165,7 @@ function JobDiscovery() {
           >
 
             🔖{" "}
+
             {isSaved
               ? "Saved"
               : "Save"}
@@ -1076,12 +1183,15 @@ function JobDiscovery() {
             SAVE ERROR
         ================================== */}
 
-        {isLoading &&
-          saveError && (
-            <div className="swipex-save-error">
-              {saveError}
-            </div>
-          )}
+        {saveError && isLoading && (
+
+          <div className="swipex-save-error">
+
+            {saveError}
+
+          </div>
+
+        )}
 
       </div>
 
@@ -1097,6 +1207,17 @@ function JobDiscovery() {
   return (
 
     <div className="job-discovery-modern">
+
+
+      {/* ======================================
+          SWIPEX TOAST
+      ======================================= */}
+
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={closeToast}
+      />
 
 
       {/* ======================================

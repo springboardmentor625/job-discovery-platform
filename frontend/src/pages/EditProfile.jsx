@@ -1,6 +1,13 @@
-import { useEffect, useState } from "react";
+import {
+  useEffect,
+  useState,
+  useRef,
+} from "react";
+
 import { useNavigate } from "react-router-dom";
+
 import api from "../api";
+
 
 // ==========================================
 // EXPERIENCE LEVELS
@@ -17,6 +24,7 @@ const EXPERIENCE_LEVELS = [
   "Manager",
   "Experienced Professional",
 ];
+
 
 // ==========================================
 // AVAILABLE SKILLS
@@ -54,14 +62,25 @@ const AVAILABLE_SKILLS = [
   "Other",
 ];
 
+
 function EditProfile() {
+
   const navigate = useNavigate();
+
+
+  // ==========================================
+  // SKILL AREA REF
+  // ==========================================
+
+  const skillAreaRef = useRef(null);
+
 
   // ==========================================
   // FORM
   // ==========================================
 
   const [form, setForm] = useState({
+
     headline: "",
     bio: "",
     location: "",
@@ -71,83 +90,171 @@ function EditProfile() {
     preferred_role: "",
     preferred_location: "",
     expected_salary: "",
+
   });
+
 
   // ==========================================
   // SKILLS
   // ==========================================
 
-  const [selectedSkills, setSelectedSkills] = useState([]);
+  const [selectedSkills, setSelectedSkills] =
+    useState([]);
 
-  const [skillSearch, setSkillSearch] = useState("");
+
+  const [skillSearch, setSkillSearch] =
+    useState("");
+
 
   const [skillDropdownOpen, setSkillDropdownOpen] =
     useState(false);
 
-  const [customSkill, setCustomSkill] = useState("");
+
+  const [customSkill, setCustomSkill] =
+    useState("");
+
 
   const [showCustomSkill, setShowCustomSkill] =
     useState(false);
+
 
   // ==========================================
   // OTHER STATES
   // ==========================================
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
-  const [saving, setSaving] = useState(false);
 
-  const [message, setMessage] = useState("");
+  const [saving, setSaving] =
+    useState(false);
 
-  const [error, setError] = useState("");
+
+  const [message, setMessage] =
+    useState("");
+
+
+  const [error, setError] =
+    useState("");
+
+
+  // ==========================================
+  // CLOSE SKILL AREA WHEN CLICKING OUTSIDE
+  // ==========================================
+
+  useEffect(() => {
+
+    const handleOutsideClick = (event) => {
+
+      if (
+        skillAreaRef.current &&
+        !skillAreaRef.current.contains(
+          event.target
+        )
+      ) {
+
+        setSkillDropdownOpen(false);
+
+        setShowCustomSkill(false);
+
+        setSkillSearch("");
+
+      }
+
+    };
+
+
+    document.addEventListener(
+      "mousedown",
+      handleOutsideClick
+    );
+
+
+    return () => {
+
+      document.removeEventListener(
+        "mousedown",
+        handleOutsideClick
+      );
+
+    };
+
+  }, []);
+
 
   // ==========================================
   // LOAD EXISTING PROFILE
   // ==========================================
 
   useEffect(() => {
+
     const loadProfile = async () => {
+
       try {
+
         const response = await api.get(
           "/api/candidate/profile"
         );
 
+
         const profile = response.data;
+
 
         // --------------------------------------
         // Load saved skills
         // --------------------------------------
 
-        const existingSkills = profile.skills
-          ? profile.skills
-              .split(",")
-              .map((skill) => skill.trim())
-              .filter(Boolean)
-          : [];
+        const existingSkills =
+          profile.skills
+
+            ? profile.skills
+                .split(",")
+                .map(
+                  (skill) =>
+                    skill.trim()
+                )
+                .filter(Boolean)
+
+            : [];
+
 
         // Never store "Other" as a skill
-        const cleanedSkills = existingSkills.filter(
-          (skill) => skill !== "Other"
+
+        const cleanedSkills =
+          existingSkills.filter(
+            (skill) =>
+              skill !== "Other"
+          );
+
+
+        setSelectedSkills(
+          cleanedSkills
         );
 
-        setSelectedSkills(cleanedSkills);
 
         // --------------------------------------
         // Load form
         // --------------------------------------
 
         setForm({
-          headline: profile.headline || "",
 
-          bio: profile.bio || "",
+          headline:
+            profile.headline || "",
 
-          location: profile.location || "",
+          bio:
+            profile.bio || "",
 
-          education: profile.education || "",
+          location:
+            profile.location || "",
 
-          skills: cleanedSkills.join(", "),
+          education:
+            profile.education || "",
 
-          experience: profile.experience || "",
+          skills:
+            cleanedSkills.join(", "),
+
+          experience:
+            profile.experience || "",
 
           preferred_role:
             profile.preferred_role || "",
@@ -157,59 +264,91 @@ function EditProfile() {
 
           expected_salary:
             profile.expected_salary ?? "",
+
         });
 
       } catch (err) {
+
         console.error(
           "PROFILE LOAD ERROR:",
           err.response?.data || err
         );
 
+
         // --------------------------------------
         // Unauthorized
         // --------------------------------------
 
-        if (err.response?.status === 401) {
-          localStorage.removeItem("access_token");
+        if (
+          err.response?.status === 401
+        ) {
+
+          localStorage.removeItem(
+            "access_token"
+          );
 
           navigate("/login");
 
           return;
+
         }
+
 
         // --------------------------------------
         // 404 = profile not created yet
         // --------------------------------------
 
-        if (err.response?.status !== 404) {
-          setError("Unable to load profile.");
+        if (
+          err.response?.status !== 404
+        ) {
+
+          setError(
+            "Unable to load profile."
+          );
+
         }
 
       } finally {
+
         setLoading(false);
+
       }
+
     };
 
+
     loadProfile();
+
   }, [navigate]);
+
 
   // ==========================================
   // NORMAL INPUT CHANGE
   // ==========================================
 
   const handleChange = (e) => {
+
     const {
       name,
       value,
     } = e.target;
 
-    setForm((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
+
+    setForm(
+      (previous) => ({
+
+        ...previous,
+
+        [name]: value,
+
+      })
+    );
+
 
     setError("");
+
   };
+
 
   // ==========================================
   // CHECK CUSTOM SKILL
@@ -218,19 +357,24 @@ function EditProfile() {
   const hasCustomSkill =
     selectedSkills.some(
       (skill) =>
-        !AVAILABLE_SKILLS.includes(skill)
+        !AVAILABLE_SKILLS.includes(
+          skill
+        )
     );
+
 
   // ==========================================
   // ADD PREDEFINED SKILL
   // ==========================================
 
   const addSkill = (skill) => {
+
     // ----------------------------------------
     // OTHER
     // ----------------------------------------
 
     if (skill === "Other") {
+
       setShowCustomSkill(true);
 
       setSkillDropdownOpen(false);
@@ -240,37 +384,63 @@ function EditProfile() {
       setError("");
 
       return;
+
     }
+
 
     // ----------------------------------------
     // NORMAL SKILL
     // ----------------------------------------
 
-    if (!selectedSkills.includes(skill)) {
-      setSelectedSkills((previous) => [
-        ...previous,
-        skill,
-      ]);
+    if (
+      !selectedSkills.includes(
+        skill
+      )
+    ) {
+
+      setSelectedSkills(
+        (previous) => [
+
+          ...previous,
+
+          skill,
+
+        ]
+      );
+
     }
+
+
+    // ----------------------------------------
+    // CLOSE DROPDOWN
+    // ----------------------------------------
 
     setSkillSearch("");
 
     setSkillDropdownOpen(false);
 
     setError("");
+
   };
+
 
   // ==========================================
   // REMOVE SKILL
   // ==========================================
 
-  const removeSkill = (skillToRemove) => {
-    setSelectedSkills((previous) =>
-      previous.filter(
-        (skill) =>
-          skill !== skillToRemove
-      )
+  const removeSkill = (
+    skillToRemove
+  ) => {
+
+    setSelectedSkills(
+      (previous) =>
+        previous.filter(
+          (skill) =>
+            skill !==
+            skillToRemove
+        )
     );
+
 
     // If custom skill was removed,
     // Other can be selected again.
@@ -280,69 +450,108 @@ function EditProfile() {
         skillToRemove
       )
     ) {
+
       setShowCustomSkill(false);
+
     }
 
+
     setError("");
+
   };
+
 
   // ==========================================
   // ADD CUSTOM SKILL
   // ==========================================
 
   const addCustomSkill = () => {
-    const value = customSkill.trim();
+
+    const value =
+      customSkill.trim();
+
 
     // ----------------------------------------
     // Empty validation
     // ----------------------------------------
 
     if (!value) {
-      setError("Please enter a skill.");
+
+      setError(
+        "Please enter a skill."
+      );
 
       return;
+
     }
+
 
     // ----------------------------------------
     // Allow comma-separated skills
     // ----------------------------------------
 
-    const skillsToAdd = value
-      .split(",")
-      .map((skill) => skill.trim())
-      .filter(Boolean);
+    const skillsToAdd =
+      value
+        .split(",")
+        .map(
+          (skill) =>
+            skill.trim()
+        )
+        .filter(Boolean);
 
-    let addedAtLeastOne = false;
 
-    setSelectedSkills((previous) => {
-      const updated = [...previous];
+    let addedAtLeastOne =
+      false;
 
-      skillsToAdd.forEach((skill) => {
-        const alreadyExists = updated.some(
-          (existingSkill) =>
-            existingSkill.toLowerCase() ===
-            skill.toLowerCase()
+
+    setSelectedSkills(
+      (previous) => {
+
+        const updated =
+          [...previous];
+
+
+        skillsToAdd.forEach(
+          (skill) => {
+
+            const alreadyExists =
+              updated.some(
+                (existingSkill) =>
+                  existingSkill
+                    .toLowerCase() ===
+                  skill.toLowerCase()
+              );
+
+
+            if (
+              !alreadyExists &&
+              skill.toLowerCase() !==
+                "other"
+            ) {
+
+              updated.push(skill);
+
+              addedAtLeastOne =
+                true;
+
+            }
+
+          }
         );
 
-        if (
-          !alreadyExists &&
-          skill.toLowerCase() !== "other"
-        ) {
-          updated.push(skill);
 
-          addedAtLeastOne = true;
-        }
-      });
+        return updated;
 
-      return updated;
-    });
+      }
+    );
+
 
     // ----------------------------------------
-    // If skill was successfully added
-    // hide Other input
+    // CLOSE CUSTOM SKILL AREA
     // ----------------------------------------
 
     if (addedAtLeastOne) {
+
       setCustomSkill("");
 
       setShowCustomSkill(false);
@@ -352,63 +561,100 @@ function EditProfile() {
       setSkillSearch("");
 
       setError("");
+
     }
+
   };
+
 
   // ==========================================
   // CUSTOM SKILL KEYBOARD
   // ==========================================
 
-  const handleCustomSkillKeyDown = (e) => {
-    if (e.key === "Enter") {
+  const handleCustomSkillKeyDown = (
+    e
+  ) => {
+
+    if (
+      e.key === "Enter"
+    ) {
+
       e.preventDefault();
 
       addCustomSkill();
+
     }
+
   };
+
 
   // ==========================================
   // FILTER SKILLS
   // ==========================================
 
   const filteredSkills =
-    AVAILABLE_SKILLS.filter((skill) => {
-      // Hide already selected skills
-      if (selectedSkills.includes(skill)) {
-        return false;
-      }
+    AVAILABLE_SKILLS.filter(
+      (skill) => {
 
-      // Hide Other after custom skill
-      // has already been added
-      if (
-        skill === "Other" &&
-        hasCustomSkill
-      ) {
-        return false;
-      }
+        // Hide already selected skills
 
-      // Search
-      if (
-        skillSearch.trim() === ""
-      ) {
-        return true;
-      }
+        if (
+          selectedSkills.includes(
+            skill
+          )
+        ) {
 
-      return skill
-        .toLowerCase()
-        .includes(
-          skillSearch
-            .toLowerCase()
-            .trim()
-        );
-    });
+          return false;
+
+        }
+
+
+        // Hide Other after custom skill
+        // has already been added
+
+        if (
+          skill === "Other" &&
+          hasCustomSkill
+        ) {
+
+          return false;
+
+        }
+
+
+        // Search
+
+        if (
+          skillSearch.trim() === ""
+        ) {
+
+          return true;
+
+        }
+
+
+        return skill
+          .toLowerCase()
+          .includes(
+            skillSearch
+              .toLowerCase()
+              .trim()
+          );
+
+      }
+    );
+
 
   // ==========================================
   // SUBMIT
   // ==========================================
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (
+    e
+  ) => {
+
     e.preventDefault();
+
 
     setSaving(true);
 
@@ -416,11 +662,15 @@ function EditProfile() {
 
     setError("");
 
+
     // ========================================
     // EXPERIENCE VALIDATION
     // ========================================
 
-    if (!form.experience) {
+    if (
+      !form.experience
+    ) {
+
       setError(
         "Please select your experience level."
       );
@@ -428,20 +678,25 @@ function EditProfile() {
       setSaving(false);
 
       return;
+
     }
+
 
     // ========================================
     // SALARY VALIDATION
     // ========================================
 
-    const salary = Number(
-      form.expected_salary
-    );
+    const salary =
+      Number(
+        form.expected_salary
+      );
+
 
     if (
       !form.expected_salary ||
       Number.isNaN(salary)
     ) {
+
       setError(
         "Please enter your expected salary."
       );
@@ -449,9 +704,14 @@ function EditProfile() {
       setSaving(false);
 
       return;
+
     }
 
-    if (salary <= 10000) {
+
+    if (
+      salary <= 10000
+    ) {
+
       setError(
         "Expected salary must be more than ₹10,000."
       );
@@ -459,13 +719,18 @@ function EditProfile() {
       setSaving(false);
 
       return;
+
     }
+
 
     // ========================================
     // SKILL VALIDATION
     // ========================================
 
-    if (selectedSkills.length === 0) {
+    if (
+      selectedSkills.length === 0
+    ) {
+
       setError(
         "Please select at least one skill."
       );
@@ -473,14 +738,18 @@ function EditProfile() {
       setSaving(false);
 
       return;
+
     }
 
+
     try {
+
       // --------------------------------------
       // Prepare data
       // --------------------------------------
 
       const profileData = {
+
         headline:
           form.headline.trim(),
 
@@ -507,52 +776,71 @@ function EditProfile() {
 
         expected_salary:
           salary,
+
       };
+
 
       console.log(
         "PROFILE DATA:",
         profileData
       );
 
+
       // --------------------------------------
       // Save profile
       // --------------------------------------
 
-      const response = await api.put(
-        "/api/candidate/profile",
-        profileData
-      );
+      const response =
+        await api.put(
+          "/api/candidate/profile",
+          profileData
+        );
+
 
       console.log(
         "PROFILE UPDATE SUCCESS:",
         response.data
       );
 
+
       setMessage(
         "Profile saved successfully."
       );
+
 
       // --------------------------------------
       // Go back to dashboard
       // --------------------------------------
 
-      setTimeout(() => {
-        navigate("/candidate");
-      }, 1000);
+      setTimeout(
+        () => {
+
+          navigate(
+            "/candidate"
+          );
+
+        },
+        1000
+      );
 
     } catch (err) {
+
       console.error(
         "PROFILE UPDATE ERROR:",
-        err.response?.data || err
+        err.response?.data ||
+          err
       );
+
 
       // --------------------------------------
       // Unauthorized
       // --------------------------------------
 
       if (
-        err.response?.status === 401
+        err.response?.status ===
+        401
       ) {
+
         localStorage.removeItem(
           "access_token"
         );
@@ -560,36 +848,53 @@ function EditProfile() {
         navigate("/login");
 
         return;
+
       }
+
 
       // --------------------------------------
       // Validation error
       // --------------------------------------
 
       if (
-        err.response?.status === 422
+        err.response?.status ===
+        422
       ) {
+
         const detail =
           err.response?.data?.detail;
 
-        if (Array.isArray(detail)) {
+
+        if (
+          Array.isArray(detail)
+        ) {
+
           const messages =
             detail
-              .map((item) =>
-                item.msg
+              .map(
+                (item) =>
+                  item.msg
               )
               .join(", ");
 
-          setError(messages);
+
+          setError(
+            messages
+          );
+
         } else {
+
           setError(
             detail ||
-            "Invalid profile information."
+              "Invalid profile information."
           );
+
         }
 
         return;
+
       }
+
 
       // --------------------------------------
       // Other backend errors
@@ -597,34 +902,47 @@ function EditProfile() {
 
       setError(
         err.response?.data?.detail ||
-        "Failed to save profile."
+          "Failed to save profile."
       );
 
     } finally {
+
       setSaving(false);
+
     }
+
   };
+
 
   // ==========================================
   // LOADING
   // ==========================================
 
   if (loading) {
+
     return (
+
       <div className="dashboard-loading">
+
         Loading profile...
+
       </div>
+
     );
+
   }
+
 
   // ==========================================
   // UI
   // ==========================================
 
   return (
+
     <div className="edit-profile-page">
 
       <div className="edit-profile-card">
+
 
         {/* ==================================
             HEADER
@@ -636,154 +954,227 @@ function EditProfile() {
             type="button"
             className="back-button"
             onClick={() =>
-              navigate("/candidate")
+              navigate(
+                "/candidate"
+              )
             }
           >
+
             ← Back
+
           </button>
+
 
           <div>
 
             <p className="section-label">
+
               CANDIDATE PROFILE
+
             </p>
 
+
             <h1>
+
               Edit Profile
+
             </h1>
 
+
             <p>
+
               Keep your profile updated to get
               better job recommendations.
+
             </p>
 
           </div>
 
         </div>
 
+
         {/* ==================================
             SUCCESS
         =================================== */}
 
         {message && (
+
           <div className="success-message">
+
             {message}
+
           </div>
+
         )}
+
 
         {/* ==================================
             ERROR
         =================================== */}
 
         {error && (
+
           <div className="login-error">
+
             {error}
+
           </div>
+
         )}
+
 
         {/* ==================================
             FORM
         =================================== */}
 
-        <form onSubmit={handleSubmit}>
+        <form
+          onSubmit={handleSubmit}
+        >
 
           <div className="edit-form-grid">
+
 
             {/* HEADLINE */}
 
             <div className="form-group">
 
               <label>
+
                 Headline
+
               </label>
+
 
               <input
                 name="headline"
-                value={form.headline}
-                onChange={handleChange}
+                value={
+                  form.headline
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Example: CSE Student"
               />
 
             </div>
+
 
             {/* LOCATION */}
 
             <div className="form-group">
 
               <label>
+
                 Location
+
               </label>
+
 
               <input
                 name="location"
-                value={form.location}
-                onChange={handleChange}
+                value={
+                  form.location
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Example: Bengaluru"
               />
 
             </div>
+
 
             {/* BIO */}
 
             <div className="form-group full-width">
 
               <label>
+
                 About / Bio
+
               </label>
+
 
               <textarea
                 name="bio"
-                value={form.bio}
-                onChange={handleChange}
+                value={
+                  form.bio
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Tell recruiters about yourself"
                 rows="4"
               />
 
             </div>
 
+
             {/* EDUCATION */}
 
             <div className="form-group">
 
               <label>
+
                 Education
+
               </label>
+
 
               <input
                 name="education"
-                value={form.education}
-                onChange={handleChange}
+                value={
+                  form.education
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Example: B.E Computer Science"
               />
 
             </div>
+
 
             {/* EXPERIENCE */}
 
             <div className="form-group">
 
               <label>
+
                 Experience
+
               </label>
+
 
               <select
                 name="experience"
-                value={form.experience}
-                onChange={handleChange}
+                value={
+                  form.experience
+                }
+                onChange={
+                  handleChange
+                }
               >
 
                 <option value="">
+
                   Select experience level
+
                 </option>
+
 
                 {EXPERIENCE_LEVELS.map(
                   (level) => (
+
                     <option
                       key={level}
                       value={level}
                     >
+
                       {level}
+
                     </option>
+
                   )
                 )}
 
@@ -791,50 +1182,69 @@ function EditProfile() {
 
             </div>
 
+
             {/* =================================
                 SKILLS
             ================================= */}
 
-            <div className="form-group full-width">
+            <div
+              className="form-group full-width"
+              ref={skillAreaRef}
+            >
 
               <label>
+
                 Skills
+
               </label>
+
 
               {/* SELECTED SKILLS */}
 
               {selectedSkills.length > 0 && (
+
                 <div className="selected-skills">
 
                   {selectedSkills.map(
                     (skill) => (
+
                       <div
                         className="skill-chip"
                         key={skill}
                       >
 
                         <span>
+
                           {skill}
+
                         </span>
+
 
                         <button
                           type="button"
                           onClick={() =>
-                            removeSkill(skill)
+                            removeSkill(
+                              skill
+                            )
                           }
                           aria-label={
                             `Remove ${skill}`
                           }
                         >
+
                           ×
+
                         </button>
 
                       </div>
+
                     )
                   )}
 
                 </div>
+
               )}
+
 
               {/* SEARCH SKILLS */}
 
@@ -842,8 +1252,11 @@ function EditProfile() {
 
                 <input
                   type="text"
-                  value={skillSearch}
+                  value={
+                    skillSearch
+                  }
                   onChange={(e) => {
+
                     setSkillSearch(
                       e.target.value
                     );
@@ -851,6 +1264,7 @@ function EditProfile() {
                     setSkillDropdownOpen(
                       true
                     );
+
                   }}
                   onFocus={() =>
                     setSkillDropdownOpen(
@@ -861,57 +1275,76 @@ function EditProfile() {
                   className="skill-search-input"
                 />
 
+
                 {/* DROPDOWN */}
 
                 {skillDropdownOpen && (
+
                   <div className="skills-dropdown">
 
-                    {filteredSkills.length > 0 ? (
+                    {filteredSkills.length >
+                    0 ? (
 
                       filteredSkills.map(
                         (skill) => (
+
                           <button
                             type="button"
                             className="skill-option"
                             key={skill}
                             onClick={() =>
-                              addSkill(skill)
+                              addSkill(
+                                skill
+                              )
                             }
                           >
+
                             {skill}
+
                           </button>
+
                         )
                       )
 
                     ) : (
 
                       <div className="no-skill-result">
+
                         No matching skills found
+
                       </div>
 
                     )}
 
                   </div>
+
                 )}
 
               </div>
+
 
               {/* =================================
                   CUSTOM SKILL
               ================================= */}
 
               {showCustomSkill && (
+
                 <div className="custom-skill-area">
 
                   <label>
+
                     Add Your Skill
+
                   </label>
+
 
                   <div className="custom-skill-row">
 
                     <input
                       type="text"
-                      value={customSkill}
+                      value={
+                        customSkill
+                      }
                       onChange={(e) =>
                         setCustomSkill(
                           e.target.value
@@ -925,6 +1358,7 @@ function EditProfile() {
                       autoFocus
                     />
 
+
                     <button
                       type="button"
                       className="custom-skill-add-button"
@@ -932,69 +1366,96 @@ function EditProfile() {
                         addCustomSkill
                       }
                     >
+
                       Add
+
                     </button>
 
                   </div>
 
+
                   <small className="field-help">
+
                     Enter your skill and click
                     Add or press Enter.
+
                   </small>
 
                 </div>
+
               )}
 
+
               <small className="field-help">
+
                 Select multiple skills that match
                 your experience.
+
               </small>
 
             </div>
+
 
             {/* PREFERRED ROLE */}
 
             <div className="form-group">
 
               <label>
+
                 Preferred Role
+
               </label>
+
 
               <input
                 name="preferred_role"
-                value={form.preferred_role}
-                onChange={handleChange}
+                value={
+                  form.preferred_role
+                }
+                onChange={
+                  handleChange
+                }
                 placeholder="Example: Software Developer"
               />
 
             </div>
+
 
             {/* PREFERRED LOCATION */}
 
             <div className="form-group">
 
               <label>
+
                 Preferred Location
+
               </label>
+
 
               <input
                 name="preferred_location"
                 value={
                   form.preferred_location
                 }
-                onChange={handleChange}
+                onChange={
+                  handleChange
+                }
                 placeholder="Example: Bengaluru"
               />
 
             </div>
+
 
             {/* EXPECTED SALARY */}
 
             <div className="form-group">
 
               <label>
+
                 Expected Salary
+
               </label>
+
 
               <input
                 type="number"
@@ -1002,20 +1463,26 @@ function EditProfile() {
                 value={
                   form.expected_salary
                 }
-                onChange={handleChange}
+                onChange={
+                  handleChange
+                }
                 min="10001"
                 step="1"
                 placeholder="Example: 600000"
               />
 
+
               <small className="field-help">
+
                 Minimum expected salary:
                 ₹10,001
+
               </small>
 
             </div>
 
           </div>
+
 
           {/* ==================================
               ACTIONS
@@ -1027,20 +1494,27 @@ function EditProfile() {
               type="button"
               className="cancel-button"
               onClick={() =>
-                navigate("/candidate")
+                navigate(
+                  "/candidate"
+                )
               }
             >
+
               Cancel
+
             </button>
+
 
             <button
               type="submit"
               className="save-button"
               disabled={saving}
             >
+
               {saving
                 ? "Saving..."
                 : "Save Changes"}
+
             </button>
 
           </div>
@@ -1050,7 +1524,10 @@ function EditProfile() {
       </div>
 
     </div>
+
   );
+
 }
+
 
 export default EditProfile;
