@@ -1,0 +1,24 @@
+SwipeX – Database Overview
+
+1. Introduction: SwipeX uses PostgreSQL as its relational database management system. The database stores and manages information related to users, candidate profiles, companies, jobs, resumes, job applications, swipe interactions, and ATS analysis reports. PostgreSQL provides persistent storage for application data. This means that information such as candidate profiles, jobs, applications, and swipe history remains stored even after the application is closed.
+
+2. Purpose: The PostgreSQL database is used to:
+- Store user account information.
+- Store candidate profile information.
+- Store company information.
+- Store job information.
+- Store uploaded resume information.
+- Store job applications.
+- Store candidate swipe history.
+- Store ATS analysis reports.
+- Maintain relationships between different entities.
+
+3. Database Architecture: Database is accessed through the backend rather than directly by the frontend.
+
+Frontend
+   ↓
+Backend API
+   ↓
+PostgreSQL
+   ↓
+Database Tables
