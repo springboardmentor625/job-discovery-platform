@@ -1,0 +1,30 @@
+                         ┌──────────────────┐
+                         │      Users       │
+                         └────────┬─────────┘
+                                  │
+       ┌──────────────┬───────────┼───────────┬──────────────┬──────────────┐
+       │              │           │           │              │              │
+       ▼              ▼           ▼           ▼              ▼              ▼
+CandidateProfile   Resumes   Applications  SwipeHistory  Recommendations  Notifications
+                      │
+                      │
+                      ▼
+                  ATSReports
+
+
+                    ┌──────────────────┐
+                    │    Companies     │
+                    └────────┬─────────┘
+                             │
+                             ▼
+                         ┌───────┐
+                         │ Jobs  │
+                         └───┬───┘
+                             │
+             ┌───────────────┼────────────────┐
+             │               │                │
+             ▼               ▼                ▼
+       Applications     SwipeHistory    Recommendations
+                             │
+                             │
+                         ATSReports
