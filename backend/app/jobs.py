@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import Job
 from .schemas import JobCreate, JobResponse, JobUpdate
+from .auth import require_role
+from .models import User
 
 router = APIRouter(
     prefix="/jobs",
@@ -12,8 +14,11 @@ router = APIRouter(
 
 
 @router.post("/", response_model=JobResponse)
-def create_job(job: JobCreate, db: Session = Depends(get_db)):
-
+def create_job(
+    job: JobCreate,
+    current_user: User = Depends(require_role("recruiter")),
+    db: Session = Depends(get_db)
+):
     new_job = Job(
         company_id=job.company_id,
         title=job.title,
@@ -54,6 +59,7 @@ def get_job(job_id: int, db: Session = Depends(get_db)):
 def update_job(
     job_id: int,
     job_data: JobUpdate,
+    current_user: User = Depends(require_role("recruiter")),
     db: Session = Depends(get_db)
 ):
     job = db.query(Job).filter(Job.job_id == job_id).first()
@@ -75,7 +81,11 @@ def update_job(
     return job
 
 @router.delete("/{job_id}")
-def delete_job(job_id: int, db: Session = Depends(get_db)):
+def delete_job(
+    job_id: int,
+    current_user: User = Depends(require_role("recruiter")),
+    db: Session = Depends(get_db)
+):
     job = db.query(Job).filter(Job.job_id == job_id).first()
 
     if job is None:

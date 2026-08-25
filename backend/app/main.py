@@ -8,11 +8,13 @@ from .schemas import UserCreate, CompanyCreate
 from .models import User, Company
 from .jobs import router as jobs_router
 from .resumes import router as resumes_router
-from .auth import hash_password, verify_password, create_access_token, get_current_user
+from .auth import hash_password, verify_password, create_access_token, get_current_user, require_role
+from .applications import router as applications_router
 
 app = FastAPI()
 app.include_router(jobs_router)
 app.include_router(resumes_router)
+app.include_router(applications_router)
 
 
 def get_db():
@@ -21,6 +23,16 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.get("/candidate-test")
+def candidate_test(
+    current_user: User = Depends(require_role("candidate"))
+):
+    return {
+        "message": "Candidate access granted",
+        "user_id": current_user.user_id,
+        "role": current_user.role
+    }        
 
 
 @app.get("/")
@@ -132,22 +144,48 @@ def get_company(company_id: int, db: Session = Depends(get_db)):
 @app.post("/applications", response_model=schemas.ApplicationResponse)
 def create_application(
     application: schemas.ApplicationCreate,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    return crud.create_application(db, application)
+    new_application = crud.create_application(
+        db,
+        application,
+        current_user.user_id
+    )
+
+    if new_application is None:
+        raise HTTPException(
+            status_code=403,
+            detail="You can only apply using your own resume"
+        )
+
+    return new_application
 
 
 @app.get("/applications", response_model=list[schemas.ApplicationResponse])
-def get_applications(db: Session = Depends(get_db)):
-    return crud.get_applications(db)
-
-
-@app.get("/applications/{application_id}", response_model=schemas.ApplicationResponse)
-def get_application(
-    application_id: int,
+def get_applications(
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    application = crud.get_application(db, application_id)
+    return crud.get_applications(
+        db,
+        current_user.user_id
+    )
+
+@app.get(
+    "/applications/{application_id}",
+    response_model=schemas.ApplicationResponse
+)
+def get_application(
+    application_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    application = crud.get_application(
+        db,
+        application_id,
+        current_user.user_id
+    )
 
     if application is None:
         raise HTTPException(
@@ -156,3 +194,4 @@ def get_application(
         )
 
     return application
+

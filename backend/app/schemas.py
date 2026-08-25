@@ -1,7 +1,7 @@
 from pydantic import BaseModel, EmailStr, ConfigDict
 from typing import Optional, Any
 from datetime import datetime
-from typing import Optional
+
 
 
 # -------------------------
@@ -97,7 +97,7 @@ class JobResponse(BaseModel):
 # -------------------------
 
 class ResumeCreate(BaseModel):
-    user_id: int
+    
     resume_name: str
     file_path: str
     extracted_skills: Optional[Any] = None
@@ -168,7 +168,7 @@ class JobUpdate(BaseModel):
 
 
 class ApplicationCreate(BaseModel):
-    user_id: int
+    
     job_id: int
     resume_id: int
     status: Optional[str] = "Applied"
@@ -193,3 +193,19 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str
+
+class ApplicationCreate(BaseModel):
+    job_id: int
+    resume_id: int
+
+
+class ApplicationResponse(BaseModel):
+    application_id: int
+    user_id: int
+    job_id: int
+    resume_id: int
+    status: Optional[str] = None
+    applied_at: datetime
+
+    class Config:
+        from_attributes = True    

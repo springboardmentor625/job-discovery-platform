@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import Resume
 from .schemas import ResumeCreate, ResumeResponse, ResumeUpdate
+from .auth import get_current_user
+from .models import User
 
 router = APIRouter(
     prefix="/resumes",
@@ -13,10 +15,11 @@ router = APIRouter(
 @router.post("/", response_model=ResumeResponse)
 def create_resume(
     resume: ResumeCreate,
+    current_user: User =  Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     new_resume = Resume(
-        user_id=resume.user_id,
+        user_id=current_user.user_id,
         resume_name=resume.resume_name,
         file_path=resume.file_path,
         extracted_skills=resume.extracted_skills,
@@ -30,17 +33,25 @@ def create_resume(
     return new_resume
 
 @router.get("/", response_model=list[ResumeResponse])
-def get_resumes(db: Session = Depends(get_db)):
-    resumes = db.query(Resume).all()
+def get_resumes(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    resumes = db.query(Resume).filter(
+        Resume.user_id == current_user.user_id
+    ).all()
+
     return resumes
 
 @router.get("/{resume_id}", response_model=ResumeResponse)
 def get_resume(
     resume_id: int,
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     resume = db.query(Resume).filter(
-        Resume.resume_id == resume_id
+        Resume.resume_id == resume_id,
+        Resume.user_id == current_user.user_id
     ).first()
 
     if resume is None:
