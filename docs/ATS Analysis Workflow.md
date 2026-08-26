@@ -1,4 +1,4 @@
-**ATS Analysis Workflow**
+**ATS Analysis Workflow Explaination**
 
 The ATS (Applicant Tracking System) Analysis feature in SwipeX evaluates how well a candidate's resume matches the requirements of a selected job. The ATS workflow compares the candidate's resume with the job description and generates an ATS score along with information about missing skills, missing keywords, and suggestions for improving the resume.
 
