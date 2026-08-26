@@ -185,20 +185,258 @@ bhanu-teja-rajana
 
 The completed candidate authentication, resume and profile workflow has been committed and pushed to the branch.
 
-Current Status
+## 6. Job Discovery
+
+Implemented the Find Jobs feature for discovering available job opportunities.
+
+Candidates can browse jobs from the SWIPEX dashboard and view important job information such as:
+
+- Job title
+- Company
+- Location
+- Employment type
+- Experience level
+- Required skills
+- Job description
+- Sector
+- Work type
+
+The frontend displays jobs dynamically and allows the candidate to select a specific job.
+
+### Job Data
+
+Job data is imported into the Django backend from a LinkedIn jobs dataset.
+
+The backend includes management commands for importing job data into the database.
+
+Job records are stored using a dedicated Django Job model.
+
+The job database allows SWIPEX to provide job-specific functionality such as:
+
+- Job details
+- Required skill extraction
+- ATS analysis
+- Future AI job recommendations
+
+
+## 7. Job Details Workflow
+
+Implemented a dedicated Job Details page.
+
+When a candidate clicks **View Job** from the Find Jobs section, the selected job is stored in the frontend state and the candidate is taken to the Job Details page.
+
+The Job Details page displays:
+
+- Job title
+- Company
+- Location
+- Employment type
+- Experience level
+- Required skills
+- Complete job description
+
+The page also provides an option to analyze the candidate's resume against the selected job.
+
+### Job Selection
+
+The selected job is maintained using React state.
+
+This allows the selected job to be reused across different parts of the workflow, particularly the ATS Analysis feature.
+
+
+## 8. Job Requirement Extraction
+
+Implemented automatic extraction of required skills from job descriptions.
+
+The backend contains a requirement extraction module that processes job descriptions and identifies relevant skills and technologies.
+
+Extracted requirements are stored with the corresponding job.
+
+This allows the ATS system to compare candidate resume skills with the actual requirements of each job.
+
+The project includes Django management commands for processing and extracting job requirements.
+
+
+## 9. ATS Resume Analysis
+
+Implemented the ATS (Applicant Tracking System) analysis feature.
+
+The ATS system compares the candidate's uploaded resume against the requirements of the selected job.
+
+The workflow is:
+
+```text
+Find Jobs
+   ↓
+View Job
+   ↓
+Job Details
+   ↓
+Analyze My Resume
+   ↓
+ATS Analysis
+   ↓
+Resume Match Report
+
+The ATS analysis is performed by the Django backend.
+
+The frontend sends an authenticated request for the selected job using:
+
+GET /api/ats/jobs/<job_id>/
+
+The backend uses the candidate's stored resume and the selected job's requirements to calculate the match.
+
+10. ATS Match Results
+
+The ATS Analysis page displays a resume match report for the selected job.
+
+The report currently includes:
+
+Skill Match Percentage
+
+Displays the percentage of required skills found in the candidate's resume.
+
+Example:
+
+Skill Match: 50%
+Matched Skills
+
+Displays the skills that are present in both:
+
+Candidate resume
+Job requirements
+Missing Skills
+
+Displays required job skills that were not found in the candidate's resume.
+
+Analysis Summary
+
+The ATS report also displays:
+
+Job title
+Number of matched skills
+Number of missing skills
+Overall skill match percentage
+11. ATS Frontend Workflow
+
+The ATS workflow was designed so that the candidate does not have to select the same job repeatedly.
+
+When the candidate clicks:
+
+Analyze My Resume
+
+from the Job Details page:
+
+The selected job is retained.
+The ATS request is sent to the Django backend.
+The candidate is taken directly to the ATS Analysis page.
+The analysis result is displayed when the backend responds.
+
+The candidate therefore receives the ATS report for the exact job that was selected.
+
+The ATS page also supports:
+
+Back to Job Details
+Find Another Job
+
+The previous selected job and ATS result are cleared when starting a new job-search workflow, preventing an old ATS report from appearing for a newly selected or unselected job.
+
+12. Authentication and ATS Security
+
+ATS requests use the authentication token generated during login.
+
+The frontend retrieves the stored authentication token and sends it with the ATS request:
+
+Authorization: Token <token>
+
+The Django backend verifies the authenticated candidate before processing the ATS request.
+
+This ensures that ATS analysis is performed for the authenticated candidate using their stored resume.
+
+13. Backend ATS Components
+
+The backend contains dedicated ATS functionality:
+
+backend/
+└── users/
+    ├── ats/
+    │   ├── __init__.py
+    │   ├── matcher.py
+    │   └── requirement_extractor.py
+    │
+    └── management/
+        └── commands/
+            ├── import_jobs.py
+            └── extract_job_requirements.py
+matcher.py
+
+Responsible for comparing candidate resume skills with job requirements and calculating the skill match.
+
+requirement_extractor.py
+
+Responsible for identifying required skills from job descriptions.
+
+import_jobs.py
+
+Used to import job data into the Django database.
+
+extract_job_requirements.py
+
+Used to process jobs and extract their required skills.
+
+14. Current Project Status
 Completed
+Candidate Management
 Candidate registration
 Email OTP verification
 Candidate login
-Dashboard
+Authentication
 Logout
+Candidate dashboard
+Resume Management
 Resume upload
+PDF/DOCX resume support
 Resume text extraction
 Skills extraction
 Experience extraction
 Education extraction
 Resume database storage
-Candidate professional profile
+Candidate Profile
+Professional candidate profile
 Profile photo upload
 Profile editing
-GitHub version control
+Location
+Bio
+Career goal
+Preferred job role
+LinkedIn
+GitHub
+Portfolio
+Job Discovery
+Find Jobs page
+Job database
+Job dataset import
+Job listing
+Job selection
+Job Details page
+Job description display
+Required skills display
+Job requirement extraction
+ATS Analysis
+ATS Analysis page
+Resume vs job comparison
+Skill matching
+Matched skills
+Missing skills
+Skill match percentage
+ATS analysis summary
+Direct Job → ATS workflow
+Selected job persistence
+ATS result clearing/reset handling
+Authentication for ATS API requests
+Version Control
+Git repository
+Feature development branch
+Candidate workflow committed
+Job discovery and ATS functionality committed
+Changes pushed to GitHub
