@@ -1,8 +1,8 @@
 from django.urls import path
 from .views import RegisterView, LoginView, VerifyEmailView
 from .views import ResumeUploadView, ResumeDeleteView
-from .views import CandidateProfileView
-
+from .views import CandidateProfileView, ATSMatchView
+from .views import JobListView
 
 urlpatterns = [
     path("register/", RegisterView.as_view(), name="register"),
@@ -11,4 +11,6 @@ urlpatterns = [
     path("resume/upload/", ResumeUploadView.as_view(), name="resume-upload"),
     path("resume/delete/", ResumeDeleteView.as_view(), name="resume-delete"),
     path("profile/", CandidateProfileView.as_view(), name="candidate-profile"),
+    path("ats/jobs/<int:job_id>/",ATSMatchView.as_view(),name="ats-match"),
+    path("jobs/",JobListView.as_view(),name="job-list"),
 ]

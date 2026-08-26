@@ -1258,3 +1258,216 @@
   color: #6b7280;
   font-style: italic;
 }
+
+/* ================= JOB DESCRIPTION ================= */
+
+.job-description-text {
+  margin-top: 16px;
+  line-height: 1.7;
+}
+
+.job-description-paragraph {
+  margin: 0 0 14px;
+  color: #4b5563;
+  line-height: 1.7;
+}
+
+.job-description-heading {
+  margin: 20px 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.job-description-bullet {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 8px 0;
+  color: #4b5563;
+}
+
+.job-description-bullet span {
+  font-weight: bold;
+  margin-top: 2px;
+}
+
+.job-description-bullet p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.job-description-number {
+  margin: 10px 0;
+  color: #4b5563;
+}
+
+.job-description-number p {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.job-description-empty {
+  color: #6b7280;
+  font-style: italic;
+}
+
+/* ================= ATS ANALYSIS ================= */
+
+.ats-job-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-top: 24px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.ats-job-header {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.ats-job-header h2 {
+  margin: 0 0 6px;
+}
+
+.ats-start-card {
+  background: white;
+  border-radius: 16px;
+  padding: 40px;
+  margin-top: 24px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.ats-start-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.ats-start-card h2 {
+  margin-bottom: 10px;
+}
+
+.ats-start-card p {
+  color: #6b7280;
+  margin-bottom: 24px;
+}
+
+.ats-result-section {
+  margin-top: 28px;
+}
+
+.ats-score-card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 30px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.ats-score-circle {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  border: 10px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.ats-score-circle span {
+  font-size: 34px;
+  font-weight: 700;
+}
+
+.ats-score-circle small {
+  color: #6b7280;
+  margin-top: 4px;
+}
+
+.ats-score-info h2 {
+  margin-bottom: 10px;
+}
+
+.ats-score-info p {
+  color: #6b7280;
+  line-height: 1.6;
+}
+
+.ats-result-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+.ats-result-card h3 {
+  margin-top: 0;
+  margin-bottom: 18px;
+}
+
+.ats-skills-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ats-skill {
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ats-skill.matched {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.ats-skill.missing {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.ats-empty {
+  color: #6b7280;
+  margin: 0;
+}
+
+.ats-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.ats-summary > div {
+  background: #f9fafb;
+  padding: 18px;
+  border-radius: 10px;
+}
+
+.ats-summary span {
+  display: block;
+  color: #6b7280;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.ats-summary strong {
+  display: block;
+  font-size: 17px;
+}
+
+.ats-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}

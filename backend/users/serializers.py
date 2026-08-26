@@ -1,6 +1,5 @@
 from rest_framework import serializers
-from .models import User,Resume,CandidateProfile
-
+from .models import User,Resume,CandidateProfile,Job
 
 class RegisterSerializer(serializers.ModelSerializer):
 
@@ -142,4 +141,23 @@ class CandidateProfileSerializer(serializers.ModelSerializer):
             "id",
             "created_at",
             "updated_at",
+        ]
+
+class JobSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = Job
+        fields = [
+            "job_id",
+            "title",
+            "company_name",
+            "description",
+            "required_skills",
+            "experience_level",
+            "contract_type",
+            "work_type",
+            "sector",
+            "city",
+            "state",
+            "published_at",
         ]

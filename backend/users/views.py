@@ -14,6 +14,14 @@ from .serializers import LoginSerializer
 from .serializers import RegisterSerializer
 from .serializers import VerifyEmailSerializer
 
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import Job
+from .ats.matcher import match_resume_to_job
+from .serializers import JobSerializer
+
 import random
 
 from .models import CandidateProfile
@@ -328,4 +336,55 @@ class CandidateProfileView(APIView):
         return Response(
             serializer.errors,
             status=status.HTTP_400_BAD_REQUEST
+        )
+
+class ATSMatchView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, job_id):
+
+        # Get logged-in candidate's resume
+        try:
+            resume = request.user.resume
+        except Exception:
+            return Response(
+                {
+                    "error": "Resume not found. Please upload your resume first."
+                },
+                status=404
+            )
+
+        # Get requested job
+        try:
+            job = Job.objects.get(job_id=job_id)
+        except Job.DoesNotExist:
+            return Response(
+                {
+                    "error": "Job not found."
+                },
+                status=404
+            )
+
+        # Run ATS matching
+        result = match_resume_to_job(
+            resume,
+            job
+        )
+
+        return Response(result)
+
+class JobListView(APIView):
+
+    def get(self, request):
+        jobs = Job.objects.all().order_by("-created_at")
+
+        serializer = JobSerializer(
+            jobs,
+            many=True
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
         )

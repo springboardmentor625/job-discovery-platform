@@ -138,3 +138,62 @@ class CandidateProfile(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - Profile"
+
+class Job(models.Model):
+    job_id = models.BigIntegerField(unique=True)
+
+    title = models.CharField(max_length=255)
+
+    company_name = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
+    description = models.TextField()
+
+    required_skills = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    experience_level = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    contract_type = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    work_type = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    sector = models.CharField(
+        max_length=255,
+        blank=True
+    )
+
+    city = models.CharField(
+        max_length=150,
+        blank=True
+    )
+
+    state = models.CharField(
+        max_length=150,
+        blank=True
+    )
+
+    published_at = models.CharField(
+        max_length=100,
+        blank=True
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    def __str__(self):
+        return f"{self.title} - {self.company_name}"

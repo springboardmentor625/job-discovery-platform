@@ -12,38 +12,72 @@ function Dashboard({ user, onLogout }) {
   const [searchTerm, setSearchTerm] = useState("");
   const [savedJobs, setSavedJobs] = useState([]);
 
-  const jobs = [
-    {
-      id: 1,
-      title: "Junior Full Stack Developer",
-      company: "TechNova Solutions",
-      location: "Hyderabad",
-      type: "Full Time",
-      experience: "0–2 Years",
-      skills: "React • Django • Python",
-      match: 92,
-    },
-    {
-      id: 2,
-      title: "Python Developer",
-      company: "CloudByte Technologies",
-      location: "Bangalore",
-      type: "Full Time",
-      experience: "0–2 Years",
-      skills: "Python • Django • SQL",
-      match: 87,
-    },
-    {
-      id: 3,
-      title: "Frontend Developer",
-      company: "Innovate Labs",
-      location: "Hyderabad",
-      type: "Full Time",
-      experience: "1–2 Years",
-      skills: "React • JavaScript • CSS",
-      match: 84,
-    },
-  ];
+  const [jobs, setJobs] = useState([]);
+  const [jobsLoading, setJobsLoading] = useState(false);
+  const [jobsError, setJobsError] = useState("");
+
+  const [selectedJob, setSelectedJob] = useState(null);
+  const [atsJob, setAtsJob] = useState(null);
+  const [atsResult, setAtsResult] = useState(null);
+  const [atsLoading, setAtsLoading] = useState(false);
+  const [atsError, setAtsError] = useState("");
+
+  useEffect(() => {
+    const fetchJobs = async () => {
+      setJobsLoading(true);
+      setJobsError("");
+
+      try {
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/jobs/"
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch jobs");
+        }
+
+        const data = await response.json();
+
+        const formattedJobs = data.map((job) => ({
+          id: job.job_id,
+
+          title: job.title,
+
+          company: job.company_name || "Company not specified",
+
+          location:
+            [job.city, job.state]
+              .filter(Boolean)
+              .join(", ") || "Location not specified",
+
+          type: job.contract_type || "Not specified",
+
+          experience: job.experience_level || "Not specified",
+
+          skills: (job.required_skills || []).join(" • "),
+
+          description: job.description || "No job description available.",
+
+          sector: job.sector || "",
+
+          workType: job.work_type || "",
+
+          publishedAt: job.published_at || "",
+
+          match: null,
+        }));
+        setJobs(formattedJobs);
+
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+        setJobsError("Unable to load jobs.");
+      } finally {
+        setJobsLoading(false);
+      }
+    };
+
+    fetchJobs();
+  }, []);
 
   const filteredJobs = jobs.filter((job) => {
     const search = searchTerm.toLowerCase();
@@ -55,6 +89,14 @@ function Dashboard({ user, onLogout }) {
       job.location.toLowerCase().includes(search)
     );
   });
+
+
+ const handleViewJob = (job) => {
+    setSelectedJob(job);
+    setAtsResult(null);
+    setAtsError("");
+    setActivePage("job-details");
+  };
 
   const toggleSaveJob = (jobId) => {
     setSavedJobs((current) =>
@@ -69,6 +111,15 @@ function Dashboard({ user, onLogout }) {
     : "User";
 
   const goTo = (page) => {
+
+    // Leaving the ATS workflow
+    if (page === "jobs") {
+      setAtsResult(null);
+      setAtsError("");
+      setAtsLoading(false);
+      setSelectedJob(null);
+    }
+
     setActivePage(page);
     setSearchTerm("");
   };
@@ -282,7 +333,11 @@ function Dashboard({ user, onLogout }) {
         </div>
 
         {jobs.slice(0, 2).map((job) => (
-          <JobCard key={job.id} job={job} />
+          <JobCard
+            key={job.id}
+            job={job}
+            onViewJob={handleViewJob}
+          />
         ))}
 
       </section>
@@ -291,7 +346,7 @@ function Dashboard({ user, onLogout }) {
 
   /* ================= JOB CARD ================= */
 
-  const JobCard = ({ job }) => (
+  const JobCard = ({ job, onViewJob }) => (
     <div className="job-card">
 
       <div className="company-logo">
@@ -339,7 +394,13 @@ function Dashboard({ user, onLogout }) {
           {savedJobs.includes(job.id) ? "♥ Saved" : "♡ Save"}
         </button>
 
-        <button className="apply-button">
+        <button
+          className="apply-button"
+          onClick={() => {
+            console.log("VIEW JOB CLICKED:", job);
+            onViewJob(job);
+          }}
+        >
           View Job
         </button>
 
@@ -390,7 +451,11 @@ function Dashboard({ user, onLogout }) {
 
         {filteredJobs.length > 0 ? (
           filteredJobs.map((job) => (
-            <JobCard key={job.id} job={job} />
+            <JobCard
+              key={job.id}
+              job={job}
+              onViewJob={handleViewJob}
+            />
           ))
         ) : (
           <div className="no-results">
@@ -405,6 +470,268 @@ function Dashboard({ user, onLogout }) {
       </section>
     </>
   );
+
+  /* ================= JOB DESCRIPTION FORMATTER ================= */
+
+  const formatJobDescription = (description) => {
+    if (!description) {
+      return (
+        <p className="job-description-empty">
+          No job description available.
+        </p>
+      );
+    }
+
+    const lines = description
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    return (
+      <div className="job-description-text">
+
+        {lines.map((line, index) => {
+
+          /* BULLET POINT */
+
+          if (
+            line.startsWith("*") ||
+            line.startsWith("•") ||
+            line.startsWith("-")
+          ) {
+            return (
+              <div
+                key={index}
+                className="job-description-bullet"
+              >
+                <span>•</span>
+                <p>
+                  {line.replace(/^[*•-]\s*/, "")}
+                </p>
+              </div>
+            );
+          }
+
+          /* NUMBERED POINT */
+
+          if (/^\d+\./.test(line)) {
+            return (
+              <div
+                key={index}
+                className="job-description-number"
+              >
+                <p>{line}</p>
+              </div>
+            );
+          }
+
+          /* SECTION HEADINGS */
+
+          if (
+            line.endsWith(":") ||
+            line.startsWith("Primary Skills") ||
+            line.startsWith("Secondary Skills") ||
+            line.startsWith("Key Responsibilities") ||
+            line.startsWith("Responsibilities") ||
+            line.startsWith("Requirements") ||
+            line.startsWith("Qualifications") ||
+            line.startsWith("Education") ||
+            line.startsWith("Experience")
+          ) {
+            return (
+              <h4
+                key={index}
+                className="job-description-heading"
+              >
+                {line}
+              </h4>
+            );
+          }
+
+          /* NORMAL TEXT */
+
+          return (
+            <p
+              key={index}
+              className="job-description-paragraph"
+            >
+              {line}
+            </p>
+          );
+        })}
+
+      </div>
+    );
+  };
+
+  /* ================= JOB DETAILS PAGE ================= */
+
+  const JobDetailsPage = () => {
+    if (!selectedJob) {
+      return (
+        <div className="workflow-placeholder">
+          <div className="workflow-icon">💼</div>
+
+          <h2>No Job Selected</h2>
+
+          <p>
+            Please select a job from Find Jobs first.
+          </p>
+
+          <button
+            className="apply-button"
+            onClick={() => goTo("jobs")}
+          >
+            Find Jobs
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <>
+        <PageHeader
+          title={selectedJob.title}
+          description="Review the job details before analyzing your resume."
+        />
+
+        <button
+          className="secondary-button"
+          onClick={() => goTo("jobs")}
+        >
+          ← Back to Jobs
+        </button>
+
+        <section className="job-details-page">
+
+          {/* JOB HEADER */}
+
+          <div className="job-details-header">
+
+            <div className="company-logo large-company-logo">
+              {selectedJob.company.charAt(0)}
+            </div>
+
+            <div>
+              <h2>{selectedJob.title}</h2>
+
+              <p className="company">
+                {selectedJob.company}
+              </p>
+            </div>
+
+          </div>
+
+
+          {/* BASIC INFORMATION */}
+
+          <div className="job-info job-details-info">
+
+            <span>
+              📍 {selectedJob.location}
+            </span>
+
+            <span>
+              💼 {selectedJob.type}
+            </span>
+
+            <span>
+              🎓 {selectedJob.experience}
+            </span>
+
+          </div>
+
+
+          {/* SKILLS */}
+
+          <div className="job-details-section">
+
+            <h3>Required Skills</h3>
+            <p>
+              {selectedJob.skills || "No specific skills listed."}
+            </p>
+
+          </div>
+
+          {/* DESCRIPTION */}
+
+          <div className="job-details-section">
+
+            <h3>Job Description</h3>
+            {formatJobDescription(selectedJob.description)}
+
+          </div>
+
+          {/* ATS ACTION */}
+
+          <div className="job-details-ats">
+            <h3>
+              Check Your Resume Match
+            </h3>
+            <p>
+              See how well your resume matches this job
+              before applying.
+            </p>
+           <button
+              className="apply-button"
+              onClick={async () => {
+                setAtsJob(selectedJob);
+                setAtsResult(null);
+                setAtsError("");
+                setAtsLoading(true);
+
+                // Go to ATS page immediately
+                setActivePage("ats");
+
+                try {
+                  const token = localStorage.getItem("swipex_token");
+
+                  console.log("ANALYZING SELECTED JOB:", selectedJob);
+                  console.log("TOKEN EXISTS:", !!token);
+
+                  const response = await fetch(
+                    `http://127.0.0.1:8000/api/ats/jobs/${selectedJob.id}/`,
+                    {
+                      method: "GET",
+                      headers: {
+                        Authorization: `Token ${token}`,
+                        "Content-Type": "application/json",
+                      },
+                    }
+                  );
+
+                  console.log("ATS RESPONSE STATUS:", response.status);
+
+                  const data = await response.json();
+
+                  console.log("ATS RESPONSE DATA:", data);
+
+                  if (!response.ok) {
+                    throw new Error(
+                      data.error || "Failed to calculate ATS match."
+                    );
+                  }
+
+                  setAtsResult(data);
+
+                } catch (error) {
+                  console.error("ATS error:", error);
+                  setAtsError(error.message);
+
+                } finally {
+                  setAtsLoading(false);
+                }
+              }}
+            >
+              📊 Analyze My Resume
+            </button>
+
+          </div>
+
+        </section>
+      </>
+    );
+  };
 
   /* ================= SAVED JOBS ================= */
 
@@ -433,9 +760,13 @@ function Dashboard({ user, onLogout }) {
           </div>
 
           {saved.length > 0 ? (
-            saved.map((job) => (
-              <JobCard key={job.id} job={job} />
-            ))
+           saved.map((job) => (
+            <JobCard
+              key={job.id}
+              job={job}
+              onViewJob={handleViewJob}
+            />
+          ))
           ) : (
             <div className="empty-state">
               <div className="empty-icon">❤️</div>
@@ -1303,6 +1634,366 @@ const ResumePage = () => {
   );
 };
 
+/* ================= ATS ANALYSIS PAGE ================= */
+
+  const ATSAnalysisPage = () => {
+
+    if (!atsJob) {
+      return (
+        <>
+          <PageHeader
+            title="ATS Analysis"
+            description="Analyze your resume against a selected job."
+          />
+
+          <div className="workflow-placeholder">
+
+            <div className="workflow-icon">
+              📊
+            </div>
+
+            <h2>No Job Selected</h2>
+
+            <p>
+              Please select a job first and then analyze your resume.
+            </p>
+
+            <button
+              className="apply-button"
+              onClick={() => goTo("jobs")}
+            >
+              Find Jobs
+            </button>
+
+          </div>
+        </>
+      );
+    }
+
+    const handleAnalyze = async () => {
+      setAtsLoading(true);
+      setAtsResult(null);
+      setAtsError("");
+
+      try {
+        const token = localStorage.getItem("swipex_token");
+
+        console.log("ANALYZING JOB:", selectedJob);
+        console.log("TOKEN EXISTS:", !!token);
+
+        const response = await fetch(
+          `http://127.0.0.1:8000/api/ats/jobs/${selectedJob.id}/`,
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        console.log("ATS RESPONSE STATUS:", response.status);
+
+        const data = await response.json();
+
+        console.log("ATS RESPONSE DATA:", data);
+
+        if (!response.ok) {
+          throw new Error(
+            data.error || "Failed to calculate ATS match."
+          );
+        }
+
+        setAtsResult(data);
+
+      } catch (error) {
+        console.error("ATS error:", error);
+        setAtsError(error.message);
+      } finally {
+        setAtsLoading(false);
+      }
+    };
+
+    return (
+      <>
+        <PageHeader
+          title="ATS Analysis"
+          description="See how well your resume matches this job."
+        />
+
+        {/* SELECTED JOB */}
+
+        <section className="ats-job-card">
+
+          <div className="ats-job-header">
+
+            <div className="company-logo large-company-logo">
+              {atsJob.company.charAt(0).toUpperCase()}
+            </div>
+
+            <div>
+              <h2>{atsJob.title}</h2>
+
+              <p className="company">
+                {atsJob.company}
+              </p>
+
+              <div className="job-info">
+                <span>📍 {atsJob.location}</span>
+                <span>💼 {atsJob.type}</span>
+                <span>🎓 {atsJob.experience}</span>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        {/* LOADING */}
+
+        {atsLoading && (
+
+          <section className="ats-start-card">
+
+            <div className="ats-start-icon">
+              ⏳
+            </div>
+
+            <h2>Analyzing Your Resume...</h2>
+
+            <p>
+              SWIPEX is comparing your resume with the selected job.
+            </p>
+
+          </section>
+
+        )}
+
+
+        {/* ERROR */}
+
+        {atsError && (
+
+          <div className="error-message">
+            ! {atsError}
+          </div>
+
+        )}
+
+
+        {/* ATS RESULT */}
+
+        {atsResult && !atsLoading && (
+
+          <section className="ats-result-section">
+
+            <div className="section-title">
+
+              <h2>Resume Match Report</h2>
+
+              <p>
+                Your resume analysis for{" "}
+                <strong>{atsJob.title}</strong>
+              </p>
+
+            </div>
+
+
+            {/* SCORE */}
+
+            <div className="ats-score-card">
+
+              <div className="ats-score-circle">
+
+                <span>
+                  {atsResult.skill_match_percentage ?? 0}%
+                </span>
+
+                <small>
+                  Skill Match
+                </small>
+
+              </div>
+
+              <div className="ats-score-info">
+
+                <h2>
+                  Resume Match
+                </h2>
+
+                <p>
+                  Your resume currently matches{" "}
+                  <strong>
+                    {atsResult.skill_match_percentage ?? 0}%
+                  </strong>{" "}
+                  of the required skills for this job.
+                </p>
+
+              </div>
+
+            </div>
+
+
+            {/* MATCHED SKILLS */}
+
+            <div className="ats-result-card">
+
+              <h3>
+                ✅ Matched Skills
+              </h3>
+
+              {atsResult.matched_skills?.length > 0 ? (
+
+                <div className="ats-skills-container">
+
+                  {atsResult.matched_skills.map(
+                    (skill, index) => (
+
+                      <span
+                        className="ats-skill matched"
+                        key={index}
+                      >
+                        {skill}
+                      </span>
+
+                    )
+                  )}
+
+                </div>
+
+              ) : (
+
+                <p className="ats-empty">
+                  No matching skills found.
+                </p>
+
+              )}
+
+            </div>
+
+
+            {/* MISSING SKILLS */}
+
+            <div className="ats-result-card">
+
+              <h3>
+                ❌ Missing Skills
+              </h3>
+
+              {atsResult.missing_skills?.length > 0 ? (
+
+                <div className="ats-skills-container">
+
+                  {atsResult.missing_skills.map(
+                    (skill, index) => (
+
+                      <span
+                        className="ats-skill missing"
+                        key={index}
+                      >
+                        {skill}
+                      </span>
+
+                    )
+                  )}
+
+                </div>
+
+              ) : (
+
+                <p className="ats-empty">
+                  No missing skills. Great match!
+                </p>
+
+              )}
+
+            </div>
+
+
+            {/* SUMMARY */}
+
+            <div className="ats-result-card">
+
+              <h3>
+                📋 Analysis Summary
+              </h3>
+
+              <div className="ats-summary">
+
+                <div>
+                  <span>Job</span>
+                  <strong>
+                    {atsResult.job_title}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Matched Skills</span>
+                  <strong>
+                    {atsResult.matched_skills?.length || 0}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Missing Skills</span>
+                  <strong>
+                    {atsResult.missing_skills?.length || 0}
+                  </strong>
+                </div>
+
+                <div>
+                  <span>Skill Match</span>
+                  <strong>
+                    {atsResult.skill_match_percentage ?? 0}%
+                  </strong>
+                </div>
+
+              </div>
+
+            </div>
+
+
+            {/* ACTIONS */}
+
+            <div className="ats-actions">
+
+              <button
+                className="secondary-button"
+                onClick={() => {
+                  setAtsResult(null);
+                  setAtsError("");
+                  setAtsLoading(false);
+                  setAtsJob(null);
+                  setActivePage("job-details");
+                }}
+              >
+                ← Back to Job Details
+              </button>
+
+              <button
+                className="apply-button"
+                onClick={() => {
+                  setSelectedJob(null);
+                  setAtsJob(null);
+                  setAtsResult(null);
+                  setAtsError("");
+                  setAtsLoading(false);
+                  setActivePage("jobs");
+                }}
+              >
+                Find Another Job
+              </button>
+
+            </div>
+
+          </section>
+
+        )}
+
+      </>
+    );
+  };
+
   /* ================= PLACEHOLDER WORKFLOWS ================= */
 
   const WorkflowPage = ({ icon, title, description }) => (
@@ -1345,6 +2036,9 @@ const ResumePage = () => {
       case "jobs":
         return <FindJobsPage />;
 
+      case "job-details":
+        return <JobDetailsPage />;
+
       case "saved":
         return <SavedJobsPage />;
 
@@ -1355,13 +2049,7 @@ const ResumePage = () => {
         return <ResumePage />;
 
       case "ats":
-        return (
-          <WorkflowPage
-            icon="📊"
-            title="ATS Analysis"
-            description="Analyze your resume against job requirements."
-          />
-        );
+      return <ATSAnalysisPage />;
 
       case "recommendations":
         return (
