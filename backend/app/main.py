@@ -4,17 +4,31 @@ from . import models, schemas, crud
 from .database import get_db
 from sqlalchemy.orm import Session
 from .database import SessionLocal
-from .schemas import UserCreate, CompanyCreate
+from .schemas import UserCreate, CompanyCreate, CompanyResponse
 from .models import User, Company
 from .jobs import router as jobs_router
 from .resumes import router as resumes_router
 from .auth import hash_password, verify_password, create_access_token, get_current_user, require_role
 from .applications import router as applications_router
+from fastapi.middleware.cors import CORSMiddleware
 
-app = FastAPI()
+app = FastAPI(
+    title = "SwipeX API"
+)
 app.include_router(jobs_router)
 app.include_router(resumes_router)
 app.include_router(applications_router)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 
 def get_db():
@@ -141,57 +155,52 @@ def get_company(company_id: int, db: Session = Depends(get_db)):
 
     return company
 
-@app.post("/applications", response_model=schemas.ApplicationResponse)
-def create_application(
-    application: schemas.ApplicationCreate,
-    current_user: User = Depends(get_current_user),
+@app.put("/companies/{company_id}", response_model=CompanyResponse)
+def update_company(
+    company_id: int,
+    company_data: CompanyCreate,
     db: Session = Depends(get_db)
 ):
-    new_application = crud.create_application(
-        db,
-        application,
-        current_user.user_id
-    )
+    company = db.query(Company).filter(
+        Company.company_id == company_id
+    ).first()
 
-    if new_application is None:
-        raise HTTPException(
-            status_code=403,
-            detail="You can only apply using your own resume"
-        )
-
-    return new_application
-
-
-@app.get("/applications", response_model=list[schemas.ApplicationResponse])
-def get_applications(
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    return crud.get_applications(
-        db,
-        current_user.user_id
-    )
-
-@app.get(
-    "/applications/{application_id}",
-    response_model=schemas.ApplicationResponse
-)
-def get_application(
-    application_id: int,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
-):
-    application = crud.get_application(
-        db,
-        application_id,
-        current_user.user_id
-    )
-
-    if application is None:
+    if company is None:
         raise HTTPException(
             status_code=404,
-            detail="Application not found"
+            detail="Company not found"
         )
 
-    return application
+    company.company_name = company_data.company_name
+    company.company_type = company_data.company_type
+    company.industry = company_data.industry
+    company.website = company_data.website
+    company.headquarters = company_data.headquarters
 
+    db.commit()
+    db.refresh(company)
+
+    return company
+
+
+@app.delete("/companies/{company_id}")
+def delete_company(
+    company_id: int,
+    db: Session = Depends(get_db)
+):
+    company = db.query(Company).filter(
+        Company.company_id == company_id
+    ).first()
+
+    if company is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Company not found"
+        )
+
+    db.delete(company)
+    db.commit()
+
+    return {
+        "message": "Company deleted successfully"
+    }

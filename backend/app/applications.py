@@ -78,6 +78,7 @@ def get_my_applications(
 
     return applications
 
+
 @router.get("/{application_id}", response_model=ApplicationResponse)
 def get_my_application(
     application_id: int,
