@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
+from skill_extractor import extract_skills_from_section
 
 from flask_jwt_extended import (
     JWTManager,
@@ -158,37 +159,22 @@ SKILLS = [
 # ============================================================
 
 def extract_skills_from_pdf(file_path):
+    """
+    Extract text from the uploaded PDF and then
+    extract skills specifically from the Skills section.
+    """
 
     reader = PdfReader(file_path)
 
     text = ""
 
     for page in reader.pages:
-
         page_text = page.extract_text()
 
         if page_text:
-            text += page_text + " "
+            text += page_text + "\n"
 
-    text_lower = text.lower()
-
-    found_skills = []
-
-    for skill in SKILLS:
-
-        pattern = (
-            r"\b"
-            + re.escape(skill.lower())
-            + r"\b"
-        )
-
-        if re.search(
-            pattern,
-            text_lower
-        ):
-            found_skills.append(skill)
-
-    return found_skills
+    return extract_skills_from_section(text)
 
 
 # ============================================================
