@@ -65,7 +65,23 @@ SKILL_CATEGORY_WORDS = {
     "core concepts",
     "core concept",
 }
-
+# Skills that may be split across multiple PDF lines
+MULTI_WORD_SKILLS = {
+    "machine learning",
+    "deep learning",
+    "data science",
+    "data analysis",
+    "computer vision",
+    "natural language processing",
+    "rest api",
+    "rest apis",
+    "data structures",
+    "operating systems",
+    "object oriented programming",
+    "object oriented design",
+    "software engineering",
+    "cloud computing",
+}
 
 # ============================================================
 # TEXT NORMALIZATION
@@ -421,22 +437,36 @@ def split_skill_text(skill_text):
     # Web: HTML
     # --------------------------------------------------------
 
-    category_pattern = "|".join(
-        re.escape(word)
-        for word in sorted(
-            SKILL_CATEGORY_WORDS,
-            key=len,
-            reverse=True
-        )
-    )
+  
+
+  # Remove category labels before a colon.
+#
+# Example:
+#   Programming: Python, Java
+#   Machine Learning: Scikit-learn, TensorFlow
+#   APIs & Services: REST API, FastAPI
+#
+# Anything before ":" at the beginning of a line
+# is treated as a category label.
+
+    # --------------------------------------------------------
+    # Remove category labels before a colon
+    #
+    # Example:
+    #   Programming: Python, Java
+    #   Machine Learning: Scikit-learn, TensorFlow
+    #   APIs & Services: REST API, FastAPI
+    #
+    # Anything before ":" at the beginning of a line
+    # is treated as a category label.
+    # --------------------------------------------------------
 
     text = re.sub(
-        rf"(?i)\b(?:{category_pattern})"
-        rf"(?:\s*&\s*(?:{category_pattern}))?"
-        rf"\s*:\s*",
+        r"(?im)^[^:\n]+:\s*",
         "",
         text
     )
+    
 
     # --------------------------------------------------------
     # Handle PDF line wrapping
@@ -460,6 +490,14 @@ def split_skill_text(skill_text):
     while i < len(lines):
 
         current = lines[i]
+                # Reconstruct known skills split across PDF lines
+        if i + 1 < len(lines):
+
+            combined = current + " " + lines[i + 1]
+
+            if normalize_skill(combined) in MULTI_WORD_SKILLS:
+                current = combined
+                i += 1
 
         if i + 1 < len(lines):
 
@@ -761,63 +799,44 @@ def match_skills_with_vocabulary(
     full_section_text=None
 ):
     """
-    Match actual candidate phrases from the Skills section
-    against the dataset vocabulary.
+    Return the actual skill phrases found in the Skills section.
 
-    IMPORTANT:
+    Vocabulary matching is intentionally disabled.
 
-    We intentionally do NOT scan the entire Skills section
-    against all 43,218 vocabulary entries.
-
-    Instead:
-
-        Skills section
-            ↓
-        Candidate phrases
-            ↓
-        Exact phrase matching
-            ↓
-        Remove nested duplicates
+    The extractor should return what the candidate actually
+    wrote in the Skills section instead of filtering skills
+    through skill_vocabulary.json.
     """
 
-    vocabulary_skills = get_vocabulary_skills()
+    if not raw_skills:
+        return []
 
-    if not vocabulary_skills:
+    # Remove duplicate skills while preserving the original
+    # order and display formatting.
+    unique_skills = []
+    seen = set()
 
-        return raw_skills
+    for skill in raw_skills:
 
-    matched_skills = []
+        skill = skill.strip()
 
-    # --------------------------------------------------------
-    # Primary matching:
-    #
-    # Match each actual candidate phrase against vocabulary.
-    # --------------------------------------------------------
+        if not skill:
+            continue
 
-    for raw_skill in raw_skills:
+        normalized = normalize_skill(skill)
 
-        matched = match_candidate_phrase(
-            raw_skill,
-            vocabulary_skills
-        )
+        if not normalized:
+            continue
 
-        if matched:
+        if normalized in seen:
+            continue
 
-            if matched not in matched_skills:
+        seen.add(normalized)
+        unique_skills.append(skill)
 
-                matched_skills.append(
-                    matched
-                )
-
-    # --------------------------------------------------------
-    # Remove overlapping/nested skills.
-    # --------------------------------------------------------
-
-    matched_skills = remove_nested_skills(
-        matched_skills
-    )
-
-    return matched_skills
+    # Remove smaller phrases that are completely contained
+    # inside a longer skill.
+    return remove_nested_skills(unique_skills)
 
 
 # ============================================================
