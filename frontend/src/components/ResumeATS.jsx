@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { uploadResume, getATSReport, getResume } from '../services/candidateApi';
-import { fetchCurrentUser } from '../services/authApi';
+import { uploadResume, getATSReport, getResume } from '../api/candidateApi';
+import { fetchCurrentUser } from '../api/authApi';
 export default function ResumeATS() {
   const [file, setFile] = useState(null);
   const [report, setReport] = useState(null);

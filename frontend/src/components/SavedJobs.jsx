@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getSavedJobs, unsaveJob } from '../services/candidateApi';
+import { getSavedJobs, unsaveJob } from '../api/candidateApi';
 export default function SavedJobs() {
   const [savedJobs, setSavedJobs] = useState([]);
   const [loading, setLoading] = useState(true);

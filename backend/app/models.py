@@ -1,5 +1,5 @@
 from __future__ import annotations
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, text, JSON, Float
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, text, JSON, Float, UniqueConstraint, Index, Enum
 from sqlalchemy.orm import relationship
 from app.database import Base
 class User(Base):
@@ -60,7 +60,7 @@ class Job(Base):
     experience_required = Column(Integer, nullable=True)
     required_skills = Column(JSON, nullable=True)
     posted_date = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
-    status = Column(String(50), nullable=False, default="Active")
+    status = Column(String(50), nullable=False, default="Active", index=True)
     apply_url = Column(String(500), nullable=True)
     company = relationship("Company", back_populates="jobs")
     applications = relationship("Application", back_populates="job", cascade="all, delete-orphan")
@@ -82,9 +82,11 @@ class Application(Base):
     __tablename__ = "applications"
     application_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False)
+    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False, index=True)
     resume_id = Column(Integer, ForeignKey("resumes.resume_id"), nullable=True)
     status = Column(String(50), nullable=False, default="Applied") 
+    
+    __table_args__ = (UniqueConstraint("user_id", "job_id", name="_user_job_application_uc"),)
     applied_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     user = relationship("User")
     job = relationship("Job", back_populates="applications")
@@ -92,8 +94,8 @@ class Application(Base):
 class SwipeHistory(Base):
     __tablename__ = "swipehistory"
     swipe_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False, index=True)
     swipe_action = Column(String(20), nullable=False) 
     swiped_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
     user = relationship("User")
@@ -101,8 +103,10 @@ class SwipeHistory(Base):
 class Recommendation(Base):
     __tablename__ = "recommendations"
     recommendation_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
-    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False, index=True)
+    job_id = Column(Integer, ForeignKey("jobs.job_id"), nullable=False, index=True)
+    
+    __table_args__ = (UniqueConstraint("user_id", "job_id", name="_user_job_recommendation_uc"),)
     recommendation_score = Column(Float, nullable=True)
     recommendation_reason = Column(String(500), nullable=True)
     generated_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
@@ -129,4 +133,14 @@ class Notification(Base):
     message = Column(String, nullable=False)
     is_read = Column(Boolean, default=False)
     created_at = Column(DateTime, server_default=text("CURRENT_TIMESTAMP"))
+    user = relationship("User")
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+    token_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    token_hash = Column(String(255), nullable=False, unique=True, index=True)
+    expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, nullable=False, server_default=text("CURRENT_TIMESTAMP"))
+    
     user = relationship("User")

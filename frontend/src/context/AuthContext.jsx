@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { fetchCurrentUser } from '../services/authApi';
+import { fetchCurrentUser } from '../api/authApi';
 const AuthContext = createContext(null);
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(localStorage.getItem('swipex_token') || '');

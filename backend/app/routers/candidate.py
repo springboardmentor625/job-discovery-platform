@@ -7,8 +7,8 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import not_
 from app.database import get_db
 from app.routers.auth import get_current_user
-from app.models import User, Job, SwipeHistory, Resume, ATSReport, Application, CandidateProfile
-from app.schemas import JobOut, SwipeActionRequest, SwipeActionResponse, ResumeOut, ATSReportOut, SavedJobOut
+from app.models import User, Job, SwipeHistory, Resume, ATSReport, Application, CandidateProfile, Recommendation
+from app.schemas import JobOut, SwipeActionRequest, SwipeActionResponse, ResumeOut, ATSReportOut, SavedJobOut, ApplicationOut
 from app.services.nlp_parser import parse_resume, extract_text_from_pdf
 from app.services.job_matcher import get_matched_jobs
 router = APIRouter(prefix="/candidate", tags=["candidate"])
@@ -17,8 +17,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 def sync_profile_from_resume(db: Session, user_id: int, parsed_data: dict) -> CandidateProfile:
     """
     Reusable function that syncs the CandidateProfile with data extracted
-    from a resume. Called every time a resume is uploaded or replaced.
-    Overwrites skills, projects, and certifications with the latest parsed values.
+    from a resume. Merges data rather than overwriting existing manual entries.
     """
     profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == user_id).first()
     if not profile:
@@ -30,9 +29,20 @@ def sync_profile_from_resume(db: Session, user_id: int, parsed_data: dict) -> Ca
     extracted_certs = parsed_data.get("certifications", [])
     extracted_education = parsed_data.get("education", "")
     extracted_experience = parsed_data.get("experience_summary", "")
-    profile.skills = ", ".join(extracted_skills) if extracted_skills else ""
-    profile.projects = extracted_projects if extracted_projects else ""
-    profile.certifications = ", ".join(extracted_certs) if extracted_certs else ""
+    
+    if extracted_skills and not profile.skills:
+        profile.skills = ", ".join(extracted_skills)
+    elif extracted_skills:
+        # Merge skills uniquely
+        existing_skills = {s.strip().lower() for s in profile.skills.split(",")}
+        new_skills = [s for s in extracted_skills if s.lower() not in existing_skills]
+        if new_skills:
+            profile.skills = profile.skills + ", " + ", ".join(new_skills)
+            
+    if extracted_projects and not profile.projects:
+        profile.projects = extracted_projects
+    if extracted_certs and not profile.certifications:
+        profile.certifications = ", ".join(extracted_certs)
     if extracted_education and not profile.branch:
         profile.branch = extracted_education[:100]
     if extracted_experience and not profile.summary:
@@ -64,13 +74,33 @@ def generate_ats_report(db: Session, user_id: int, extracted_skills_list: list, 
     missing = [s for s in standard_skills if s.lower() not in user_skills_set]
     missing_skills_sample = missing[:3] if missing else []
     missing_keywords_sample = missing[3:5] if len(missing) > 3 else []
-    base_score = min((len(user_skills_set) / 8.0) * 100, 85.0)
-    random_bonus = random.uniform(5.0, 14.0)
-    final_score = min(base_score + random_bonus, 99.0) if user_skills_set else random.uniform(30.0, 50.0)
-    ats.ats_score = final_score
-    ats.match_percentage = final_score
+    
+    # Deterministic scoring
+    matched_skills = len({s.lower() for s in standard_skills}.intersection(user_skills_set))
+    target_skill_count = min(len(standard_skills), 8)
+    skill_match_score = min(100.0, (matched_skills / max(target_skill_count, 1)) * 100.0)
+    
+    keyword_match_score = min(100.0, (len(user_skills_set) / 15.0) * 100.0)
+    experience_score = 100.0 if (profile and profile.experience_years) else (80.0 if (profile and profile.summary) else 20.0)
+    education_score = 100.0 if (profile and profile.branch) else 0.0
+    project_score = 100.0 if (profile and profile.projects) else 0.0
+    structure_score = 100.0 # Good structure if it parsed successfully
+    
+    final_score = (
+        0.40 * skill_match_score +
+        0.20 * keyword_match_score +
+        0.15 * experience_score +
+        0.10 * education_score +
+        0.10 * project_score +
+        0.05 * structure_score
+    )
+    final_score = min(max(final_score, 0.0), 100.0)
+    
+    ats.ats_score = round(final_score, 1)
+    ats.match_percentage = round(final_score, 1)
     ats.missing_skills = {"skills": missing_skills_sample}
     ats.missing_keywords = {"keywords": missing_keywords_sample}
+    
     if len(user_skills_set) < 3:
         ats.suggestions = "Your resume seems light on technical keywords. Try adding more specific technologies and tools you've used."
     elif missing_skills_sample:
@@ -92,7 +122,21 @@ async def get_resume(db: Session = Depends(get_db), current_user: User = Depends
     return resume
 @router.post("/resume", response_model=ResumeOut)
 async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
-    file_path = f"{UPLOAD_DIR}/{current_user.user_id}_{file.filename}"
+    if not file.filename.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Only PDF files are allowed.")
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=400, detail="Invalid file format.")
+        
+    file.file.seek(0, os.SEEK_END)
+    file_size = file.file.tell()
+    file.file.seek(0)
+    if file_size > 5 * 1024 * 1024:
+        raise HTTPException(status_code=400, detail="File size exceeds the 5MB limit.")
+        
+    import uuid
+    secure_filename = f"{uuid.uuid4().hex}.pdf"
+    file_path = f"{UPLOAD_DIR}/{secure_filename}"
+    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     pdf_text = extract_text_from_pdf(file_path)
@@ -108,6 +152,11 @@ async def upload_resume(file: UploadFile = File(...), db: Session = Depends(get_
     extracted_skills_dict = {"skills": extracted_skills_list}
     resume = db.query(Resume).filter(Resume.user_id == current_user.user_id).first()
     if resume:
+        if os.path.exists(resume.file_path):
+            try:
+                os.remove(resume.file_path)
+            except OSError:
+                pass
         resume.resume_name = file.filename
         resume.file_path = file_path
         resume.extracted_skills = extracted_skills_dict
@@ -133,12 +182,12 @@ def get_general_ats(db: Session = Depends(get_db), current_user: User = Depends(
         raise HTTPException(status_code=404, detail="No ATS report found. Upload a resume first.")
     return ats
 @router.get("/jobs/recommendations", response_model=List[JobOut])
-def get_job_recommendations(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def get_job_recommendations(limit: int = 15, offset: int = 0, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     """
     Returns jobs ranked by skill relevance to the user's resume.
     Uses the job_matcher service for intelligent sorting.
     """
-    matched_jobs = get_matched_jobs(db, current_user.user_id, limit=15)
+    matched_jobs = get_matched_jobs(db, current_user.user_id, limit=limit, offset=offset)
     return matched_jobs
 @router.get("/jobs/saved", response_model=List[SavedJobOut])
 def get_saved_jobs(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
@@ -183,23 +232,75 @@ def swipe_job(swipe: SwipeActionRequest, db: Session = Depends(get_db), current_
     job = db.query(Job).options(joinedload(Job.company)).filter(Job.job_id == swipe.job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    history = SwipeHistory(
-        user_id=current_user.user_id,
-        job_id=swipe.job_id,
-        swipe_action=swipe.action
-    )
-    db.add(history)
+        
+    # Check if a swipe already exists for this action
+    existing_swipe = db.query(SwipeHistory).filter(
+        SwipeHistory.user_id == current_user.user_id,
+        SwipeHistory.job_id == swipe.job_id,
+        SwipeHistory.swipe_action == swipe.action
+    ).first()
+    
+    if existing_swipe and swipe.action == "SAVE":
+        raise HTTPException(status_code=400, detail="Job already saved")
+        
+    if not existing_swipe:
+        history = SwipeHistory(
+            user_id=current_user.user_id,
+            job_id=swipe.job_id,
+            swipe_action=swipe.action
+        )
+        db.add(history)
+        
     apply_url = None
     if swipe.action == "RIGHT":
+        existing_app = db.query(Application).filter(
+            Application.user_id == current_user.user_id,
+            Application.job_id == swipe.job_id
+        ).first()
+        
+        if existing_app:
+            raise HTTPException(status_code=400, detail="You have already applied to this job")
+            
+        resume = db.query(Resume).filter(Resume.user_id == current_user.user_id).first()
         app = Application(
             user_id=current_user.user_id,
             job_id=swipe.job_id,
+            resume_id=resume.resume_id if resume else None,
             status="Applied"
         )
         db.add(app)
         apply_url = job.apply_url or (job.company.career_page if job.company else None)
-    db.commit()
+        
+    try:
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=400, detail="Could not process swipe action due to a conflict.")
+        
     return SwipeActionResponse(
         message=f"Successfully swiped {swipe.action} on job {swipe.job_id}",
         apply_url=apply_url
     )
+
+@router.get("/applications", response_model=List[ApplicationOut])
+def get_applications(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Returns all applications the user has made (RIGHT swipes).
+    """
+    apps = (
+        db.query(Application)
+        .options(joinedload(Application.job).joinedload(Job.company))
+        .filter(Application.user_id == current_user.user_id)
+        .order_by(Application.applied_at.desc())
+        .all()
+    )
+    result = []
+    for a in apps:
+        result.append(ApplicationOut(
+            application_id=a.application_id,
+            job_id=a.job_id,
+            job=JobOut.model_validate(a.job),
+            status=a.status,
+            applied_at=str(a.applied_at) if a.applied_at else None
+        ))
+    return result

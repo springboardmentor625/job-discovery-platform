@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getJobRecommendations, swipeJob } from '../services/candidateApi';
+import { getJobRecommendations, swipeJob } from '../api/candidateApi';
 
 export default function SwipeJobs() {
   const [jobs, setJobs] = useState([]);

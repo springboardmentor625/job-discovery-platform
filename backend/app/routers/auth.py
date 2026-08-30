@@ -5,14 +5,14 @@ import os
 import uuid
 from app.database import get_db
 from app.dependencies import get_current_user
-from app.models import CandidateProfile, User, Resume
+from app.models import CandidateProfile, User, Resume, PasswordResetToken
 from app.schemas import (
     CandidateMeResponse,
-    CandidateProfileOut,
     CandidateProfileOut,
     ForgotPasswordRequest,
     LoginRequest,
     RegisterRequest,
+    ResetPasswordRequest,
     TokenResponse,
     UpdateProfileRequest,
     UserOut,
@@ -52,11 +52,66 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
 def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email.lower()).first()
     if not user:
-        return {"message": "If an account exists for this email, the password has been updated."}
-    if payload.password != payload.confirm_password:
-        raise HTTPException(status_code=400, detail="Passwords do not match")
-    user.password_hash = get_password_hash(payload.password)
+        return {"message": "If an account exists for this email, a password reset link has been sent."}
+    
+    # Generate secure token
+    raw_token = uuid.uuid4().hex
+    token_to_send = f"{user.user_id}:{raw_token}"
+    
+    token_hash = get_password_hash(raw_token)
+    
+    from datetime import datetime, timedelta
+    expires = datetime.utcnow() + timedelta(minutes=15)
+    
+    reset_token = PasswordResetToken(
+        user_id=user.user_id,
+        token_hash=token_hash,
+        expires_at=expires
+    )
+    db.add(reset_token)
     db.commit()
+    
+    # Print the link to the console for development testing
+    print(f"DEVELOPMENT MODE: Password reset link: http://localhost:5173/reset-password?token={token_to_send}")
+    
+    return {"message": "If an account exists for this email, a password reset link has been sent."}
+
+@router.post("/reset-password")
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    from datetime import datetime
+    
+    try:
+        user_id_str, raw_token = payload.token.split(":", 1)
+        user_id = int(user_id_str)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid token format")
+    
+    # Find active tokens for this user
+    tokens = db.query(PasswordResetToken).filter(
+        PasswordResetToken.user_id == user_id,
+        PasswordResetToken.expires_at > datetime.utcnow()
+    ).all()
+    
+    valid_token_record = None
+    from app.security import verify_password
+    for t in tokens:
+        if verify_password(raw_token, t.token_hash):
+            valid_token_record = t
+            break
+            
+    if not valid_token_record:
+        raise HTTPException(status_code=400, detail="Invalid or expired token")
+        
+    user = db.query(User).filter(User.user_id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    user.password_hash = get_password_hash(payload.password)
+    
+    # Invalidate token by deleting it (single-use)
+    db.delete(valid_token_record)
+    db.commit()
+    
     return {"message": "Password updated successfully. Please log in again."}
 @router.post("/login", response_model=TokenResponse)
 def login_user(payload: LoginRequest, db: Session = Depends(get_db)):

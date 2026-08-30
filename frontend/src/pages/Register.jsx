@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { registerCandidate } from '../services/authApi';
+import { registerCandidate } from '../api/authApi';
 const initialForm = {
   full_name: '',
   email: '',

@@ -2,6 +2,19 @@ from __future__ import annotations
 import re
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, EmailStr, Field, field_validator
+
+def validate_password_strength(value: str) -> str:
+    if len(value) < 12:
+        raise ValueError("Password must be at least 12 characters long")
+    if not re.search(r"[A-Z]", value):
+        raise ValueError("Password must contain at least one uppercase letter (A-Z)")
+    if not re.search(r"[a-z]", value):
+        raise ValueError("Password must contain at least one lowercase letter (a-z)")
+    if not re.search(r"[0-9]", value):
+        raise ValueError("Password must contain at least one digit (0-9)")
+    if not re.search(r"[!@#$%^&*]", value):
+        raise ValueError("Password must contain at least one special character (!@#$%^&*)")
+    return value
 class RegisterRequest(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=255)
     email: EmailStr
@@ -17,19 +30,20 @@ class RegisterRequest(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, value: str):
-        if not re.search(r"[A-Z]", value):
-            raise ValueError("Password must contain at least one uppercase letter (A-Z)")
-        if not re.search(r"[a-z]", value):
-            raise ValueError("Password must contain at least one lowercase letter (a-z)")
-        if not re.search(r"[0-9]", value):
-            raise ValueError("Password must contain at least one digit (0-9)")
-        if not re.search(r"[!@#$%^&*]", value):
-            raise ValueError("Password must contain at least one special character (!@#$%^&*)")
-        return value
+        return validate_password_strength(value)
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
-    password: str = Field(..., min_length=8)
-    confirm_password: str = Field(..., min_length=8)
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    password: str = Field(..., min_length=12)
+    confirm_password: str = Field(..., min_length=12)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, value: str):
+        return validate_password_strength(value)
+
     @field_validator("confirm_password")
     @classmethod
     def validate_confirm_password(cls, value: str, info):
@@ -112,6 +126,9 @@ class JobOut(BaseModel):
     status: str
     apply_url: Optional[str] = None
     company: CompanyOut
+    match_score: Optional[float] = None
+    match_reason: Optional[str] = None
+    
     class Config:
         from_attributes = True
 class SavedJobOut(BaseModel):
@@ -120,12 +137,29 @@ class SavedJobOut(BaseModel):
     saved_at: Optional[str] = None
     class Config:
         from_attributes = True
+
+class ApplicationOut(BaseModel):
+    application_id: int
+    job_id: int
+    job: JobOut
+    status: str
+    applied_at: Optional[str] = None
+    class Config:
+        from_attributes = True
 class SwipeActionResponse(BaseModel):
     message: str
     apply_url: Optional[str] = None
 class SwipeActionRequest(BaseModel):
     job_id: int
     action: str = Field(..., description="LEFT, RIGHT, or SAVE")
+    
+    @field_validator("action")
+    @classmethod
+    def validate_action(cls, value: str):
+        allowed = {"LEFT", "RIGHT", "SAVE"}
+        if value not in allowed:
+            raise ValueError(f"Action must be one of {allowed}")
+        return value
 class ATSReportOut(BaseModel):
     ats_report_id: int
     job_id: Optional[int] = None
