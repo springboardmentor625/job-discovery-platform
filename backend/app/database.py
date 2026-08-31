@@ -1,8 +1,16 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
+from dotenv import load_dotenv
 
-DATABASE_URL = "postgresql://postgres:Amma1434@localhost:5432/swipedb"
+# Load environment variables
+load_dotenv()
+
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:Amma1434@localhost:5432/swipedb"
+)
 
 engine = create_engine(DATABASE_URL)
 

@@ -88,6 +88,9 @@ class JobResponse(BaseModel):
     required_skills: Optional[Any] = None
     posted_date: datetime
     status: Optional[str] = None
+    applicant_count: Optional[int] = 0
+    competition_level: Optional[str] = "Low"
+    is_early_applicant: Optional[bool] = True
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -118,6 +121,7 @@ class ResumeResponse(BaseModel):
     extracted_skills: Optional[Any] = None
     uploaded_at: datetime
     is_default: bool
+    ats_score: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -209,3 +213,125 @@ class ApplicationResponse(BaseModel):
 
     class Config:
         from_attributes = True    
+
+
+# -------------------------
+# Notification Schemas
+# -------------------------
+
+class NotificationCreate(BaseModel):
+    user_id: int
+    title: str
+    message: str
+    notification_type: Optional[str] = None
+    related_job_id: Optional[int] = None
+    related_application_id: Optional[int] = None
+
+
+class NotificationUpdate(BaseModel):
+    is_read: bool
+
+
+class NotificationResponse(BaseModel):
+    notification_id: int
+    user_id: int
+    title: str
+    message: str
+    notification_type: Optional[str] = None
+    related_job_id: Optional[int] = None
+    related_application_id: Optional[int] = None
+    is_read: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# -------------------------
+# Recommendation Schemas
+# -------------------------
+
+class RecommendationCreate(BaseModel):
+    user_id: int
+    job_id: int
+    recommendation_score: str
+    recommendation_reason: str
+    matching_skills: Optional[Any] = None
+    missing_skills: Optional[Any] = None
+
+
+class RecommendationResponse(BaseModel):
+    recommendation_id: int
+    user_id: int
+    job_id: int
+    recommendation_score: str
+    recommendation_reason: str
+    matching_skills: Optional[Any] = None
+    missing_skills: Optional[Any] = None
+    generated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# -------------------------
+# ATS Report Schemas
+# -------------------------
+
+class ATSReportCreate(BaseModel):
+    resume_id: int
+    job_id: int
+    ats_score: str
+    match_percentage: str
+    missing_skills: Optional[Any] = None
+    missing_keywords: Optional[Any] = None
+    suggestions: Optional[str] = None
+
+
+class ATSReportResponse(BaseModel):
+    ats_report_id: int
+    resume_id: int
+    job_id: int
+    ats_score: str
+    match_percentage: str
+    missing_skills: Optional[Any] = None
+    missing_keywords: Optional[Any] = None
+    suggestions: Optional[str] = None
+    analyzed_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# -------------------------
+# Candidate Profile Completion Schemas
+# -------------------------
+
+class ProfileCompletionResponse(BaseModel):
+    percentage: int
+    completed_fields: list[str]
+    missing_fields: list[str]
+    total_fields: int
+    has_resume: bool
+    has_profile: bool
+
+
+# -------------------------
+# Analytics Dashboard Schemas
+# -------------------------
+
+class AnalyticsDashboardResponse(BaseModel):
+    total_applications: int
+    applied_count: int
+    shortlisted_count: int
+    selected_count: int
+    rejected_count: int
+    interested_count: int
+    passed_count: int
+    total_swipes: int
+    response_rate: float
+    interview_rate: float
+    avg_ats_score: float
+    resumes_count: int
+    recommendations_count: int
+    avg_recommendation_score: float
+    skill_gaps: list[dict]
+    status_distribution: list[dict]
+    application_trends: list[dict]

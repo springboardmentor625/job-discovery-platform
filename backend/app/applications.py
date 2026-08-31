@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import Application, User, Job, Resume
+from .models import Application, User, Job, Resume, Notification
 from .schemas import ApplicationCreate, ApplicationResponse
 from .auth import require_role
 
@@ -64,6 +64,19 @@ def create_application(
     db.add(new_application)
     db.commit()
     db.refresh(new_application)
+
+    # Automatically create notification for candidate
+    app_notification = Notification(
+        user_id=current_user.user_id,
+        title="Application Submitted",
+        message=f"Your application for '{job.title}' was successfully submitted.",
+        notification_type="application",
+        related_job_id=job.job_id,
+        related_application_id=new_application.application_id,
+        is_read=False
+    )
+    db.add(app_notification)
+    db.commit()
 
     return new_application
 
@@ -152,6 +165,20 @@ def update_application_status(
         )
 
     application.status = status
+
+    # Create notification for candidate
+    job = db.query(Job).filter(Job.job_id == application.job_id).first()
+    job_title = job.title if job else "your applied position"
+    status_notification = Notification(
+        user_id=application.user_id,
+        title=f"Application Update: {status}",
+        message=f"Your application status for '{job_title}' has been updated to: {status}.",
+        notification_type="status_update",
+        related_job_id=application.job_id,
+        related_application_id=application.application_id,
+        is_read=False
+    )
+    db.add(status_notification)
 
     db.commit()
     db.refresh(application)

@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
+import os
+from dotenv import load_dotenv
 
 from jose import JWTError, jwt
 from passlib.context import CryptContext
@@ -10,15 +12,17 @@ from sqlalchemy.orm import Session
 from .database import get_db
 from .models import User
 
+# Load environment variables
+load_dotenv()
 
-# Secret key used to sign JWT tokens
-SECRET_KEY = "swipeX-secret-key-change-this-later"
+# Secret key used to sign JWT tokens (from .env or fallback)
+SECRET_KEY = os.getenv("SECRET_KEY", "swipeX-secret-key-dev-only-change-in-production")
 
 # Algorithm used for JWT
-ALGORITHM = "HS256"
+ALGORITHM = os.getenv("ALGORITHM", "HS256")
 
 # Token expiration time
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
 
 
 # Password hashing

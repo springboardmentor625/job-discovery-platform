@@ -10,7 +10,18 @@ from .jobs import router as jobs_router
 from .resumes import router as resumes_router
 from .auth import hash_password, verify_password, create_access_token, get_current_user, require_role
 from .applications import router as applications_router
+from .swipes import router as swipes_router
+from .notifications import router as notifications_router
+from .recommendations import router as recommendations_router
+from .ats_reports import router as ats_reports_router
+from .candidate_profile import router as candidate_profile_router
+from .analytics import router as analytics_router
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(
     title = "SwipeX API"
@@ -18,12 +29,22 @@ app = FastAPI(
 app.include_router(jobs_router)
 app.include_router(resumes_router)
 app.include_router(applications_router)
+app.include_router(swipes_router)
+app.include_router(notifications_router)
+app.include_router(recommendations_router)
+app.include_router(ats_reports_router)
+app.include_router(candidate_profile_router)
+app.include_router(analytics_router)
+
+# CORS configuration from environment variables
+cors_origins = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
