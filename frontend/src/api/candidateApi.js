@@ -18,6 +18,10 @@ export const getATSReport = async () => {
   return apiClient.get('/api/candidate/ats');
 };
 
+export const getJobATSReport = async (jobId) => {
+  return apiClient.get(`/api/candidate/jobs/${jobId}/ats`);
+};
+
 export const getJobRecommendations = async () => {
   return apiClient.get('/api/candidate/jobs/recommendations');
 };

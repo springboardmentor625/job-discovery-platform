@@ -108,6 +108,69 @@ def generate_ats_report(db: Session, user_id: int, extracted_skills_list: list, 
     else:
         ats.suggestions = "Your resume has a strong technical foundation! Keep it updated with your latest projects."
     return ats
+
+def generate_job_specific_ats_report(db: Session, user_id: int, job_id: int, profile: CandidateProfile, resume: Resume, job: Job):
+    """
+    Generate a job-specific ATS report by comparing the candidate's skills with the job's required skills.
+    """
+    ats = db.query(ATSReport).filter(ATSReport.user_id == user_id, ATSReport.job_id == job_id).first()
+    if not ats:
+        ats = ATSReport(user_id=user_id, job_id=job_id)
+        db.add(ats)
+        
+    user_skills_set = set()
+    if resume and resume.extracted_skills:
+        skills_list = resume.extracted_skills.get("skills", [])
+        user_skills_set.update(s.lower().strip() for s in skills_list)
+    if profile and profile.skills:
+        for s in profile.skills.split(","):
+            if s.strip():
+                user_skills_set.update([s.lower().strip()])
+                
+    job_skills_list = []
+    if job.required_skills and isinstance(job.required_skills, dict):
+        job_skills_list = job.required_skills.get("skills", [])
+    
+    if not job_skills_list:
+        # If job has no required skills, give a base score
+        ats.ats_score = 85.0
+        ats.match_percentage = 85.0
+        ats.missing_skills = {"skills": []}
+        ats.missing_keywords = {"keywords": []}
+        ats.suggestions = "This job does not specify required skills. Your profile looks good!"
+        return ats
+        
+    job_skills_set = {s.lower().strip() for s in job_skills_list}
+    
+    missing = [s for s in job_skills_list if s.lower().strip() not in user_skills_set]
+    missing_skills_sample = missing[:5]
+    
+    matched_skills = len(job_skills_set.intersection(user_skills_set))
+    target_skill_count = max(len(job_skills_set), 1)
+    skill_match_score = min(100.0, (matched_skills / target_skill_count) * 100.0)
+    
+    experience_score = 100.0 if (profile and profile.experience_years) else (80.0 if (profile and profile.summary) else 20.0)
+    
+    final_score = (
+        0.80 * skill_match_score +
+        0.20 * experience_score
+    )
+    final_score = min(max(final_score, 0.0), 100.0)
+    
+    ats.ats_score = round(final_score, 1)
+    ats.match_percentage = round(final_score, 1)
+    ats.missing_skills = {"skills": missing_skills_sample}
+    ats.missing_keywords = {"keywords": []}
+    
+    if len(missing) == 0:
+        ats.suggestions = "Excellent match! Your resume covers all required skills for this job."
+    elif len(missing) <= 3:
+        ats.suggestions = f"Good match. Consider highlighting experience with {', '.join(missing_skills_sample)} if possible."
+    else:
+        ats.suggestions = f"This job requires several skills you may be missing, such as {', '.join(missing_skills_sample)}. Try adding related projects or courses."
+        
+    return ats
+
 @router.get("/job-types")
 async def get_job_types(db: Session = Depends(get_db)):
     """Return distinct employment types from the jobs table."""
@@ -271,6 +334,9 @@ def swipe_job(swipe: SwipeActionRequest, db: Session = Depends(get_db), current_
         db.add(app)
         apply_url = job.apply_url or (job.company.career_page if job.company else None)
         
+        profile = db.query(CandidateProfile).filter(CandidateProfile.user_id == current_user.user_id).first()
+        generate_job_specific_ats_report(db, current_user.user_id, swipe.job_id, profile, resume, job)
+        
     try:
         db.commit()
     except Exception as e:
@@ -281,6 +347,16 @@ def swipe_job(swipe: SwipeActionRequest, db: Session = Depends(get_db), current_
         message=f"Successfully swiped {swipe.action} on job {swipe.job_id}",
         apply_url=apply_url
     )
+
+@router.get("/jobs/{job_id}/ats", response_model=ATSReportOut)
+def get_job_specific_ats(job_id: int, db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+    """
+    Returns the specific ATS report generated when the user applied for the job.
+    """
+    ats = db.query(ATSReport).filter(ATSReport.user_id == current_user.user_id, ATSReport.job_id == job_id).first()
+    if not ats:
+        raise HTTPException(status_code=404, detail="No ATS report found for this job application.")
+    return ats
 
 @router.get("/applications", response_model=List[ApplicationOut])
 def get_applications(db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):

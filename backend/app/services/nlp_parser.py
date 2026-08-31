@@ -27,33 +27,33 @@ def extract_text_from_pdf(file_path: str) -> str:
 # ─── Comprehensive Skills Database ────────────────────────────────────────────
 KNOWN_SKILLS = [
     # Programming Languages
-    "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "C",
+    "Python", "JavaScript", "JS", "TypeScript", "TS", "Java", "C++", "C#", "C",
     "Go", "Golang", "Rust", "Ruby", "PHP", "Kotlin", "Swift", "Scala",
     "R", "MATLAB", "Perl", "Dart", "Lua", "Objective-C", "Shell",
     "Bash", "PowerShell", "Haskell", "Elixir", "Clojure",
 
     # Frontend
-    "React", "React.js", "Angular", "Vue", "Vue.js", "Next.js", "Nuxt.js",
+    "React", "React.js", "ReactJS", "React JS", "Angular", "Vue", "Vue.js", "VueJS", "Next.js", "NextJS", "Nuxt.js",
     "Svelte", "jQuery", "HTML", "HTML5", "CSS", "CSS3", "SASS", "SCSS",
     "Less", "Tailwind", "TailwindCSS", "Bootstrap", "Material UI",
     "Chakra UI", "Ant Design", "Webpack", "Vite", "Babel", "Redux",
     "Zustand", "MobX", "Storybook", "Three.js", "D3.js", "Chart.js",
 
     # Backend & Frameworks
-    "Node.js", "Express", "Express.js", "FastAPI", "Django", "Flask",
-    "Spring", "Spring Boot", ".NET", "ASP.NET", "Rails", "Ruby on Rails",
-    "Laravel", "Gin", "Fiber", "NestJS", "Koa", "Hapi", "Strapi",
+    "Node.js", "NodeJS", "Node", "Express", "Express.js", "FastAPI", "Django", "Flask",
+    "Spring", "Spring Boot", ".NET", "DotNet", "ASP.NET", "Rails", "Ruby on Rails",
+    "Laravel", "Gin", "Fiber", "NestJS", "Nest.js", "Koa", "Hapi", "Strapi",
     "GraphQL", "REST", "RESTful", "gRPC", "WebSocket", "Microservices",
 
     # Databases
     "SQL", "MySQL", "PostgreSQL", "MongoDB", "Redis", "Elasticsearch",
     "SQLite", "Oracle", "SQL Server", "DynamoDB", "Cassandra", "Neo4j",
-    "Firebase", "Firestore", "Supabase", "CouchDB", "MariaDB",
+    "Firebase", "Firestore", "Supabase", "CouchDB", "MariaDB", "Postgres",
     "InfluxDB", "TimescaleDB", "Prisma", "Sequelize", "SQLAlchemy",
     "Mongoose", "NoSQL",
 
     # Cloud & DevOps
-    "AWS", "Amazon Web Services", "Azure", "Google Cloud", "GCP",
+    "AWS", "Amazon Web Services", "Azure", "Google Cloud", "Google Cloud Platform", "GCP",
     "Docker", "Kubernetes", "K8s", "Terraform", "Ansible", "Jenkins",
     "CI/CD", "GitHub Actions", "GitLab CI", "CircleCI", "Travis CI",
     "ArgoCD", "Helm", "Nginx", "Apache", "Linux", "Ubuntu",
@@ -158,12 +158,24 @@ def _extract_skills(text: str) -> List[str]:
 
     found = []
     seen = set()
-    section_lower = skills_section.lower()
+    
+    # Sort skills by length descending to match longest phrases first (e.g. "React Native" before "React")
+    sorted_skills = sorted(_SKILLS_LOWER_MAP.items(), key=lambda x: len(x[0]), reverse=True)
+    
+    # Pad the text to handle word boundaries at the start and end of the string
+    section_lower = " " + skills_section.lower() + " "
 
-    for key, canonical in _SKILLS_LOWER_MAP.items():
-        if key in section_lower and canonical not in seen:
-            found.append(canonical)
-            seen.add(canonical)
+    for key, canonical in sorted_skills:
+        escaped_key = re.escape(key)
+        # Strict boundary match: not preceded or followed by alphanumeric characters
+        pattern = r'(?<![a-z0-9])' + escaped_key + r'(?![a-z0-9])'
+        
+        if re.search(pattern, section_lower):
+            if canonical not in seen:
+                found.append(canonical)
+                seen.add(canonical)
+            # Remove the matched skill to prevent sub-string matching (e.g. preventing 'C' matching inside 'C++')
+            section_lower = re.sub(pattern, ' ', section_lower)
 
     return sorted(found)
 
