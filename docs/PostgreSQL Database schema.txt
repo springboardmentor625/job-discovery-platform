@@ -1,0 +1,338 @@
+-- =========================================================
+-- SWIPEX DATABASE SCHEMA
+-- PostgreSQL
+-- =========================================================
+
+
+-- =========================================================
+-- 1. USERS
+-- =========================================================
+
+CREATE TABLE users (
+    user_id INTEGER PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    role VARCHAR(30) NOT NULL,
+    phone VARCHAR(10),
+    profile_picture TEXT,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT users_role_check
+        CHECK (role IN ('CANDIDATE', 'EMPLOYER', 'ADMIN'))
+);
+
+
+-- =========================================================
+-- 2. CANDIDATE PROFILE
+-- =========================================================
+
+CREATE TABLE candidate_profiles (
+    profile_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL UNIQUE,
+    headline VARCHAR(255),
+    summary TEXT,
+    location VARCHAR(150),
+    experience_years NUMERIC(4,1),
+    education JSON,
+    projects JSON,
+    certifications JSON,
+    preferred_job_type VARCHAR(50),
+    preferred_location VARCHAR(150),
+
+    CONSTRAINT fk_candidate_profile_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT candidate_experience_check
+        CHECK (
+            experience_years IS NULL
+            OR experience_years >= 0
+        )
+);
+
+
+-- =========================================================
+-- 3. COMPANIES
+-- =========================================================
+
+CREATE TABLE companies (
+    company_id INTEGER PRIMARY KEY,
+    company_name VARCHAR(200) NOT NULL,
+    company_type VARCHAR(100),
+    industry VARCHAR(100),
+    website TEXT,
+    headquarters VARCHAR(200)
+);
+
+
+-- =========================================================
+-- 4. JOBS
+-- =========================================================
+
+CREATE TABLE jobs (
+    job_id INTEGER PRIMARY KEY,
+    company_id INTEGER NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    location VARCHAR(150),
+    employment_type VARCHAR(50),
+    salary_min NUMERIC(12,2),
+    salary_max NUMERIC(12,2),
+    experience_required NUMERIC(4,1),
+    required_skills JSON,
+    posted_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(30) NOT NULL DEFAULT 'ACTIVE',
+
+    CONSTRAINT fk_job_company
+        FOREIGN KEY (company_id)
+        REFERENCES companies(company_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT jobs_salary_check
+        CHECK (
+            salary_min IS NULL
+            OR salary_max IS NULL
+            OR salary_min <= salary_max
+        ),
+
+    CONSTRAINT jobs_experience_check
+        CHECK (
+            experience_required IS NULL
+            OR experience_required >= 0
+        ),
+
+    CONSTRAINT jobs_status_check
+        CHECK (
+            status IN ('ACTIVE', 'CLOSED', 'DRAFT')
+        )
+);
+
+
+-- =========================================================
+-- 5. RESUMES
+-- =========================================================
+
+CREATE TABLE resumes (
+    resume_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    resume_name VARCHAR(255) NOT NULL,
+    file_path TEXT NOT NULL,
+    extracted_skills JSON,
+    uploaded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    is_default BOOLEAN NOT NULL DEFAULT FALSE,
+
+    CONSTRAINT fk_resume_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+);
+
+
+-- =========================================================
+-- 6. APPLICATIONS
+-- =========================================================
+
+CREATE TABLE applications (
+    application_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    job_id INTEGER NOT NULL,
+    resume_id INTEGER,
+    status VARCHAR(30) NOT NULL DEFAULT 'APPLIED',
+    applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_application_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_application_job
+        FOREIGN KEY (job_id)
+        REFERENCES jobs(job_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_application_resume
+        FOREIGN KEY (resume_id)
+        REFERENCES resumes(resume_id)
+        ON DELETE SET NULL,
+
+    CONSTRAINT applications_status_check
+        CHECK (
+            status IN (
+                'APPLIED',
+                'UNDER_REVIEW',
+                'SHORTLISTED',
+                'REJECTED',
+                'ACCEPTED',
+                'WITHDRAWN'
+            )
+        )
+);
+
+
+-- =========================================================
+-- 7. SWIPE HISTORY
+-- =========================================================
+
+CREATE TABLE swipe_history (
+    swipe_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    job_id INTEGER NOT NULL,
+    swipe_action VARCHAR(10) NOT NULL,
+    swiped_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_swipe_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_swipe_job
+        FOREIGN KEY (job_id)
+        REFERENCES jobs(job_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT swipe_action_check
+        CHECK (
+            swipe_action IN ('LEFT', 'RIGHT', 'SAVE')
+        )
+);
+
+
+-- =========================================================
+-- 8. ATS REPORTS
+-- =========================================================
+
+CREATE TABLE ats_reports (
+    ats_report_id INTEGER PRIMARY KEY,
+    resume_id INTEGER NOT NULL,
+    job_id INTEGER NOT NULL,
+    ats_score NUMERIC(5,2),
+    match_percentage NUMERIC(5,2),
+    missing_skills JSON,
+    missing_keywords JSON,
+    suggestions TEXT,
+    analyzed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_ats_resume
+        FOREIGN KEY (resume_id)
+        REFERENCES resumes(resume_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_ats_job
+        FOREIGN KEY (job_id)
+        REFERENCES jobs(job_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT ats_score_check
+        CHECK (
+            ats_score IS NULL
+            OR (ats_score >= 0 AND ats_score <= 100)
+        ),
+
+    CONSTRAINT ats_match_percentage_check
+        CHECK (
+            match_percentage IS NULL
+            OR (match_percentage >= 0 AND match_percentage <= 100)
+        )
+);
+
+
+-- =========================================================
+-- 9. RECOMMENDATIONS
+-- =========================================================
+
+CREATE TABLE recommendations (
+    recommendation_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    job_id INTEGER NOT NULL,
+    recommendation_score NUMERIC(5,2),
+    recommendation_reason TEXT,
+    generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_recommendation_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT fk_recommendation_job
+        FOREIGN KEY (job_id)
+        REFERENCES jobs(job_id)
+        ON DELETE CASCADE,
+
+    CONSTRAINT recommendation_score_check
+        CHECK (
+            recommendation_score IS NULL
+            OR (
+                recommendation_score >= 0
+                AND recommendation_score <= 100
+            )
+        )
+);
+
+
+-- =========================================================
+-- 10. NOTIFICATIONS
+-- =========================================================
+
+CREATE TABLE notifications (
+    notification_id INTEGER PRIMARY KEY,
+    user_id INTEGER NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    message TEXT NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_notification_user
+        FOREIGN KEY (user_id)
+        REFERENCES users(user_id)
+        ON DELETE CASCADE
+);
+
+
+-- =========================================================
+-- INDEXES
+-- =========================================================
+
+CREATE INDEX idx_candidate_profiles_user_id
+    ON candidate_profiles(user_id);
+
+CREATE INDEX idx_jobs_company_id
+    ON jobs(company_id);
+
+CREATE INDEX idx_jobs_status
+    ON jobs(status);
+
+CREATE INDEX idx_jobs_location
+    ON jobs(location);
+
+CREATE INDEX idx_resumes_user_id
+    ON resumes(user_id);
+
+CREATE INDEX idx_applications_user_id
+    ON applications(user_id);
+
+CREATE INDEX idx_applications_job_id
+    ON applications(job_id);
+
+CREATE INDEX idx_swipe_history_user_id
+    ON swipe_history(user_id);
+
+CREATE INDEX idx_swipe_history_job_id
+    ON swipe_history(job_id);
+
+CREATE INDEX idx_ats_reports_resume_id
+    ON ats_reports(resume_id);
+
+CREATE INDEX idx_ats_reports_job_id
+    ON ats_reports(job_id);
+
+CREATE INDEX idx_recommendations_user_id
+    ON recommendations(user_id);
+
+CREATE INDEX idx_recommendations_job_id
+    ON recommendations(job_id);
+
+CREATE INDEX idx_notifications_user_id
+    ON notifications(user_id);
