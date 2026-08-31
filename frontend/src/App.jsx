@@ -71,8 +71,11 @@ function App() {
   const [extractedSkills, setExtractedSkills] = useState([]);
 
   // Jobs
-  const [jobs, setJobs] = useState([]);
-  const [jobsLoading, setJobsLoading] = useState(false);
+  // Jobs
+const [jobs, setJobs] = useState([]);
+const [jobsLoading, setJobsLoading] = useState(false);
+const [jobsPage, setJobsPage] = useState(1);
+const [jobsPagination, setJobsPagination] = useState(null);
 
   // ATS
   const [selectedJob, setSelectedJob] = useState(null);
@@ -222,6 +225,9 @@ function App() {
 
       const data = await response.json();
 
+console.log("JOBS API STATUS:", response.status);
+console.log("JOBS API COUNT:", data.jobs?.length);
+console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       if (response.ok) {
         setMessage(
           "Registration successful! Please login."
@@ -496,59 +502,72 @@ function App() {
   // JOBS
   // ============================================================
 
-  const handleViewJobs = async () => {
-    setMessage("");
-    setJobsLoading(true);
+  const handleViewJobs = async (pageNumber = 1) => {
+  setMessage("");
+  setJobsLoading(true);
 
-    const authToken = token();
+  const authToken = token();
 
-    if (!authToken) {
-      setMessage("Please login first.");
+  if (!authToken) {
+    setMessage("Please login first.");
 
-      replaceNextNavigation.current = true;
+    replaceNextNavigation.current = true;
 
-      window.history.replaceState(
-        { page: "login" },
-        "",
-        "#login"
-      );
+    window.history.replaceState(
+      { page: "login" },
+      "",
+      "#login"
+    );
 
-      setPage("login");
+    setPage("login");
 
-      setJobsLoading(false);
+    setJobsLoading(false);
 
-      return;
-    }
+    return;
+  }
 
-    try {
-      const response = await fetch(
-        `${API}/api/jobs`,
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
-      );
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setJobs(data.jobs || []);
-        setPage("jobs");
-      } else {
-        setMessage(
-          data.message ||
-            "Could not load jobs."
-        );
+  try {
+    const response = await fetch(
+      `${API}/api/jobs?page=${pageNumber}&limit=20`,
+      {
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
       }
-    } catch {
+    );
+
+    const data = await response.json();
+
+    console.log("JOBS API STATUS:", response.status);
+    console.log("JOBS API COUNT:", data.jobs?.length);
+    console.log("JOBS PAGINATION:", data.pagination);
+    console.log(
+      "FIRST 10 JOBS:",
+      data.jobs?.slice(0, 10)
+    );
+
+    if (response.ok) {
+      setJobs((prevJobs) => [
+  ...prevJobs,
+  ...(data.jobs || [])
+]);
+      setJobsPage(pageNumber);
+      setJobsPagination(data.pagination || null);
+      setPage("jobs");
+    } else {
       setMessage(
-        "Could not connect to the backend."
+        data.message ||
+          "Could not load jobs."
       );
-    } finally {
-      setJobsLoading(false);
     }
-  };
+  } catch {
+    setMessage(
+      "Could not connect to the backend."
+    );
+  } finally {
+    setJobsLoading(false);
+  }
+};
 
   // ============================================================
   // RECOMMENDATIONS
@@ -1024,7 +1043,7 @@ function App() {
           </button>
 
           <button
-            onClick={handleViewJobs}
+            onClick={() => handleViewJobs(1)}
           >
             Jobs
           </button>
@@ -1700,9 +1719,7 @@ function App() {
 
                 <button
                   className="sx-secondary-btn"
-                  onClick={
-                    handleViewJobs
-                  }
+                 onClick={() => handleViewJobs(1)}
                   disabled={
                     jobsLoading
                   }
@@ -1804,10 +1821,30 @@ function App() {
                 ))
               )}
 
-            </div>
+                        </div>
+
+                      
+
+            {jobsPagination &&
+              jobsPage < jobsPagination.total_pages && (
+                <div className="sx-pagination">
+                  <button
+                    className="sx-secondary-btn"
+                    onClick={() =>
+                      handleViewJobs(jobsPage + 1)
+                    }
+                    disabled={jobsLoading}
+                  >
+                    {jobsLoading
+                      ? "Loading..."
+                      : "Load More Jobs"}
+                  </button>
+                </div>
+              )}
 
           </section>
         )}
+        
 
         {/* ======================================================
             RECOMMENDATIONS
