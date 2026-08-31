@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from pypdf import PdfReader
+from skill_extractor import extract_skills_from_section
 
 from flask_jwt_extended import (
     JWTManager,
@@ -158,37 +159,22 @@ SKILLS = [
 # ============================================================
 
 def extract_skills_from_pdf(file_path):
+    """
+    Extract text from the uploaded PDF and then
+    extract skills specifically from the Skills section.
+    """
 
     reader = PdfReader(file_path)
 
     text = ""
 
     for page in reader.pages:
-
         page_text = page.extract_text()
 
         if page_text:
-            text += page_text + " "
+            text += page_text + "\n"
 
-    text_lower = text.lower()
-
-    found_skills = []
-
-    for skill in SKILLS:
-
-        pattern = (
-            r"\b"
-            + re.escape(skill.lower())
-            + r"\b"
-        )
-
-        if re.search(
-            pattern,
-            text_lower
-        ):
-            found_skills.append(skill)
-
-    return found_skills
+    return extract_skills_from_section(text)
 
 
 # ============================================================
@@ -1236,9 +1222,31 @@ def seed_demo_jobs():
 @jwt_required()
 def get_jobs():
 
-    jobs = Job.query.filter_by(
-        status="ACTIVE"
-    ).all()
+    # Pagination
+    try:
+        page = max(int(request.args.get("page", 1)), 1)
+        limit = min(
+            max(int(request.args.get("limit", 20)), 1),
+            50
+        )
+    except (TypeError, ValueError):
+        page = 1
+        limit = 20
+
+    # Get only the requested page of active jobs
+    query = Job.query.filter(
+        db.func.lower(Job.status) == "active"
+    )
+
+    total_jobs = query.count()
+
+    jobs = (
+        query
+        .order_by(Job.job_id.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
 
     result = []
 
@@ -1247,6 +1255,15 @@ def get_jobs():
         company = Company.query.filter_by(
             company_id=job.company_id
         ).first()
+
+        try:
+            required_skills = (
+                json.loads(job.required_skills)
+                if job.required_skills
+                else []
+            )
+        except Exception:
+            required_skills = []
 
         result.append({
 
@@ -1282,11 +1299,7 @@ def get_jobs():
                 job.experience_required,
 
             "required_skills":
-                json.loads(
-                    job.required_skills
-                )
-                if job.required_skills
-                else [],
+                required_skills,
 
             "posted_date":
                 job.posted_date.isoformat()
@@ -1295,7 +1308,15 @@ def get_jobs():
         })
 
     return jsonify({
-        "jobs": result
+        "jobs": result,
+        "pagination": {
+            "page": page,
+            "limit": limit,
+            "total_jobs": total_jobs,
+            "total_pages": (
+                (total_jobs + limit - 1) // limit
+            )
+        }
     }), 200
 # ============================================================
 # ATS ANALYSIS
@@ -1314,10 +1335,10 @@ def analyze_ats(job_id):
     # Get selected job
     # --------------------------------------------------------
 
-    job = Job.query.filter_by(
-        job_id=job_id,
-        status="ACTIVE"
-    ).first()
+    job = Job.query.filter(
+    Job.job_id == job_id,
+    db.func.lower(Job.status) == "active"
+).first()
 
     if not job:
 
@@ -1846,10 +1867,10 @@ def swipe_job():
                 "swipe_action must be LEFT, RIGHT, or SAVE"
         }), 400
 
-    job = Job.query.filter_by(
-        job_id=job_id,
-        status="ACTIVE"
-    ).first()
+    job = Job.query.filter(
+    Job.job_id == job_id,
+    db.func.lower(Job.status) == "active"
+).first()
 
     if not job:
         return jsonify({
