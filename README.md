@@ -90,6 +90,24 @@ The entire application is built around a seamless, gamified flow. Here is the st
 
 ---
 
+## 🧠 Core Files & Engine
+
+Behind the scenes, SwipeX is powered by several critical services and routers that manage the intelligence of the platform:
+
+### 1. `nlp_parser.py` (The Resume Brain)
+* **Location:** `backend/app/services/nlp_parser.py`
+* **Role:** Parses uploaded PDF resumes using PyMuPDF. It uses a robust, strictly bounded Regex/NLP extraction algorithm to reliably isolate the user's Skills, Experience, Education, and Certifications. It sorts known skills by length to ensure 100% accuracy and prevent false positive substring matches.
+
+### 2. `job_matcher.py` (The Recommendation Engine)
+* **Location:** `backend/app/services/job_matcher.py`
+* **Role:** The heart of the recommendation feed. It fetches active jobs and the user's extracted profile. It calculates a deterministic **Match Score (0-100%)** by weighting skill overlap (50%), experience match (20%), location (10%), employment type (10%), and role fit (10%). It ensures users only see jobs they haven't swiped on yet.
+
+### 3. `candidate.py` (The Central Router)
+* **Location:** `backend/app/routers/candidate.py`
+* **Role:** The main API router orchestrating all candidate actions. It handles resume uploads, dispatches parsing requests, manages the Tinder-style `swipe_job` interactions, and dynamically generates **Job-Specific ATS Reports** whenever a candidate applies for a job.
+
+---
+
 ## ⚙️ Setup & Installation
 
 ### 1. Start the Backend
