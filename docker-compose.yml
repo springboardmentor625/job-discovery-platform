@@ -3,14 +3,18 @@ services:
   postgres:
     image: postgres:16
     container_name: swipx-postgres
+
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: SwipeX
+
     ports:
       - "5432:5432"
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d SwipeX"]
       interval: 5s
@@ -20,24 +24,33 @@ services:
   backend:
     build:
       context: ./backend
+
     container_name: swipx-backend
+
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/SwipeX
       JWT_SECRET_KEY: change-this-for-production
+
     ports:
       - "5000:5000"
+
     depends_on:
       postgres:
         condition: service_healthy
+
     volumes:
       - ./backend/uploads:/app/uploads
+      - ./dataset:/app/dataset:ro
 
   frontend:
     build:
       context: ./frontend
+
     container_name: swipx-frontend
+
     ports:
       - "5173:80"
+
     depends_on:
       - backend
 
