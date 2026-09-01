@@ -475,8 +475,8 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
       if (response.ok) {
         setMessage(
-          `Resume uploaded and parsed successfully! Resume ID: ${data.resume_id}`
-        );
+  "Resume uploaded and parsed successfully!"
+);
 
         setExtractedSkills(
           data.extracted_skills || []
