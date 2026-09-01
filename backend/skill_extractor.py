@@ -64,7 +64,13 @@ SKILL_CATEGORY_WORDS = {
     "web",
     "core concepts",
     "core concept",
+    "design tools",
+    "design process",
+    "research",
+    "other",
+    "ui/ux",
 }
+
 # Skills that may be split across multiple PDF lines
 MULTI_WORD_SKILLS = {
     "machine learning",
@@ -418,7 +424,7 @@ def split_skill_text(skill_text):
     text = normalize_text(skill_text)
 
     # Normalize separators
-    text = re.sub(r"[|;/]+", ",", text)
+    text = re.sub(r"[|;]+", ",", text)
 
     # Remove bullet characters
     text = re.sub(
@@ -466,7 +472,27 @@ def split_skill_text(skill_text):
         "",
         text
     )
-    
+
+    # --------------------------------------------------------
+    # Remove category labels without a colon
+    # --------------------------------------------------------
+
+    category_words = sorted(
+        SKILL_CATEGORY_WORDS,
+        key=len,
+        reverse=True
+    )
+
+    category_pattern = "|".join(
+        re.escape(word)
+        for word in category_words
+    )
+
+    text = re.sub(
+        rf"(?im)^(?:{category_pattern})\s+",
+        "",
+        text
+    )
 
     # --------------------------------------------------------
     # Handle PDF line wrapping

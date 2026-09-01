@@ -1558,7 +1558,10 @@ def get_recommendations():
 
     user_id = get_jwt_identity()
 
-    # Get candidate profile
+    # ----------------------------------------------------
+    # GET CANDIDATE PROFILE
+    # ----------------------------------------------------
+
     profile = CandidateProfile.query.filter_by(
         user_id=user_id
     ).first()
@@ -1568,7 +1571,10 @@ def get_recommendations():
             "message": "Please complete your profile first"
         }), 400
 
-    # Get candidate resume
+    # ----------------------------------------------------
+    # GET CANDIDATE RESUME
+    # ----------------------------------------------------
+
     resume = Resume.query.filter_by(
         user_id=user_id,
         is_default=True
@@ -1586,7 +1592,10 @@ def get_recommendations():
             "message": "Please upload a resume first"
         }), 400
 
-    # Get resume skills
+    # ----------------------------------------------------
+    # GET RESUME SKILLS
+    # ----------------------------------------------------
+
     try:
         resume_skills = json.loads(
             resume.extracted_skills
@@ -1597,9 +1606,13 @@ def get_recommendations():
     resume_skill_set = {
         skill.strip().lower()
         for skill in resume_skills
+        if skill
     }
 
-    # Candidate preferences
+    # ----------------------------------------------------
+    # CANDIDATE PREFERENCES
+    # ----------------------------------------------------
+
     preferred_location = (
         profile.preferred_location or ""
     ).strip().lower()
@@ -1608,16 +1621,32 @@ def get_recommendations():
         profile.preferred_job_type or ""
     ).strip().lower()
 
-    # Get active jobs
-    jobs = Job.query.filter_by(
-        status="ACTIVE"
+    # ----------------------------------------------------
+    # GET ALL ACTIVE JOBS
+    # ----------------------------------------------------
+
+    jobs = Job.query.filter(
+        db.func.lower(Job.status) == "active"
     ).all()
 
-    recommendations = []
+    print(
+        "RECOMMENDATION JOB COUNT:",
+        len(jobs)
+        , flush=True
+    )
+
+    # ----------------------------------------------------
+    # CALCULATE SCORE FOR ALL JOBS
+    # ----------------------------------------------------
+
+    scored_jobs = []
 
     for job in jobs:
 
-        # Get required skills
+        # -----------------------------------------------
+        # REQUIRED SKILLS
+        # -----------------------------------------------
+
         try:
             required_skills = json.loads(
                 job.required_skills
@@ -1628,11 +1657,12 @@ def get_recommendations():
         required_skill_set = {
             skill.strip().lower()
             for skill in required_skills
+            if skill
         }
 
-        # ----------------------------------------------------
+        # -----------------------------------------------
         # SKILL MATCH = 70%
-        # ----------------------------------------------------
+        # -----------------------------------------------
 
         matched_skills = (
             resume_skill_set
@@ -1647,11 +1677,12 @@ def get_recommendations():
             ) * 70
 
         else:
+
             skill_score = 0
 
-        # ----------------------------------------------------
+        # -----------------------------------------------
         # LOCATION MATCH = 15%
-        # ----------------------------------------------------
+        # -----------------------------------------------
 
         location_score = 0
 
@@ -1667,9 +1698,9 @@ def get_recommendations():
             ):
                 location_score = 15
 
-        # ----------------------------------------------------
+        # -----------------------------------------------
         # JOB TYPE MATCH = 15%
-        # ----------------------------------------------------
+        # -----------------------------------------------
 
         job_type_score = 0
 
@@ -1683,9 +1714,9 @@ def get_recommendations():
         ):
             job_type_score = 15
 
-        # ----------------------------------------------------
+        # -----------------------------------------------
         # FINAL SCORE
-        # ----------------------------------------------------
+        # -----------------------------------------------
 
         recommendation_score = round(
             skill_score
@@ -1694,23 +1725,130 @@ def get_recommendations():
             2
         )
 
-        # ----------------------------------------------------
+        # -----------------------------------------------
+        # STORE ONLY SCORE INFORMATION FOR NOW
+        # -----------------------------------------------
+
+        scored_jobs.append({
+
+            "job": job,
+
+            "required_skills":
+                required_skills,
+
+            "matched_skills":
+                matched_skills,
+
+            "recommendation_score":
+                recommendation_score
+        })
+
+    print(
+        "JOBS SCORED:",
+        len(scored_jobs),
+         flush=True
+    )
+
+    # ----------------------------------------------------
+    # SORT HIGHEST SCORE FIRST
+    # ----------------------------------------------------
+
+    scored_jobs.sort(
+        key=lambda x: x["recommendation_score"],
+        reverse=True
+    )
+
+    # ----------------------------------------------------
+    # TAKE ONLY TOP 20
+    # ----------------------------------------------------
+
+    top_jobs = scored_jobs[:20]
+
+    print(
+        "TOP JOBS SELECTED:",
+        len(top_jobs),
+        flush=True
+    )
+
+    # ----------------------------------------------------
+    # LOAD COMPANIES IN ONE QUERY
+    # ----------------------------------------------------
+
+    company_ids = {
+        item["job"].company_id
+        for item in top_jobs
+        if item["job"].company_id
+    }
+
+    companies = Company.query.filter(
+        Company.company_id.in_(company_ids)
+    ).all()
+
+    company_map = {
+        company.company_id: company
+        for company in companies
+    }
+
+    recommendations = []
+
+    # ----------------------------------------------------
+    # CREATE / UPDATE RECOMMENDATIONS
+    # ONLY FOR TOP 20
+    # ----------------------------------------------------
+
+    for item in top_jobs:
+
+        job = item["job"]
+
+        required_skills = item[
+            "required_skills"
+        ]
+
+        matched_skills = item[
+            "matched_skills"
+        ]
+
+        recommendation_score = item[
+            "recommendation_score"
+        ]
+
+        # -----------------------------------------------
         # RECOMMENDATION REASON
-        # ----------------------------------------------------
+        # -----------------------------------------------
 
         reasons = []
 
         if matched_skills:
+
             reasons.append(
                 f"{len(matched_skills)} matching skills"
             )
 
-        if location_score:
+        job_location = (
+            job.location or ""
+        ).strip().lower()
+
+        if (
+            preferred_location
+            and (
+                preferred_location in job_location
+                or job_location in preferred_location
+            )
+        ):
+
             reasons.append(
                 "preferred location matches"
             )
 
-        if job_type_score:
+        employment_type = (
+            job.employment_type or ""
+        ).strip().lower()
+
+        if (
+            preferred_job_type
+            and preferred_job_type == employment_type
+        ):
+
             reasons.append(
                 "preferred job type matches"
             )
@@ -1730,9 +1868,9 @@ def get_recommendations():
                 "with your profile."
             )
 
-        # ----------------------------------------------------
-        # SAVE / UPDATE RECOMMENDATION
-        # ----------------------------------------------------
+        # -----------------------------------------------
+        # FIND EXISTING RECOMMENDATION
+        # -----------------------------------------------
 
         recommendation = Recommendation.query.filter_by(
             user_id=user_id,
@@ -1773,10 +1911,13 @@ def get_recommendations():
         # Make sure ID is generated
         db.session.flush()
 
-        # Get company
-        company = Company.query.filter_by(
-            company_id=job.company_id
-        ).first()
+        # -----------------------------------------------
+        # GET COMPANY FROM MAP
+        # -----------------------------------------------
+
+        company = company_map.get(
+            job.company_id
+        )
 
         recommendations.append({
 
@@ -1822,9 +1963,22 @@ def get_recommendations():
                 recommendation_reason
         })
 
+    # ----------------------------------------------------
+    # SAVE
+    # ----------------------------------------------------
+
     db.session.commit()
 
-    # Highest score first
+    print(
+        "TOTAL RECOMMENDATIONS RETURNED:",
+        len(recommendations),
+        flush=True
+    )
+
+    # ----------------------------------------------------
+    # FINAL SORT
+    # ----------------------------------------------------
+
     recommendations.sort(
         key=lambda x: x["recommendation_score"],
         reverse=True
