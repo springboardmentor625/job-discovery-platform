@@ -954,6 +954,10 @@ def upload_resume():
                 file_path
             )
         )
+        print(
+    "[DEBUG] API EXTRACTED SKILLS:",
+    extracted_skills
+)
 
     except Exception as e:
 
