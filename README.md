@@ -6,11 +6,11 @@
 
 ## 📖 Project Overview
 
-SwipeX is a full-stack web application that modernizes the job search experience by combining Artificial Intelligence, Machine Learning, and an intuitive swipe-based discovery concept.
+SwipeX is a full-stack web application designed to modernize the job search experience by combining Artificial Intelligence, Machine Learning, and an intuitive job discovery platform.
 
-The platform assists candidates in finding relevant jobs using resume analysis, ATS compatibility scoring, intelligent job recommendations, and application tracking. Recruiters can efficiently manage job postings and applicants through a centralized dashboard.
+The application helps candidates discover relevant jobs through AI-powered resume analysis, ATS compatibility scoring, personalized job recommendations, and application tracking. Recruiters can efficiently post jobs, manage applicants, and streamline hiring workflows.
 
-The project demonstrates the integration of modern web technologies, REST APIs, PostgreSQL, and machine learning to create an intelligent career assistance platform.
+SwipeX demonstrates the integration of modern web technologies, REST APIs, PostgreSQL, and Machine Learning to build an intelligent career assistance platform.
 
 ---
 
@@ -18,13 +18,13 @@ The project demonstrates the integration of modern web technologies, REST APIs, 
 
 The objective of SwipeX is to build an intelligent job discovery platform that:
 
-- Simplifies job discovery using a swipe-based interface.
+- Simplifies job discovery through an intuitive interface.
 - Provides AI-powered resume analysis.
 - Calculates ATS compatibility scores.
 - Recommends personalized job opportunities.
-- Tracks applications in real time.
+- Tracks applications efficiently.
 - Helps candidates improve resumes using AI-generated suggestions.
-- Assists recruiters in managing recruitment workflows efficiently.
+- Assists recruiters in managing recruitment workflows.
 
 ---
 
@@ -33,7 +33,7 @@ The objective of SwipeX is to build an intelligent job discovery platform that:
 ## 🔐 Authentication
 
 - Secure User Registration
-- Login & Logout
+- User Login & Logout
 - JWT Authentication
 - Protected Routes
 - Role-Based Access Control
@@ -43,13 +43,13 @@ The objective of SwipeX is to build an intelligent job discovery platform that:
 ## 👤 Candidate Module
 
 - Candidate Profile Creation
-- Profile Editing
+- Edit Candidate Profile
 - Resume Upload
 - Resume Preview
 - Resume Version Management
 - Skill & Experience Management
 - ATS Resume Analysis
-- AI Resume Suggestions
+- Resume Improvement Suggestions
 - Personalized Job Recommendations
 - Browse Jobs
 - Apply for Jobs
@@ -64,7 +64,7 @@ The objective of SwipeX is to build an intelligent job discovery platform that:
 - Create Job Posts
 - Manage Job Listings
 - View Applicants
-- Candidate Recommendations
+- Candidate Recommendation
 
 ---
 
@@ -75,7 +75,7 @@ The objective of SwipeX is to build an intelligent job discovery platform that:
 - Resume-Job Compatibility Analysis
 - Skill Extraction
 - Missing Skill Detection
-- Job Recommendation Engine
+- AI-Based Job Recommendation Engine
 - TF-IDF Feature Extraction
 - Naive Bayes Machine Learning Model
 
@@ -109,8 +109,8 @@ The objective of SwipeX is to build an intelligent job discovery platform that:
 - Scikit-learn
 - Pandas
 - NumPy
-- TF-IDF
-- Naive Bayes
+- TF-IDF Vectorizer
+- Naive Bayes Classifier
 
 ## Resume Processing
 
@@ -127,7 +127,7 @@ The objective of SwipeX is to build an intelligent job discovery platform that:
 
 # 📂 Project Structure
 
-```
+```text
 SwipeX
 │
 ├── backend
@@ -158,7 +158,7 @@ SwipeX
 
 # ⚙️ Installation
 
-## Clone Repository
+## Clone the Repository
 
 ```bash
 git clone https://github.com/<your-github-username>/job-discovery-platform.git
@@ -168,7 +168,7 @@ cd job-discovery-platform
 
 ---
 
-## Backend
+## Backend Setup
 
 ```bash
 cd backend
@@ -178,6 +178,9 @@ python -m venv venv
 # Windows
 venv\Scripts\activate
 
+# Linux/macOS
+source venv/bin/activate
+
 pip install -r requirements.txt
 
 python manage.py migrate
@@ -185,7 +188,7 @@ python manage.py migrate
 python manage.py runserver
 ```
 
-Backend:
+Backend URL:
 
 ```
 http://127.0.0.1:8000
@@ -193,7 +196,7 @@ http://127.0.0.1:8000
 
 ---
 
-## Frontend
+## Frontend Setup
 
 ```bash
 cd frontend
@@ -203,7 +206,7 @@ npm install
 npm run dev
 ```
 
-Frontend:
+Frontend URL:
 
 ```
 http://localhost:5173
@@ -213,7 +216,7 @@ http://localhost:5173
 
 # 🤖 Machine Learning Workflow
 
-```
+```text
 Resume Upload
       ↓
 Resume Parsing
@@ -233,7 +236,7 @@ Personalized Job Recommendations
 
 # 🗄 Database
 
-Main entities include:
+The system consists of the following entities:
 
 - User
 - Candidate
@@ -246,9 +249,9 @@ Main entities include:
 
 ---
 
-# 📊 System Workflow
+# 📊 Application Workflow
 
-```
+```text
 User Registration
         ↓
 Login
@@ -265,7 +268,7 @@ AI Job Recommendation
         ↓
 Browse Jobs
         ↓
-Apply
+Apply for Jobs
         ↓
 Track Applications
 ```
@@ -274,7 +277,7 @@ Track Applications
 
 # 📸 Screenshots
 
-Include screenshots of:
+Add screenshots of:
 
 - Login Page
 - Dashboard
@@ -291,7 +294,7 @@ Include screenshots of:
 
 # 🚀 Future Enhancements
 
-- Swipe Gesture Interface
+- Swipe Gesture-Based Job Navigation
 - OAuth2 Authentication
 - Email Notifications
 - Interview Scheduling
@@ -315,11 +318,11 @@ This project demonstrates knowledge of:
 - Django REST Framework
 - PostgreSQL
 - JWT Authentication
+- REST API Development
 - Machine Learning
 - Resume Parsing
 - ATS Optimization
 - Recommendation Systems
-- REST API Development
 - Docker
 
 ---
@@ -333,7 +336,7 @@ This project demonstrates knowledge of:
 ### Responsibilities
 
 - Designed and developed the complete frontend using React.js.
-- Developed REST APIs with Django REST Framework.
+- Developed REST APIs using Django REST Framework.
 - Designed the PostgreSQL database schema.
 - Implemented JWT authentication and authorization.
 - Built resume upload, parsing, and ATS scoring modules.
@@ -345,7 +348,7 @@ This project demonstrates knowledge of:
 
 # 📄 License
 
-This project was developed by **Praveena Durga** for academic, learning, and portfolio purposes.
+This project was developed by **Praveena Durga** for academic learning and portfolio purposes.
 
 ---
 
@@ -359,3 +362,5 @@ This project was developed by **Praveena Durga** for academic, learning, and por
 - PyMuPDF
 - Pandas
 - NumPy
+- Docker
+- GitHub
