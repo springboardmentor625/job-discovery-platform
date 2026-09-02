@@ -1,4 +1,5 @@
 from django.db import models
+import os
 
 
 # =====================================
@@ -30,22 +31,21 @@ class Candidate(models.Model):
         default=""
     )
 
-    experience = models.CharField(
-        max_length=20,
+    experience = models.TextField()
+
+    education = models.TextField(
         blank=True,
         default=""
     )
 
-    education = models.TextField(
-        blank=True
-    )
-
     projects = models.TextField(
-        blank=True
+        blank=True,
+        default=""
     )
 
     certifications = models.TextField(
-        blank=True
+        blank=True,
+        default=""
     )
 
     created_at = models.DateTimeField(
@@ -60,64 +60,62 @@ class Candidate(models.Model):
 # RESUME
 # =====================================
 
-class Resume(models.Model):
+def resume_upload_path(instance, filename):
+    """
+    Store the resume using its original filename.
+    The original filename is also preserved in original_filename.
+    """
 
+    return f"resumes/{filename}"
+
+class Resume(models.Model):
     candidate = models.OneToOneField(
         Candidate,
         on_delete=models.CASCADE,
         related_name="resume"
     )
 
-    resume_file = models.FileField(
-        upload_to="resumes/"
+    resume_file = models.FileField(upload_to=resume_upload_path)
+
+    # PDF generated from DOCX (used for viewing)
+    preview_pdf = models.FileField(
+        upload_to="resume_previews/",
+        blank=True,
+        null=True,
     )
 
-    # Parsed resume information
-    extracted_text = models.TextField(
+    original_filename = models.CharField(
+        max_length=255,
         blank=True,
         default=""
     )
 
-    extracted_skills = models.TextField(
-        blank=True,
-        default=""
-    )
+    # =====================================
+    # PARSED RESUME INFORMATION
+    # =====================================
 
-    extracted_experience = models.TextField(
-        blank=True,
-        default=""
-    )
+    extracted_text = models.TextField(blank=True, default="")
+    extracted_skills = models.TextField(blank=True, default="")
+    extracted_experience = models.TextField(blank=True, default="")
+    extracted_education = models.TextField(blank=True, default="")
 
-    extracted_education = models.TextField(
-        blank=True,
-        default=""
-    )
+    # =====================================
+    # ATS RESULT
+    # =====================================
 
-    # ATS result
-    ats_score = models.IntegerField(
+    ats_score = models.IntegerField(default=0)
+    probability_score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
         default=0
     )
+    missing_skills = models.TextField(blank=True, default="")
+    ats_suggestions = models.TextField(blank=True, default="")
 
-    missing_skills = models.TextField(
-        blank=True,
-        default=""
-    )
-
-    ats_suggestions = models.TextField(
-        blank=True,
-        default=""
-    )
-
-    uploaded_at = models.DateTimeField(
-        auto_now_add=True
-    )
+    uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return (
-            f"{self.candidate.full_name} - "
-            f"{self.resume_file.name}"
-        )
-
+        return f"{self.candidate.full_name} - {self.resume_file.name}"
 # =====================================
 # JOB
 # =====================================
@@ -202,22 +200,49 @@ class Application(models.Model):
 
     candidate = models.ForeignKey(
         Candidate,
-        on_delete=models.CASCADE,
-        related_name="applications"
+        on_delete=models.CASCADE
     )
 
     job = models.ForeignKey(
         Job,
-        on_delete=models.CASCADE,
-        related_name="applications"
+        on_delete=models.CASCADE
+    )
+
+    cover_letter = models.TextField(
+        blank=True
+    )
+
+    portfolio_url = models.URLField(
+        blank=True
+    )
+
+    linkedin_url = models.URLField(
+        blank=True
+    )
+
+    github_url = models.URLField(
+        blank=True
+    )
+
+    expected_salary = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True
+    )
+
+    available_from = models.DateField(
+        null=True,
+        blank=True
+    )
+
+    applied_resume = models.ForeignKey(
+        Resume,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True
     )
 
     applied_at = models.DateTimeField(
         auto_now_add=True
     )
-
-    def __str__(self):
-        return (
-            f"{self.candidate.full_name} - "
-            f"{self.job.title}"
-        )

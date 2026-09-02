@@ -22,3 +22,16 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+# Dataset
+backend/dataset/
+*.csv
+# ML models
+backend/ml/
+backend/recommendation/trained_model/
+
+# datasets
+backend/dataset/
+
+backend/dataset/
+backend/ml/*.pkl
+backend/recommendation/trained_model/
