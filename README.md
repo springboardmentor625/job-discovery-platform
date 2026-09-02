@@ -275,23 +275,6 @@ Track Applications
 
 ---
 
-# 📸 Screenshots
-
-Add screenshots of:
-
-- Login Page
-- Dashboard
-- Candidate Profile
-- Resume Upload
-- Resume Analysis
-- ATS Score
-- Job Recommendations
-- Job Listing
-- Apply Job
-- Application Dashboard
-
----
-
 # 🚀 Future Enhancements
 
 - Swipe Gesture-Based Job Navigation
