@@ -1,312 +1,100 @@
-import re
+import time
 
 from django.core.management.base import BaseCommand
 from users.models import Job
+from users.llm.job_extractor import extract_job_requirements
 
 
 class Command(BaseCommand):
 
-    help = "Extract technical skills from job descriptions"
-
-    # ---------------------------------------------------------
-    # SKILL VOCABULARY
-    # ---------------------------------------------------------
-
-    SKILL_VOCABULARY = {
-        # Programming languages
-        "python",
-        "java",
-        "javascript",
-        "typescript",
-        "c",
-        "c++",
-        "c#",
-        "go",
-        "golang",
-        "ruby",
-        "php",
-        "kotlin",
-        "swift",
-        "scala",
-        "r",
-
-        # Web
-        "html",
-        "html5",
-        "css",
-        "css3",
-        "react",
-        "angular",
-        "vue",
-        "nodejs",
-        "node.js",
-        "next.js",
-        "nextjs",
-        "jquery",
-        "ajax",
-
-        # Backend / frameworks
-        "django",
-        "flask",
-        "spring",
-        "spring boot",
-        "express",
-        "express.js",
-        ".net",
-        ".net core",
-        "asp.net",
-        "mvc",
-
-        # Databases
-        "sql",
-        "mysql",
-        "postgresql",
-        "postgres",
-        "mongodb",
-        "redis",
-        "oracle",
-        "sqlite",
-        "elasticsearch",
-        "solr",
-
-        # Cloud
-        "aws",
-        "azure",
-        "gcp",
-        "google cloud",
-        "amazon web services",
-        "microsoft azure",
-
-        # DevOps / infrastructure
-        "docker",
-        "kubernetes",
-        "jenkins",
-        "terraform",
-        "ansible",
-        "maven",
-        "gradle",
-        "git",
-        "github",
-        "gitlab",
-        "bitbucket",
-        "devops",
-        "ci/cd",
-        "ci cd",
-
-        # APIs / architecture
-        "rest",
-        "rest api",
-        "rest apis",
-        "restful api",
-        "graphql",
-        "microservices",
-        "distributed systems",
-        "system design",
-
-        # Data / AI / ML
-        "machine learning",
-        "deep learning",
-        "artificial intelligence",
-        "data science",
-        "data analysis",
-        "tensorflow",
-        "pytorch",
-        "spark",
-        "apache spark",
-        "pandas",
-        "numpy",
-        "scikit-learn",
-        "scikit learn",
-        "keras",
-        "nlp",
-        "natural language processing",
-
-        # Software engineering
-        "data structures",
-        "algorithms",
-        "data structures and algorithms",
-        "object oriented programming",
-        "oop",
-        "debugging",
-        "testing",
-        "unit testing",
-        "automation testing",
-        "selenium",
-        "appium",
-
-        # Mobile
-        "android",
-        "android development",
-        "ios",
-        "react native",
-        "flutter",
-
-        # Other common technical skills
-        "linux",
-        "unix",
-        "bash",
-        "powershell",
-        "json",
-        "xml",
-        "web technologies",
-        "web development",
-        "frontend",
-        "front end",
-        "backend",
-        "back end",
-        "full stack",
-        "fullstack",
-    }
-
-    # ---------------------------------------------------------
-    # NORMALIZE SKILL NAMES
-    # ---------------------------------------------------------
-
-    SKILL_NORMALIZATION = {
-
-        "react.js": "react",
-        "reactjs": "react",
-        "react js": "react",
-
-        "node.js": "nodejs",
-        "node js": "nodejs",
-
-        "vue.js": "vue",
-        "vuejs": "vue",
-
-        "angular.js": "angular",
-        "angularjs": "angular",
-
-        "postgres": "postgresql",
-
-        "golang": "go",
-
-        "c sharp": "c#",
-
-        "rest api": "rest apis",
-        "restful api": "rest apis",
-        "restful apis": "rest apis",
-
-        "ci cd": "ci/cd",
-
-        "scikit learn": "scikit-learn",
-
-        "apache spark": "spark",
-    }
-
-    # ---------------------------------------------------------
-    # CLEAN TEXT
-    # ---------------------------------------------------------
-
-    def clean_text(self, text):
-
-        text = text or ""
-
-        text = text.replace("&amp;", "&")
-        text = text.replace("\xa0", " ")
-
-        # Normalize common punctuation
-        text = text.replace("–", "-")
-        text = text.replace("—", "-")
-
-        text = re.sub(r"\s+", " ", text)
-
-        return text.strip().lower()
-
-    # ---------------------------------------------------------
-    # NORMALIZE SKILL
-    # ---------------------------------------------------------
-
-    def normalize_skill(self, skill):
-
-        skill = skill.strip().lower()
-
-        return self.SKILL_NORMALIZATION.get(
-            skill,
-            skill
-        )
-
-    # ---------------------------------------------------------
-    # EXTRACT SKILLS
-    # ---------------------------------------------------------
-
-    def extract_skills(self, text):
-
-        text = self.clean_text(text)
-
-        found = set()
-
-        # Sort longest skills first.
-        # This helps detect "machine learning"
-        # before "learning", etc.
-        skills = sorted(
-            self.SKILL_VOCABULARY,
-            key=len,
-            reverse=True
-        )
-
-        for skill in skills:
-
-            normalized_skill = self.normalize_skill(skill)
-
-            # Escape the skill for regex
-            escaped_skill = re.escape(skill)
-
-            # Word-boundary matching
-            pattern = rf"(?<![\w]){escaped_skill}(?![\w])"
-
-            if re.search(
-                pattern,
-                text,
-                re.IGNORECASE
-            ):
-
-                found.add(normalized_skill)
-
-        # -----------------------------------------------------
-        # REMOVE DUPLICATES AFTER NORMALIZATION
-        # -----------------------------------------------------
-
-        result = sorted(found)
-
-        return result
-
-    # ---------------------------------------------------------
-    # HANDLE COMMAND
-    # ---------------------------------------------------------
+    help = "Extract job requirements using LLM"
 
     def handle(self, *args, **options):
 
-        jobs = Job.objects.all()
+        # Only process jobs that have not been extracted yet
+        jobs = Job.objects.filter(
+            requirements_extracted=False
+        )
 
         if not jobs.exists():
-
             self.stdout.write(
-                self.style.ERROR(
-                    "No jobs found in database."
+                self.style.SUCCESS(
+                    "No jobs remaining for LLM extraction."
                 )
             )
-
             return
 
+        total = jobs.count()
+
+        self.stdout.write(
+            f"Found {total} jobs requiring LLM extraction."
+        )
+
         updated_count = 0
+        failed_count = 0
 
         for job in jobs:
 
-            skills = self.extract_skills(
-                job.description or ""
-            )
+            try:
 
-            job.required_skills = skills
+                result = extract_job_requirements(
+                    job.description or ""
+                )
 
-            job.save(
-                update_fields=["required_skills"]
-            )
+                job.required_skills = result.get(
+                    "required_skills",
+                    []
+                )
 
-            updated_count += 1
+                job.requirements_extracted = True
+
+                job.save(
+                    update_fields=[
+                        "required_skills",
+                        "requirements_extracted",
+                    ]
+                )
+
+                updated_count += 1
+
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Processed: {job.title}"
+                    )
+                )
+
+                time.sleep(3)
+
+            except Exception as e:
+
+                failed_count += 1
+
+                self.stdout.write(
+                    self.style.ERROR(
+                        f"Failed: {job.title} - {str(e)}"
+                    )
+                )
+
+                # Stop immediately if Groq rate limit is reached
+                if "429" in str(e):
+                    self.stdout.write(
+                        self.style.WARNING(
+                            "Groq rate limit reached. "
+                            "Stopping extraction."
+                        )
+                    )
+                    break
+
+        self.stdout.write("")
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"Processed {updated_count} jobs."
+                f"Successfully processed: {updated_count}"
+            )
+        )
+
+        self.stdout.write(
+            self.style.WARNING(
+                f"Failed: {failed_count}"
             )
         )

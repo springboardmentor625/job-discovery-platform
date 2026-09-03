@@ -4,11 +4,15 @@ from rest_framework.views import APIView
 from rest_framework.authtoken.models import Token
 from rest_framework.permissions import IsAuthenticated
 
+from .recommendation_engine import get_recommended_jobs
+
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from .models import Resume
-from .serializers import ResumeSerializer
+
+from .models import Resume, JobSwipe
+from .serializers import ResumeSerializer, JobSwipeSerializer
+from .llm.resume_extractor import extract_resume_information
 
 from .serializers import LoginSerializer
 from .serializers import RegisterSerializer
@@ -147,69 +151,28 @@ def extract_resume_text(file):
     else:
         return ""
 
-def parse_resume_text(text):
-    skills = []
-    experience = []
-    education = []
-
-    skill_list = [
-        "Python", "Java", "JavaScript", "SQL", "HTML", "CSS",
-        "Flask", "Django", "React", "Angular", "MySQL",
-        "PostgreSQL", "MongoDB", "GeoServer", "QGIS",
-        "Leaflet.js", "GeoJSON", "REST APIs", "Git", "GitHub",
-        "Postman", "Power BI"
-    ]
-
-    text_lower = text.lower()
-
-    # ---------------- SKILLS ----------------
-
-    for skill in skill_list:
-        if skill.lower() in text_lower:
-            skills.append(skill)
-
-    # ---------------- EXPERIENCE ----------------
-
-    experience_start = text_lower.find("\nexperience\n")
-    projects_start = text_lower.find("\nprojects\n")
-
-    if experience_start != -1:
-        experience_start += len("\nexperience\n")
-
-        if projects_start != -1:
-            experience_text = text[
-                experience_start:projects_start
-            ]
-        else:
-            experience_text = text[experience_start:]
-
-        experience.append(experience_text.strip())
-
-    # ---------------- EDUCATION ----------------
-
-    education_start = text_lower.find("\neducation\n")
-    certifications_start = text_lower.find("\ncertifications\n")
-
-    if education_start != -1:
-        education_start += len("\neducation\n")
-
-        if certifications_start != -1:
-            education_text = text[
-                education_start:certifications_start
-            ]
-        else:
-            education_text = text[education_start:]
-
-        education.append(education_text.strip())
-
-    return {
-        "skills": skills,
-        "experience": experience,
-        "education": education
-    }
-
 class ResumeUploadView(APIView):
     permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        resume = Resume.objects.filter(
+            user=request.user
+        ).first()
+
+        if not resume:
+            return Response(
+                {
+                    "error": "Resume not found."
+                },
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        return Response(
+            {
+                "resume": ResumeSerializer(resume).data
+            },
+            status=status.HTTP_200_OK
+        )
 
     def post(self, request):
         resume = Resume.objects.filter(user=request.user).first()
@@ -235,12 +198,13 @@ class ResumeUploadView(APIView):
 
                 resume_file.close()
 
-                parsed_data = parse_resume_text(extracted_text)
+                parsed_data = extract_resume_information(extracted_text)
 
                 resume.extracted_text = extracted_text
                 resume.skills = parsed_data["skills"]
                 resume.experience = parsed_data["experience"]
                 resume.education = parsed_data["education"]
+                resume.projects = parsed_data["projects"]
 
                 resume.save(
                     update_fields=[
@@ -248,6 +212,7 @@ class ResumeUploadView(APIView):
                         "skills",
                         "experience",
                         "education",
+                        "projects",
                     ]
                 )
 
@@ -386,5 +351,136 @@ class JobListView(APIView):
 
         return Response(
             serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+class JobSwipeView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+
+        job_id = request.data.get("job_id")
+        swipe_direction = request.data.get("swipe_direction")
+
+        # -----------------------------
+        # Validate input
+        # -----------------------------
+
+        if not job_id:
+            return Response(
+                {"error": "job_id is required."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if swipe_direction not in ["left", "right", "down"]:
+            return Response(
+                {
+                    "error": "swipe_direction must be either 'left' or 'right' or 'down'."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # -----------------------------
+        # Get job
+        # -----------------------------
+
+        try:
+            job = Job.objects.get(job_id=job_id)
+        except Job.DoesNotExist:
+
+            return Response(
+                {"error": "Job not found."},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # -----------------------------
+        # Create / update swipe
+        # -----------------------------
+
+        swipe, created = JobSwipe.objects.update_or_create(
+            user=request.user,
+            job=job,
+            defaults={
+                "swipe_direction": swipe_direction
+            }
+        )
+
+        return Response(
+            {
+                "message": (
+                    "Job swipe recorded successfully."
+                    if created
+                    else "Job swipe updated successfully."
+                ),
+                "job_id": job.job_id,
+                "job_title": job.title,
+                "swipe_direction": swipe.swipe_direction,
+            },
+            status=status.HTTP_201_CREATED
+            if created
+            else status.HTTP_200_OK
+        )
+
+class SavedJobsView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        saved_swipes = JobSwipe.objects.filter(
+            user=request.user,
+            swipe_direction="down"
+        ).select_related("job").order_by("-created_at")
+
+        jobs = [swipe.job for swipe in saved_swipes]
+
+        serializer = JobSerializer(
+            jobs,
+            many=True
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK
+        )
+
+class RecommendationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Get candidate profile
+        profile, _ = CandidateProfile.objects.get_or_create(
+            user=request.user
+        )
+
+        # Get resume
+        try:
+            resume = Resume.objects.get(user=request.user)
+        except Resume.DoesNotExist:
+            return Response(
+                {
+                    "error": "Please upload your resume before getting recommendations."
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get all jobs
+        jobs = Job.objects.all()
+
+        # Generate recommendations
+        recommendations = get_recommended_jobs(
+            resume_skills=resume.skills,
+            preferred_role=profile.preferred_job_role,
+            preferred_locations=profile.preferred_locations,
+            candidate_job_type=profile.job_type,
+            jobs=jobs,
+            limit=10,
+        )
+
+        return Response(
+            {
+                "recommendations": recommendations
+            },
             status=status.HTTP_200_OK
         )

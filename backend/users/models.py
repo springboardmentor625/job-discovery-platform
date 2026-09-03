@@ -73,6 +73,7 @@ class Resume(models.Model):
     skills = models.JSONField(default=list, blank=True)
     experience = models.JSONField(default=list, blank=True)
     education = models.JSONField(default=list, blank=True)
+    projects = models.JSONField(default=list, blank=True)
 
     uploaded_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -100,6 +101,23 @@ class CandidateProfile(models.Model):
 
     location = models.CharField(
         max_length=150,
+        blank=True
+    )
+
+    preferred_locations = models.JSONField(
+        default=list,
+        blank=True
+    )
+
+    JOB_TYPE_CHOICES = [
+        ("internship", "Internship"),
+        ("full_time", "Full-time"),
+        ("part_time", "Part-time"),
+    ]
+
+    job_type = models.CharField(
+        max_length=20,
+        choices=JOB_TYPE_CHOICES,
         blank=True
     )
 
@@ -156,6 +174,10 @@ class Job(models.Model):
         blank=True
     )
 
+    requirements_extracted = models.BooleanField(
+        default=False
+    )
+
     experience_level = models.CharField(
         max_length=100,
         blank=True
@@ -197,3 +219,50 @@ class Job(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.company_name}"
+
+class JobSwipe(models.Model):
+    SWIPE_CHOICES = [
+        ("right", "Right"),
+        ("left", "Left"),
+        ("down", "save"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="job_swipes"
+    )
+
+    job = models.ForeignKey(
+        Job,
+        on_delete=models.CASCADE,
+        related_name="swipes"
+    )
+
+    swipe_direction = models.CharField(
+        max_length=10,
+        choices=SWIPE_CHOICES
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "job"],
+                name="unique_user_job_swipe"
+            )
+        ]
+
+    def __str__(self):
+        return (
+            f"{self.user.email} - "
+            f"{self.job.title} - "
+            f"{self.swipe_direction}"
+        )

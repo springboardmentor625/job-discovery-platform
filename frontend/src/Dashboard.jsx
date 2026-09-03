@@ -1,4 +1,4 @@
-import { useState, useEffect  } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import "./Dashboard.css";
 
@@ -8,19 +8,35 @@ function Dashboard({ user, onLogout }) {
   const [uploading, setUploading] = useState(false);
   const [resumeError, setResumeError] = useState("");
   const [resumeMessage, setResumeMessage] = useState("");
-  const [activePage, setActivePage] = useState("dashboard");
   const [searchTerm, setSearchTerm] = useState("");
-  const [savedJobs, setSavedJobs] = useState([]);
 
+  const [savedJobs, setSavedJobs] = useState([]);
   const [jobs, setJobs] = useState([]);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState("");
+
+  const [recommendations, setRecommendations] = useState([]);
+  const [recommendationsLoading, setRecommendationsLoading] = useState(false);
+  const [recommendationsError, setRecommendationsError] = useState("");
+
+  const [swipeMessage, setSwipeMessage] = useState("");
+  const [swipeJob, setSwipeJob] = useState(null);
+  const [swipeDirection, setSwipeDirection] = useState("");
 
   const [selectedJob, setSelectedJob] = useState(null);
   const [atsJob, setAtsJob] = useState(null);
   const [atsResult, setAtsResult] = useState(null);
   const [atsLoading, setAtsLoading] = useState(false);
   const [atsError, setAtsError] = useState("");
+
+  const [activePage, setActivePage] = useState("dashboard");
+
+    useEffect(() => {
+      if (activePage === "recommendations") {
+        fetchRecommendations();
+      }
+    }, [activePage]);
+
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -79,6 +95,41 @@ function Dashboard({ user, onLogout }) {
     fetchJobs();
   }, []);
 
+  useEffect(() => {
+    const fetchSavedJobs = async () => {
+      try {
+        const token = localStorage.getItem("swipex_token");
+
+        const response = await fetch(
+          "http://127.0.0.1:8000/api/jobs/saved/",
+          {
+            method: "GET",
+            headers: {
+              Authorization: `Token ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch saved jobs");
+        }
+
+        const data = await response.json();
+
+        console.log("🔥 SAVED JOBS FROM BACKEND:", data);
+
+        const savedJobIds = data.map((job) => job.job_id);
+
+        setSavedJobs(savedJobIds);
+      } catch (error) {
+        console.error("❌ ERROR FETCHING SAVED JOBS:", error);
+      }
+    };
+
+    fetchSavedJobs();
+  }, []);
+
   const filteredJobs = jobs.filter((job) => {
     const search = searchTerm.toLowerCase();
 
@@ -91,28 +142,16 @@ function Dashboard({ user, onLogout }) {
   });
 
 
- const handleViewJob = (job) => {
+  const handleViewJob = (job) => {
+    console.log("🔥 HANDLE VIEW JOB CALLED:", job);
+    console.log("🔥 SELECTED JOB ID:", job.id);
+
     setSelectedJob(job);
     setAtsResult(null);
     setAtsError("");
-    setActivePage("job-details");
   };
-
-  const toggleSaveJob = (jobId) => {
-    setSavedJobs((current) =>
-      current.includes(jobId)
-        ? current.filter((id) => id !== jobId)
-        : [...current, jobId]
-    );
-  };
-
-  const firstName = user?.full_name
-    ? user.full_name.split(" ")[0]
-    : "User";
 
   const goTo = (page) => {
-
-    // Leaving the ATS workflow
     if (page === "jobs") {
       setAtsResult(null);
       setAtsError("");
@@ -122,6 +161,161 @@ function Dashboard({ user, onLogout }) {
 
     setActivePage(page);
     setSearchTerm("");
+  };
+
+  const fetchSavedJobs = async () => {
+    try {
+      const token = localStorage.getItem("swipex_token");
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/jobs/saved/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to fetch saved jobs.");
+      }
+
+      console.log("🔥 SAVED JOBS FROM BACKEND:", data);
+
+      const savedJobIds = data.map((job) => job.job_id);
+
+      setSavedJobs(savedJobIds);
+    } catch (error) {
+      console.error("❌ FETCH SAVED JOBS ERROR:", error);
+    }
+  };
+
+  const fetchRecommendations = async () => {
+    setRecommendationsLoading(true);
+    setRecommendationsError("");
+
+    try {
+      const token = localStorage.getItem("swipex_token");
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/recommendations/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to load recommendations."
+        );
+      }
+
+      console.log("🔥 RECOMMENDATIONS FROM BACKEND:", data);
+
+      const formattedRecommendations = (
+        data.recommendations || []
+      ).map((job) => ({
+        id: job.job_id,
+        title: job.title,
+        company: job.company_name || "Company not specified",
+
+        location: job.city || "Location not specified",
+
+        type: job.contract_type || "Not specified",
+
+        experience: "Not specified",
+
+        skills: "",
+
+        description: "Recommended based on your profile.",
+
+        match: job.final_score,
+
+        skillsScore: job.skills_score,
+        roleScore: job.role_score,
+        locationScore: job.location_score,
+        jobTypeScore: job.job_type_score,
+      }));
+
+      setRecommendations(formattedRecommendations);
+
+    } catch (error) {
+      console.error("❌ RECOMMENDATIONS ERROR:", error);
+
+      setRecommendationsError(
+        error.message || "Unable to load recommendations."
+      );
+
+    } finally {
+      setRecommendationsLoading(false);
+    }
+  };
+
+  const handleSwipe = async (job, direction) => {
+    const token = localStorage.getItem("swipex_token");
+
+    try {
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/jobs/swipe/",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Token ${token}`,
+          },
+          body: JSON.stringify({
+            job_id: job.id,
+            swipe_direction: direction,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Swipe failed");
+      }
+
+      console.log("SWIPE SUCCESS:", data);
+      setSwipeJob(job.id);
+      // Show UI feedback
+      if (direction === "right") {
+        setSwipeMessage("❤️ Interested! Your response has been recorded.");
+      } else if (direction === "left") {
+        setSwipeMessage("❌ Not Interested. Your response has been recorded.");
+      } else if (direction === "down") {
+        setSwipeMessage("💾 Job saved successfully.");
+      }
+
+      // Down = Save job
+      if (direction === "down") {
+        setSavedJobs((current) =>
+          current.includes(job.id)
+            ? current
+            : [...current, job.id]
+        );
+      }
+
+      // Keep the selected job visible for the moment
+      setSwipeDirection(direction);
+
+    } catch (error) {
+      console.error("SWIPE ERROR:", error);
+
+      setSwipeMessage(
+        `⚠️ ${error.message || "Unable to record your response."}`
+      );
+    }
   };
 
   /* ================= PAGE HEADER ================= */
@@ -154,7 +348,7 @@ function Dashboard({ user, onLogout }) {
   const DashboardPage = () => (
     <>
       <PageHeader
-        title={`Welcome back, ${firstName}! 👋`}
+        title={`Welcome back, ${user?.full_name || "User"}! 👋`}
         description="Discover opportunities that match your skills and career goals."
       />
 
@@ -347,16 +541,28 @@ function Dashboard({ user, onLogout }) {
   /* ================= JOB CARD ================= */
 
   const JobCard = ({ job, onViewJob }) => (
-    <div className="job-card">
+    <div
+      className="job-card swipe-job-card"
+      onClick={() => {
+        console.log("🔥 JOB CARD CLICKED:", job);
+        console.log("🔥 onViewJob VALUE:", onViewJob);
+        
+        if (typeof onViewJob === "function") {
+          console.log("🔥 onViewJob IS FUNCTION — CALLING NOW");
+          onViewJob(job);
+        } else {
+          console.error("❌ onViewJob IS NOT A FUNCTION:", onViewJob);
+        }
+      }}
+    >
 
       <div className="company-logo">
-        {job.company.charAt(0)}
+        {job.company.charAt(0).toUpperCase()}
       </div>
 
       <div className="job-details">
 
         <div className="job-title-row">
-
           <div>
             <h3>{job.title}</h3>
 
@@ -364,11 +570,6 @@ function Dashboard({ user, onLogout }) {
               {job.company}
             </p>
           </div>
-
-          <span className="match-badge">
-            {job.match}% Match
-          </span>
-
         </div>
 
         <div className="job-info">
@@ -378,32 +579,19 @@ function Dashboard({ user, onLogout }) {
         </div>
 
         <p className="skills">
-          {job.skills}
+          {job.skills || "Skills not specified"}
+        </p>
+
+        <p className="job-card-description">
+          {job.description
+            ? job.description.substring(0, 120) + "..."
+            : "No job description available."}
         </p>
 
       </div>
 
-      <div className="job-actions">
-
-        <button
-          className={`save-button ${
-            savedJobs.includes(job.id) ? "saved" : ""
-          }`}
-          onClick={() => toggleSaveJob(job.id)}
-        >
-          {savedJobs.includes(job.id) ? "♥ Saved" : "♡ Save"}
-        </button>
-
-        <button
-          className="apply-button"
-          onClick={() => {
-            console.log("VIEW JOB CLICKED:", job);
-            onViewJob(job);
-          }}
-        >
-          View Job
-        </button>
-
+      <div className="job-card-click">
+        Click to Swipe →
       </div>
 
     </div>
@@ -419,45 +607,61 @@ function Dashboard({ user, onLogout }) {
       />
 
       <section className="search-section large-search">
-
         <div className="section-title">
           <h2>Search Jobs</h2>
           <p>Search by job title, company, skills or location.</p>
         </div>
 
         <div className="search-bar">
-
           <span className="search-icon">🔎</span>
 
           <input
             type="text"
             value={searchTerm}
             onChange={(event) => setSearchTerm(event.target.value)}
-            placeholder="e.g. Python Developer, React, Hyderabad..."
+            placeholder="Search jobs, skills or companies..."
           />
 
+          <button onClick={() => goTo("jobs")}>
+            Search
+          </button>
         </div>
-
       </section>
 
-      <section className="jobs-section">
+      <section className="jobs-section swipe-jobs-section">
 
         <div className="section-header">
           <div>
             <h2>{filteredJobs.length} Jobs Found</h2>
-            <p>Matching your search criteria.</p>
+            <p>Choose a job to start swiping.</p>
           </div>
         </div>
 
-        {filteredJobs.length > 0 ? (
-          filteredJobs.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onViewJob={handleViewJob}
-            />
-          ))
-        ) : (
+        {jobsLoading && (
+          <div className="no-results">
+            <h3>Loading jobs...</h3>
+          </div>
+        )}
+
+        {jobsError && (
+          <div className="no-results">
+            <h3>{jobsError}</h3>
+          </div>
+        )}
+
+        {!jobsLoading && !jobsError && filteredJobs.length > 0 && (
+          <div className="jobs-grid">
+            {filteredJobs.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onViewJob={handleViewJob}
+              />
+            ))}
+          </div>
+        )}
+
+        {!jobsLoading && !jobsError && filteredJobs.length === 0 && (
           <div className="no-results">
             <div>🔎</div>
             <h3>No jobs found</h3>
@@ -567,6 +771,9 @@ function Dashboard({ user, onLogout }) {
   /* ================= JOB DETAILS PAGE ================= */
 
   const JobDetailsPage = () => {
+    console.log("🔥 JOB DETAILS PAGE RENDERED");
+    console.log("🔥 SELECTED JOB:", selectedJob);
+    console.log("🔥 ACTIVE PAGE:", activePage);
     if (!selectedJob) {
       return (
         <div className="workflow-placeholder">
@@ -590,145 +797,172 @@ function Dashboard({ user, onLogout }) {
 
     return (
       <>
-        <PageHeader
-          title={selectedJob.title}
-          description="Review the job details before analyzing your resume."
-        />
+        <div className="swipe-view-container">
 
-        <button
-          className="secondary-button"
-          onClick={() => goTo("jobs")}
-        >
-          ← Back to Jobs
-        </button>
+          <div className="swipe-card">
+            {/* COMPANY */}
+            <div className="swipe-company">
+              <div className="company-logo large-company-logo">
+                {selectedJob.company.charAt(0).toUpperCase()}
+              </div>
 
-        <section className="job-details-page">
-
-          {/* JOB HEADER */}
-
-          <div className="job-details-header">
-
-            <div className="company-logo large-company-logo">
-              {selectedJob.company.charAt(0)}
+              <div>
+                <h2>{selectedJob.title}</h2>
+                <p className="company">
+                  {selectedJob.company}
+                </p>
+              </div>
             </div>
 
-            <div>
-              <h2>{selectedJob.title}</h2>
+            {/* JOB INFORMATION */}
+            <div className="job-info job-details-info">
 
-              <p className="company">
-                {selectedJob.company}
+              <span>
+                📍 {selectedJob.location}
+              </span>
+
+              <span>
+                💼 {selectedJob.type}
+              </span>
+
+              <span>
+                🎓 {selectedJob.experience}
+              </span>
+
+            </div>
+
+            {/* SKILLS */}
+            <div className="job-details-section">
+              <h3>Required Skills</h3>
+
+              <p>
+                {selectedJob.skills ||
+                  "No specific skills listed."}
               </p>
             </div>
 
-          </div>
+            {/* DESCRIPTION */}
+            <div className="job-details-section">
+              <h3>Job Description</h3>
 
+              {formatJobDescription(
+                selectedJob.description
+              )}
+            </div>
 
-          {/* BASIC INFORMATION */}
+            {/* ATS */}
+            <div className="job-details-ats">
 
-          <div className="job-info job-details-info">
+              <h3>Check Your Resume Match</h3>
 
-            <span>
-              📍 {selectedJob.location}
-            </span>
+              <p>
+                See how well your resume matches this job
+                before applying.
+              </p>
 
-            <span>
-              💼 {selectedJob.type}
-            </span>
+              <button
+                className="apply-button"
+                onClick={async () => {
 
-            <span>
-              🎓 {selectedJob.experience}
-            </span>
+                  setAtsJob(selectedJob);
+                  setAtsResult(null);
+                  setAtsError("");
+                  setAtsLoading(true);
 
-          </div>
+                  try {
+                    const token =
+                      localStorage.getItem("swipex_token");
 
-
-          {/* SKILLS */}
-
-          <div className="job-details-section">
-
-            <h3>Required Skills</h3>
-            <p>
-              {selectedJob.skills || "No specific skills listed."}
-            </p>
-
-          </div>
-
-          {/* DESCRIPTION */}
-
-          <div className="job-details-section">
-
-            <h3>Job Description</h3>
-            {formatJobDescription(selectedJob.description)}
-
-          </div>
-
-          {/* ATS ACTION */}
-
-          <div className="job-details-ats">
-            <h3>
-              Check Your Resume Match
-            </h3>
-            <p>
-              See how well your resume matches this job
-              before applying.
-            </p>
-           <button
-              className="apply-button"
-              onClick={async () => {
-                setAtsJob(selectedJob);
-                setAtsResult(null);
-                setAtsError("");
-                setAtsLoading(true);
-
-                // Go to ATS page immediately
-                setActivePage("ats");
-
-                try {
-                  const token = localStorage.getItem("swipex_token");
-
-                  console.log("ANALYZING SELECTED JOB:", selectedJob);
-                  console.log("TOKEN EXISTS:", !!token);
-
-                  const response = await fetch(
-                    `http://127.0.0.1:8000/api/ats/jobs/${selectedJob.id}/`,
-                    {
-                      method: "GET",
-                      headers: {
-                        Authorization: `Token ${token}`,
-                        "Content-Type": "application/json",
-                      },
-                    }
-                  );
-
-                  console.log("ATS RESPONSE STATUS:", response.status);
-
-                  const data = await response.json();
-
-                  console.log("ATS RESPONSE DATA:", data);
-
-                  if (!response.ok) {
-                    throw new Error(
-                      data.error || "Failed to calculate ATS match."
+                    const response = await fetch(
+                      `http://127.0.0.1:8000/api/ats/jobs/${selectedJob.id}/`,
+                      {
+                        method: "GET",
+                        headers: {
+                          Authorization: `Token ${token}`,
+                        },
+                      }
                     );
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                      throw new Error(
+                        data.error ||
+                        "Failed to analyze resume."
+                      );
+                    }
+
+                    setAtsResult(data);
+                    setActivePage("ats");
+                  } catch (error) {
+
+                    console.error(
+                      "ATS ERROR:",
+                      error
+                    );
+
+                    setAtsError(
+                      error.message ||
+                      "Unable to analyze resume."
+                    );
+
+                  } finally {
+                    setAtsLoading(false);
                   }
 
-                  setAtsResult(data);
+                }}
+              >
+                {atsLoading
+                  ? "Analyzing..."
+                  : "Analyze Resume Match"}
+              </button>
 
-                } catch (error) {
-                  console.error("ATS error:", error);
-                  setAtsError(error.message);
+            </div>
+            
+            {swipeJob === selectedJob.id && swipeMessage && (
+              <div className="swipe-feedback">
+                {swipeMessage}
+              </div>
+            )}
+            
+            {/* SWIPE CONTROLS */}
+            <div className="swipe-controls">
 
-                } finally {
-                  setAtsLoading(false);
+              <button
+                className="swipe-button swipe-left"
+                onClick={() =>
+                  handleSwipe(selectedJob, "left")
                 }
-              }}
-            >
-              📊 Analyze My Resume
-            </button>
+              >
+                ❌
+                <span>Not Interested</span>
+              </button>
+
+              <button
+                className="swipe-button swipe-down"
+                onClick={() =>
+                  handleSwipe(selectedJob, "down")
+                }
+              >
+                💾
+                <span>Save Job</span>
+              </button>
+
+              <button
+                className="swipe-button swipe-right"
+                onClick={() =>
+                  handleSwipe(selectedJob, "right")
+                }
+              >
+                ❤️
+                <span>Interested</span>
+              </button>
+
+            </div>
 
           </div>
 
-        </section>
+        </div>
       </>
     );
   };
@@ -805,6 +1039,8 @@ const ProfilePage = () => {
   const [profileForm, setProfileForm] = useState({
     headline: "",
     location: "",
+    preferred_locations: "",
+    job_type: "",
     bio: "",
     career_goal: "",
     preferred_job_role: "",
@@ -839,6 +1075,10 @@ const ProfilePage = () => {
       setProfileForm({
         headline: data.headline || "",
         location: data.location || "",
+        preferred_locations: Array.isArray(data.preferred_locations)
+          ? data.preferred_locations.join(", ")
+          : "",
+        job_type: data.job_type || "",
         bio: data.bio || "",
         career_goal: data.career_goal || "",
         preferred_job_role: data.preferred_job_role || "",
@@ -848,13 +1088,14 @@ const ProfilePage = () => {
       });
 
     } catch (error) {
-
-      console.error("Profile loading error:", error);
+      console.error("Profile update error:", error);
+      console.error("Backend response:", error.response?.data);
 
       setProfileError(
-        "Unable to load your profile."
+        error.response?.data
+          ? JSON.stringify(error.response.data)
+          : "Unable to connect to the server."
       );
-
     } finally {
 
       setProfileLoading(false);
@@ -909,11 +1150,18 @@ const ProfilePage = () => {
 
       const formData = new FormData();
 
-      Object.entries(profileForm).forEach(
-        ([key, value]) => {
+      Object.entries(profileForm).forEach(([key, value]) => {
+        if (key === "preferred_locations") {
+          const locations = value
+            .split(",")
+            .map((location) => location.trim())
+            .filter((location) => location);
+
+          formData.append(key, JSON.stringify(locations));
+        } else {
           formData.append(key, value);
         }
-      );
+      });
 
       if (profilePhoto) {
         formData.append(
@@ -1079,6 +1327,29 @@ const ProfilePage = () => {
 
               </div>
 
+              <div className="profile-field">
+                <label>Preferred Job Locations</label>
+                <strong>
+                  {Array.isArray(profile?.preferred_locations) &&
+                  profile.preferred_locations.length > 0
+                    ? profile.preferred_locations.join(", ")
+                    : "Add your preferred job locations"}
+                </strong>
+              </div>
+
+              <div className="profile-field">
+                <label>Job Type</label>
+                <strong>
+                  {profile?.job_type
+                    ? profile.job_type === "full_time"
+                      ? "Full-time"
+                      : profile.job_type === "part_time"
+                      ? "Part-time"
+                      : "Internship"
+                    : "Add your preferred job type"}
+                </strong>
+              </div>
+
               <div className="profile-field profile-bio">
 
                 <label>Bio</label>
@@ -1191,6 +1462,37 @@ const ProfilePage = () => {
                 onChange={handleProfileChange}
                 placeholder="e.g. Andhra Pradesh, India"
               />
+
+            </div>
+
+            <div className="profile-form-field">
+
+              <label>Preferred Job Locations</label>
+
+              <input
+                type="text"
+                name="preferred_locations"
+                value={profileForm.preferred_locations}
+                onChange={handleProfileChange}
+                placeholder="e.g. Hyderabad, Bangalore, Chennai"
+              />
+
+            </div>
+
+            <div className="profile-form-field">
+
+              <label>Job Type</label>
+
+              <select
+                name="job_type"
+                value={profileForm.job_type}
+                onChange={handleProfileChange}
+              >
+                <option value="">Select Job Type</option>
+                <option value="internship">Internship</option>
+                <option value="full_time">Full-time</option>
+                <option value="part_time">Part-time</option>
+              </select>
 
             </div>
 
@@ -1311,6 +1613,27 @@ const ProfilePage = () => {
 /* ================= RESUME PAGE ================= */
 
 const ResumePage = () => {
+
+    useEffect(() => {
+      const loadResume = async () => {
+        try {
+          const response = await axios.get(
+            "http://127.0.0.1:8000/api/resume/upload/",
+            {
+              headers: {
+                Authorization: `Token ${localStorage.getItem("swipex_token")}`,
+              },
+            }
+          );
+
+          setResumeData(response.data.resume);
+        } catch (error) {
+          console.log("No saved resume found.");
+        }
+      };
+
+      loadResume();
+    }, []);
 
   const handleResumeUpload = async (event) => {
 
@@ -1530,22 +1853,21 @@ const ResumePage = () => {
 
                     <div className="experience-content">
 
-                      {experience
-                        .split("\n")
-                        .map((line, lineIndex) => (
+                      <p className="experience-line">
+                        <strong>{experience.role}</strong>
+                      </p>
 
-                          <p
-                            key={lineIndex}
-                            className={
-                              line.startsWith("")
-                                ? "experience-bullet"
-                                : "experience-line"
-                            }
-                          >
-                            {line}
-                          </p>
+                      <p className="experience-line">
+                        {experience.company}
+                      </p>
 
-                        ))}
+                      <p className="experience-line">
+                        {experience.duration}
+                      </p>
+
+                      <p className="experience-line">
+                        {experience.description}
+                      </p>
 
                     </div>
 
@@ -1585,21 +1907,19 @@ const ResumePage = () => {
 
                     <div className="education-content">
 
-                      {education
-                        .split("\n")
-                        .map((line, lineIndex) => (
+                      <p className="education-line">
+                        <strong>{education.degree}</strong>
+                      </p>
 
-                          <p
-                            key={lineIndex}
-                            className="education-line"
-                          >
-                            {line}
-                          </p>
+                      <p className="education-line">
+                        {education.institution}
+                      </p>
 
-                        ))}
+                      <p className="education-line">
+                        {education.year}
+                      </p>
 
                     </div>
-
                   </div>
 
                 ))}
@@ -1682,7 +2002,7 @@ const ResumePage = () => {
         console.log("TOKEN EXISTS:", !!token);
 
         const response = await fetch(
-          `http://127.0.0.1:8000/api/ats/jobs/${selectedJob.id}/`,
+          `http://127.0.0.1:8000/api/ats/jobs/${atsJob.id}/`,
           {
             method: "GET",
             headers: {
@@ -1994,6 +2314,151 @@ const ResumePage = () => {
     );
   };
 
+  /* ================= AI RECOMMENDATIONS ================= */
+
+  const RecommendationsPage = ({
+    recommendations,
+    recommendationsLoading,
+    recommendationsError,
+    fetchRecommendations,
+    handleSwipe,
+    goTo,
+    swipeMessage,
+  }) => {
+
+    return (
+      <>
+        <PageHeader
+          title="AI Recommendations"
+          description="Discover personalized jobs based on your resume and career preferences."
+        />
+
+        <section className="jobs-section recommendations-section">
+          <div className="section-header">
+            <div>
+              <h2>Jobs Recommended For You</h2>
+              <p>
+                SWIPEX ranked these opportunities using your profile and resume.
+              </p>
+            </div>
+          </div>
+
+          {recommendationsLoading && (
+            <div className="no-results">
+              <h3>🤖 Finding the best jobs for you...</h3>
+              <p>
+                SWIPEX is analyzing your resume and career preferences.
+              </p>
+            </div>
+          )}
+
+          {recommendationsError && (
+            <div className="no-results">
+              <h3>Unable to load recommendations</h3>
+              <p>{recommendationsError}</p>
+            </div>
+          )}
+
+          {!recommendationsLoading &&
+            !recommendationsError &&
+            recommendations.length > 0 && (
+              <div className="jobs-grid">
+                {recommendations.map((job) => (
+                  <div
+                    className="job-card swipe-job-card"
+                    key={job.id}
+                  >
+                    <div className="company-logo">
+                      {job.company.charAt(0).toUpperCase()}
+                    </div>
+
+                    <div className="job-details">
+                      <div className="job-title-row">
+                        <div>
+                          <h3>{job.title}</h3>
+                          <p className="company">
+                            {job.company}
+                          </p>
+                        </div>
+
+                        <div className="recommendation-score">
+                          {job.match}%
+                          <span>Match</span>
+                        </div>
+                      </div>
+
+                      <div className="job-info">
+                        <span>📍 {job.location}</span>
+                        <span>💼 {job.type}</span>
+                      </div>
+
+                      <div className="recommendation-breakdown">
+                        <span>🛠 Skills: {job.skillsScore}%</span>
+                        <span>🎯 Role: {job.roleScore}%</span>
+                        <span>📍 Location: {job.locationScore}%</span>
+                        <span>💼 Job Type: {job.jobTypeScore}%</span>
+                      </div>
+                    </div>
+
+                    <div className="recommendation-actions">
+                      <button
+                        className="swipe-button swipe-left"
+                        onClick={() => handleSwipe(job, "left")}
+                      >
+                        ❌
+                        <span>Not Interested</span>
+                      </button>
+
+                      <button
+                        className="swipe-button swipe-down"
+                        onClick={() => handleSwipe(job, "down")}
+                      >
+                        💾
+                        <span>Save</span>
+                      </button>
+
+                      <button
+                        className="swipe-button swipe-right"
+                        onClick={() => handleSwipe(job, "right")}
+                      >
+                        ❤️
+                        <span>Interested</span>
+                      </button>
+                    </div>
+
+                    {swipeJob === job.id && swipeMessage && (
+                      <div className="swipe-feedback">
+                        {swipeMessage}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+          {!recommendationsLoading &&
+            !recommendationsError &&
+            recommendations.length === 0 && (
+              <div className="no-results">
+                <div>🤖</div>
+                <h3>No recommendations available</h3>
+                <p>
+                  Upload your resume and complete your profile
+                  to get personalized job recommendations.
+                </p>
+
+                <button
+                  className="apply-button"
+                  onClick={() => goTo("profile")}
+                >
+                  Complete Profile
+                </button>
+              </div>
+            )}
+        </section>
+      </>
+    );
+  };
   /* ================= PLACEHOLDER WORKFLOWS ================= */
 
   const WorkflowPage = ({ icon, title, description }) => (
@@ -2034,7 +2499,26 @@ const ResumePage = () => {
     switch (activePage) {
 
       case "jobs":
-        return <FindJobsPage />;
+        return (
+          <>
+            <FindJobsPage />
+
+            {selectedJob && (
+              <div className="job-details-modal-overlay">
+                <div className="job-details-modal">
+                  <button
+                    className="job-details-close"
+                    onClick={() => setSelectedJob(null)}
+                  >
+                    ✕
+                  </button>
+
+                  <JobDetailsPage />
+                </div>
+              </div>
+            )}
+          </>
+        );
 
       case "job-details":
         return <JobDetailsPage />;
@@ -2049,16 +2533,19 @@ const ResumePage = () => {
         return <ResumePage />;
 
       case "ats":
-      return <ATSAnalysisPage />;
+        return <ATSAnalysisPage />;
 
       case "recommendations":
-        return (
-          <WorkflowPage
-            icon="✨"
-            title="AI Recommendations"
-            description="Discover personalized job recommendations."
-          />
-        );
+      return (
+        <RecommendationsPage
+          recommendations={recommendations}
+          recommendationsLoading={recommendationsLoading}
+          recommendationsError={recommendationsError}
+          handleSwipe={handleSwipe}
+          goTo={goTo}
+          swipeMessage={swipeMessage}
+        />
+      );
 
       case "applications":
         return (

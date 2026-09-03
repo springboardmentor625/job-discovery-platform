@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import User,Resume,CandidateProfile,Job
+from .models import User,Resume,CandidateProfile,Job,JobSwipe
 
 class RegisterSerializer(serializers.ModelSerializer):
 
@@ -127,6 +127,8 @@ class CandidateProfileSerializer(serializers.ModelSerializer):
             "profile_photo",
             "headline",
             "location",
+            "preferred_locations",
+            "job_type",
             "bio",
             "career_goal",
             "preferred_job_role",
@@ -160,4 +162,22 @@ class JobSerializer(serializers.ModelSerializer):
             "city",
             "state",
             "published_at",
+        ]
+
+class JobSwipeSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = JobSwipe
+        fields = [
+            "id",
+            "job",
+            "swipe_direction",
+            "created_at",
+            "updated_at",
+        ]
+
+        read_only_fields = [
+            "id",
+            "created_at",
+            "updated_at",
         ]
