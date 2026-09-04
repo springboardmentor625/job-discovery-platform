@@ -145,3 +145,10 @@ db_backup/
 
 # Dataset
 dataset/
+
+
+# Generated ML model
+backend/trained_model.pkl
+
+# Local database backup
+backup_before_ml_reset.sql

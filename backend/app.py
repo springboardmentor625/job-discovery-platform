@@ -4,6 +4,8 @@ from flask_cors import CORS
 import os
 import json
 import re
+import joblib
+
 
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -17,6 +19,20 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity
 )
+
+# ============================================================
+# ML MODEL
+# ============================================================
+
+MODEL_PATH = "trained_model.pkl"
+
+ml_model = None
+
+if os.path.exists(MODEL_PATH):
+    ml_model = joblib.load(MODEL_PATH)
+    print("ML: Trained model loaded")
+else:
+    print("ML: No trained model found")
 
 
 # ============================================================
@@ -1552,7 +1568,6 @@ def analyze_ats(job_id):
 # ============================================================
 # JOB RECOMMENDATIONS
 # ============================================================
-
 @app.route(
     "/api/recommendations",
     methods=["GET"]
@@ -1626,18 +1641,50 @@ def get_recommendations():
     ).strip().lower()
 
     # ----------------------------------------------------
-    # GET ALL ACTIVE JOBS
+    # GET JOBS
     # ----------------------------------------------------
 
-    jobs = Job.query.filter(
-        db.func.lower(Job.status) == "active"
-    ).all()
+    jobs = Job.query.all()
+
+    # ----------------------------------------------------
+    # CHECK SWIPE HISTORY
+    # ----------------------------------------------------
+
+    swipe_count = SwipeHistory.query.filter_by(
+        user_id=user_id
+    ).count()
 
     print(
-        "RECOMMENDATION JOB COUNT:",
-        len(jobs)
-        , flush=True
+        "SWIPE HISTORY:",
+        swipe_count,
+        flush=True
     )
+
+    # ----------------------------------------------------
+    # ML DECISION
+    #
+    # 0-4 swipes:
+    #     Rule based
+    #
+    # 5+ swipes:
+    #     ML model
+    # ----------------------------------------------------
+
+    use_ml = (
+        swipe_count >= 5
+        and ml_model is not None
+    )
+
+    if use_ml:
+        print(
+            "RECOMMENDATION MODE: ML",
+            flush=True
+        )
+    else:
+        print(
+            "RECOMMENDATION MODE: RULE-BASED",
+            flush=True
+        )
 
     # ----------------------------------------------------
     # CALCULATE SCORE FOR ALL JOBS
@@ -1665,7 +1712,7 @@ def get_recommendations():
         }
 
         # -----------------------------------------------
-        # SKILL MATCH = 70%
+        # SKILL MATCH
         # -----------------------------------------------
 
         matched_skills = (
@@ -1675,20 +1722,20 @@ def get_recommendations():
 
         if required_skill_set:
 
-            skill_score = (
+            skill_match = (
                 len(matched_skills)
                 / len(required_skill_set)
-            ) * 70
+            ) * 100
 
         else:
 
-            skill_score = 0
+            skill_match = 0
 
         # -----------------------------------------------
-        # LOCATION MATCH = 15%
+        # LOCATION MATCH
         # -----------------------------------------------
 
-        location_score = 0
+        location_match = 0
 
         job_location = (
             job.location or ""
@@ -1700,13 +1747,13 @@ def get_recommendations():
                 preferred_location in job_location
                 or job_location in preferred_location
             ):
-                location_score = 15
+                location_match = 100
 
         # -----------------------------------------------
-        # JOB TYPE MATCH = 15%
+        # JOB TYPE MATCH
         # -----------------------------------------------
 
-        job_type_score = 0
+        job_type_match = 0
 
         employment_type = (
             job.employment_type or ""
@@ -1716,21 +1763,76 @@ def get_recommendations():
             preferred_job_type
             and preferred_job_type == employment_type
         ):
-            job_type_score = 15
+            job_type_match = 100
 
         # -----------------------------------------------
-        # FINAL SCORE
+        # FINAL RECOMMENDATION SCORE
         # -----------------------------------------------
 
-        recommendation_score = round(
-            skill_score
-            + location_score
-            + job_type_score,
-            2
-        )
+        if use_ml:
+
+            # -------------------------------------------
+            # ML MODEL
+            # -------------------------------------------
+
+            ml_score = float(
+                ml_model.predict_proba(
+                    [[
+                        skill_match,
+                        location_match,
+                        job_type_match
+                    ]]
+                )[0][1] * 100
+            )
+
+            recommendation_score = float(
+                round(
+                    ml_score,
+                    2
+                )
+            )
+
+            print(
+                f"ML SCORE: {ml_score:.2f} | "
+                f"SKILL: {skill_match:.2f} | "
+                f"LOCATION: {location_match:.2f} | "
+                f"JOB TYPE: {job_type_match:.2f}",
+                flush=True
+            )
+
+        else:
+
+            # -------------------------------------------
+            # RULE-BASED MODEL
+            #
+            # Skills      = 70%
+            # Location    = 15%
+            # Job Type    = 15%
+            # -------------------------------------------
+
+            skill_score = (
+                skill_match * 0.70
+            )
+
+            location_score = (
+                location_match * 0.15
+            )
+
+            job_type_score = (
+                job_type_match * 0.15
+            )
+
+            recommendation_score = float(
+                round(
+                    skill_score
+                    + location_score
+                    + job_type_score,
+                    2
+                )
+            )
 
         # -----------------------------------------------
-        # STORE ONLY SCORE INFORMATION FOR NOW
+        # STORE SCORE INFORMATION
         # -----------------------------------------------
 
         scored_jobs.append({
@@ -1750,7 +1852,7 @@ def get_recommendations():
     print(
         "JOBS SCORED:",
         len(scored_jobs),
-         flush=True
+        flush=True
     )
 
     # ----------------------------------------------------
@@ -1797,7 +1899,6 @@ def get_recommendations():
 
     # ----------------------------------------------------
     # CREATE / UPDATE RECOMMENDATIONS
-    # ONLY FOR TOP 20
     # ----------------------------------------------------
 
     for item in top_jobs:
@@ -1916,7 +2017,7 @@ def get_recommendations():
         db.session.flush()
 
         # -----------------------------------------------
-        # GET COMPANY FROM MAP
+        # GET COMPANY
         # -----------------------------------------------
 
         company = company_map.get(

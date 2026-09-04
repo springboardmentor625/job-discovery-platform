@@ -610,6 +610,16 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
         const data = await response.json();
 
+        console.log(
+  "RECOMMENDATION COUNT:",
+  data.recommendations?.length
+);
+
+console.log(
+  "RECOMMENDATIONS:",
+  data.recommendations
+);
+
         if (response.ok) {
           setRecommendations(
             data.recommendations || []
@@ -2157,7 +2167,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
                   </div>
 
                   {recommendations
-                    .slice(1, 4)
+                    .slice(1)
                     .map((job) => (
                       <div
                         className="sx-mini-job"
