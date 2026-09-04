@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { FaExclamationTriangle } from "react-icons/fa";
 import api from "../api";
 import useJobs from "../hooks/useJobs";
 import Recommended from "../components/recommendations/Recommended";
 import JobDetailsModal from "../components/JobDetailsModal";
+import Toast from "../components/Toast";
 
 // ==========================================
 // AI RECOMMENDATIONS PAGE
@@ -19,12 +20,18 @@ import JobDetailsModal from "../components/JobDetailsModal";
 
 function AIRecommendations() {
   const navigate = useNavigate();
+  const location = useLocation();
   const userId = localStorage.getItem("user_id");
 
   const [savedJobs, setSavedJobs] = useState(new Set());
   const [selectedJob, setSelectedJob] = useState(null);
+  const [toast, setToast] = useState({ message: "", type: "success" });
 
   const { jobs, loading, error } = useJobs(userId, { limit: 10 });
+
+  const showToast = (message, type = "success") => {
+    setToast({ message, type });
+  };
 
   useEffect(() => {
     const loadSavedJobs = async () => {
@@ -44,6 +51,11 @@ function AIRecommendations() {
 
   const handleSave = async (jobId) => {
     const isSaved = savedJobs.has(jobId);
+
+    showToast(
+      isSaved ? "Removed from saved jobs." : "Job saved.",
+      isSaved ? "info" : "success"
+    );
 
     try {
       if (isSaved) {
@@ -66,6 +78,8 @@ function AIRecommendations() {
     } catch (err) {
       console.error("Save job error:", err);
 
+      showToast(err.response?.data?.detail || "Unable to save job.", "error");
+
       if (err.response?.status === 401) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("user_id");
@@ -77,6 +91,11 @@ function AIRecommendations() {
 
   return (
     <div className="px-8 py-10">
+      <Toast
+        message={toast.message}
+        type={toast.type}
+        onClose={() => setToast({ message: "", type: "success" })}
+      />
       <div className="mb-8">
         <p className="text-xs font-bold tracking-widest text-sx-primary">
           SWIPEX INTELLIGENCE
@@ -115,7 +134,10 @@ function AIRecommendations() {
               navigate(
                 error.toLowerCase().includes("swipe")
                   ? "/candidate/jobs"
-                  : "/candidate/profile/edit"
+                  : {
+                      pathname: "/candidate/settings/profile",
+                      state: { returnTo: location.pathname },
+                    }
               )
             }
             className="mt-5 rounded-lg bg-sx-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-sx-primary-dark"

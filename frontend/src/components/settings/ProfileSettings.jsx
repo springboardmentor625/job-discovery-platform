@@ -4,8 +4,9 @@ import {
   useRef,
 } from "react";
 
-import { useNavigate } from "react-router-dom";
-import api from "../api";
+import { useLocation, useNavigate } from "react-router-dom";
+import { FaArrowLeft } from "react-icons/fa";
+import api from "../../api";
 
 
 // ==========================================
@@ -138,11 +139,18 @@ const AVAILABLE_SKILLS = [
 // COMPONENT
 // ==========================================
 
-function EditProfile() {
+function ProfileSettings({ returnTo }) {
 
   const navigate = useNavigate();
+  const location = useLocation();
+  const resolvedReturnTo = returnTo || location.state?.returnTo || "/candidate";
 
   const skillAreaRef = useRef(null);
+  const redirectTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => clearTimeout(redirectTimeoutRef.current);
+  }, []);
 
 
   // ==========================================
@@ -429,21 +437,6 @@ function EditProfile() {
     setError("");
 
   };
-
-
-  // ==========================================
-  // CHECK CUSTOM SKILLS
-  // ==========================================
-
-  const hasCustomSkill =
-    selectedSkills.some(
-      (skill) =>
-        !AVAILABLE_SKILLS.some(
-          (availableSkill) =>
-            availableSkill.toLowerCase() ===
-            skill.toLowerCase()
-        )
-    );
 
 
   // ==========================================
@@ -860,10 +853,10 @@ function EditProfile() {
       );
 
 
-      setTimeout(() => {
-
-        navigate("/candidate");
-
+      redirectTimeoutRef.current = setTimeout(() => {
+        navigate(resolvedReturnTo, {
+          replace: true,
+        });
       }, 1000);
 
 
@@ -961,9 +954,25 @@ function EditProfile() {
   const inputClasses =
     "w-full rounded-lg border border-sx-border px-3.5 py-2.5 text-sm text-sx-text outline-none transition focus:border-sx-primary focus:ring-2 focus:ring-sx-primary/20";
 
+  const returnLabel =
+    resolvedReturnTo === "/candidate/settings"
+      ? "Back to Settings"
+      : resolvedReturnTo === "/candidate/ai-recommendations"
+      ? "Back to AI Recommendations"
+      : "Back to Dashboard";
+
   return (
     <div className="px-6 py-10">
-      <div className="mx-auto max-w-4xl rounded-2xl border border-sx-border bg-sx-card p-8 shadow-sm">
+      <div className="mx-auto max-w-4xl">
+        <button
+          type="button"
+          onClick={() => navigate(resolvedReturnTo)}
+          className="mb-5 inline-flex items-center gap-2 text-sm font-semibold text-sx-primary-dark hover:underline"
+        >
+          <FaArrowLeft />
+          {returnLabel}
+        </button>
+        <div className="rounded-2xl border border-sx-border bg-sx-card p-8 shadow-sm">
         {/* HEADER */}
 
         <div className="mb-6">
@@ -1294,9 +1303,10 @@ function EditProfile() {
             </button>
           </div>
         </form>
+        </div>
       </div>
     </div>
   );
 }
 
-export default EditProfile;
+export default ProfileSettings;

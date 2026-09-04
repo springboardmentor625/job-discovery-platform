@@ -77,14 +77,14 @@ function Discover() {
 
     setActionLoading(true);
 
+    if (direction === "right") {
+      showToast("Liked — added to your preferences.", "success");
+    } else {
+      showToast("Passed — we won't show this again.", "info");
+    }
+
     try {
       await api.post("/api/swipes", { job_id: jobId, action: direction, match_score: jobs.find((job) => job.job_id === jobId)?.match_score ?? null });
-
-      if (direction === "right") {
-        showToast("Liked — added to your preferences.", "success");
-      } else {
-        showToast("Passed — we won't show this again.", "info");
-      }
 
       removeJob(jobId);
     } catch (err) {
@@ -111,6 +111,11 @@ function Discover() {
   const handleSave = async (jobId) => {
     const isSaved = savedJobs.has(jobId);
 
+    showToast(
+      isSaved ? "Removed from saved jobs." : "Job saved.",
+      isSaved ? "info" : "success"
+    );
+
     try {
       if (isSaved) {
         await api.delete(`/api/saved-jobs/${jobId}`);
@@ -121,7 +126,6 @@ function Discover() {
           return updated;
         });
 
-        showToast("Removed from saved jobs.", "info");
       } else {
         await api.post(`/api/saved-jobs/${jobId}`);
 
@@ -131,7 +135,6 @@ function Discover() {
           return updated;
         });
 
-        showToast("Job saved.", "success");
       }
     } catch (err) {
       console.error("Save job error:", err);

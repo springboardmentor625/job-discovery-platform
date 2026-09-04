@@ -180,10 +180,6 @@ function SavedJobs() {
         {/* ================================= */}
 
         <div className="mb-8">
-          <p className="text-xs font-bold tracking-widest text-sx-primary">
-            CANDIDATE WORKSPACE
-          </p>
-
           <h1 className="text-3xl font-bold text-sx-text">Saved Jobs</h1>
 
           <p className="text-sm text-sx-text-secondary">

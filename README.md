@@ -2,7 +2,7 @@
 
 SwipeX is an intelligent job discovery and career assistance platform for candidates. It combines profile and resume information with a weighted job-matching engine, swipe-based preference learning, ATS analysis, and saved-job management.
 
-The candidate experience is organized around a persistent dashboard where Discover, AI Recommendations, Saved Jobs, profile, and resume are available without leaving the candidate workspace.
+The candidate experience is organized around a persistent dashboard where Discover, AI Recommendations, Saved Jobs, Settings, and Resume are available through the sidebar.
 
 ---
 
@@ -327,10 +327,22 @@ Available candidate sections:
 Dashboard
 Discover
 Saved Jobs
-Profile
 Resume
 AI Recommendations
+Settings
 ```
+
+Settings is split into focused pages:
+
+```text
+/candidate/settings
+├── /profile  - create or update the candidate profile
+└── /history  - review swipes and change Like/Reject decisions
+```
+
+The profile page preserves its opener. Saving from Dashboard returns to Dashboard,
+saving from AI Recommendations returns to AI Recommendations, and saving from
+Settings returns to Settings.
 
 Opening job details from Discover, Saved Jobs, or AI Recommendations keeps the candidate within the current dashboard context.
 
@@ -401,6 +413,7 @@ SwipeX
 | `/api/jobs/reset-swipes` | DELETE | Clear candidate swipe history |
 | `/api/recommendations/{user_id}` | GET | Ranked recommendation jobs |
 | `/api/swipes` | POST | Like/pass interaction |
+| `/api/swipes/history` | GET | Candidate swipe history with job details |
 | `/api/saved-jobs` | GET / POST / DELETE | Saved jobs |
 | `/api/ats/{job_id}` | GET | Per-job ATS score |
 
@@ -542,6 +555,11 @@ job-discovery-platform/
 ├── frontend/
 │   ├── src/
 │   │   ├── components/
+│   │   │   ├── settings/
+│   │   │   │   ├── ProfileSettings.jsx
+│   │   │   │   └── SwipeHistory.jsx
+│   │   │   ├── discover/
+│   │   │   └── recommendations/
 │   │   ├── hooks/
 │   │   ├── pages/
 │   │   ├── api.js

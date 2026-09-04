@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import api from "../api";
 
 function CandidateDashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [profile, setProfile] = useState(null);
   const [fullName, setFullName] = useState("");
@@ -75,10 +76,6 @@ function CandidateDashboard() {
 
       <header className="mb-8 flex items-center justify-between">
         <div>
-          <p className="text-xs font-bold tracking-widest text-sx-primary">
-            CANDIDATE WORKSPACE
-          </p>
-
           <h1 className="mt-1 text-2xl font-bold text-sx-text">
             Welcome back{displayName ? `, ${displayName}` : ""}!
           </h1>
@@ -95,7 +92,7 @@ function CandidateDashboard() {
 
       {profile ? (
         <section className="mb-10">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="mb-4 flex items-center">
             <div>
               <p className="text-xs font-bold tracking-widest text-sx-text-muted">
                 YOUR PROFILE
@@ -106,13 +103,6 @@ function CandidateDashboard() {
               </h2>
             </div>
 
-            <button
-              type="button"
-              onClick={() => navigate("/candidate/profile/edit")}
-              className="rounded-lg border border-sx-border bg-sx-card px-4 py-2 text-sm font-semibold text-sx-primary transition hover:bg-sx-bg-soft"
-            >
-              Edit Profile
-            </button>
           </div>
 
           <div className="rounded-2xl border border-sx-border bg-sx-card p-6 shadow-sm">
@@ -250,7 +240,11 @@ function CandidateDashboard() {
           <p className="mt-2 text-sm text-sx-text-secondary">{error}</p>
           <button
             type="button"
-            onClick={() => navigate("/candidate/profile/edit")}
+            onClick={() =>
+              navigate("/candidate/settings/profile", {
+                state: { returnTo: location.pathname },
+              })
+            }
             className="mt-4 rounded-lg bg-sx-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sx-primary-dark"
           >
             Create Profile

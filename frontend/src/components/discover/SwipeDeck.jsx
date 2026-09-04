@@ -131,10 +131,6 @@ function SwipeDeck({ jobs, onSwipe, onSave, savedJobs, actionLoading, onViewDeta
   }
 
   const rotation = drag.dx / 20;
-  const likeOpacity = Math.min(Math.max((drag.dx - 40) / (SWIPE_THRESHOLD - 40), 0), 1);
-  const passOpacity = Math.min(Math.max((-drag.dx - 40) / (SWIPE_THRESHOLD - 40), 0), 1);
-  const saveOpacity = Math.min(Math.max((drag.dy - 40) / (SAVE_DOWN_THRESHOLD - 40), 0), 1);
-
   const isSaved = savedJobs.has(currentJob.job_id);
   const requiredSkills =
     currentJob.required_skills ||
@@ -167,29 +163,6 @@ function SwipeDeck({ jobs, onSwipe, onSave, savedJobs, actionLoading, onViewDeta
           }}
           className="absolute inset-0 flex cursor-grab flex-col overflow-y-auto rounded-2xl border border-sx-border bg-sx-card p-5 shadow-lg active:cursor-grabbing"
         >
-          {/* LIKE / PASS STAMPS */}
-
-          <div
-            style={{ opacity: likeOpacity }}
-            className="pointer-events-none absolute left-5 top-5 z-10 rotate-[-12deg] rounded-lg border-4 border-sx-success px-3 py-1 text-lg font-extrabold uppercase tracking-wider text-sx-success"
-          >
-            Like
-          </div>
-
-          <div
-            style={{ opacity: passOpacity }}
-            className="pointer-events-none absolute right-5 top-5 z-10 rotate-[12deg] rounded-lg border-4 border-sx-danger px-3 py-1 text-lg font-extrabold uppercase tracking-wider text-sx-danger"
-          >
-            Pass
-          </div>
-
-          <div
-            style={{ opacity: saveOpacity }}
-            className="pointer-events-none absolute left-1/2 top-5 z-10 -translate-x-1/2 rounded-lg border-4 border-sx-primary px-3 py-1 text-lg font-extrabold uppercase tracking-wider text-sx-primary"
-          >
-            Save
-          </div>
-
           {/* HEADER */}
 
           <div className="mb-3 flex items-start gap-3">

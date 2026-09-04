@@ -3,11 +3,11 @@ import {
   FaTachometerAlt,
   FaSearch,
   FaBookmark,
-  FaUserCircle,
   FaFileAlt,
   FaMagic,
   FaSignOutAlt,
   FaBolt,
+  FaCog,
 } from "react-icons/fa";
 
 // ==========================================
@@ -18,7 +18,6 @@ const NAV_ITEMS = [
   { label: "Dashboard", path: "/candidate", icon: FaTachometerAlt },
   { label: "Discover", path: "/candidate/jobs", icon: FaSearch },
   { label: "Saved Jobs", path: "/candidate/saved-jobs", icon: FaBookmark },
-  { label: "Profile", path: "/candidate/profile/edit", icon: FaUserCircle },
   { label: "Resume", path: "/candidate/resume", icon: FaFileAlt },
   {
     label: "AI Recommendations",
@@ -50,7 +49,7 @@ function Sidebar() {
   };
 
   return (
-    <aside className="flex w-[250px] flex-shrink-0 flex-col justify-between bg-slate-900 px-4 py-6">
+    <aside className="sticky top-0 flex h-screen w-[250px] flex-shrink-0 flex-col justify-between overflow-y-auto bg-slate-900 px-4 py-6">
       <div>
         <div className="mb-8 px-2">
           <div className="flex items-center gap-2">
@@ -89,16 +88,29 @@ function Sidebar() {
         </nav>
       </div>
 
-      {/* Logout */}
+      <div className="space-y-2">
+        <button
+          type="button"
+          onClick={() => navigate("/candidate/settings")}
+          className={`flex w-full items-center gap-3 rounded-lg px-4 py-2.5 text-left text-sm font-medium transition ${
+            location.pathname.startsWith("/candidate/settings")
+              ? "bg-sx-primary/20 text-sx-primary-light"
+              : "text-slate-300 hover:bg-white/5 hover:text-white"
+          }`}
+        >
+          <FaCog className="text-base" />
+          Settings
+        </button>
 
-      <button
-        type="button"
-        onClick={logout}
-        className="flex w-full items-center gap-3 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
-      >
-        <FaSignOutAlt className="text-base" />
-        Logout
-      </button>
+        <button
+          type="button"
+          onClick={logout}
+          className="flex w-full items-center gap-3 rounded-lg border border-white/10 px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white"
+        >
+          <FaSignOutAlt className="text-base" />
+          Logout
+        </button>
+      </div>
     </aside>
   );
 }

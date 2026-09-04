@@ -313,3 +313,36 @@ def record_swipe(
         "job_id": swipe.job_id,
         "action": data.action
     }
+
+
+@router.get("/api/swipes/history")
+def get_swipe_history(
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    swipes = (
+        db.query(JobSwipe, Job)
+        .join(Job, Job.job_id == JobSwipe.job_id)
+        .filter(JobSwipe.user_id == user_id)
+        .order_by(JobSwipe.created_at.desc())
+        .all()
+    )
+
+    return [
+        {
+            "swipe_id": swipe.swipe_id,
+            "job_id": swipe.job_id,
+            "action": swipe.action,
+            "match_score": swipe.match_score,
+            "created_at": swipe.created_at,
+            "title": job.title,
+            "company": job.company,
+            "description": job.description,
+            "location": job.location,
+            "employment_type": job.employment_type,
+            "experience_required": job.experience_required,
+            "salary": job.salary,
+            "skills": job.skills,
+        }
+        for swipe, job in swipes
+    ]
