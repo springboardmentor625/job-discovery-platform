@@ -3,640 +3,329 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 
 function CandidateDashboard() {
-
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
+  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-
   // ==========================================
-  // LOAD CANDIDATE PROFILE
+  // LOAD USER + CANDIDATE PROFILE
   // ==========================================
 
   useEffect(() => {
-
-    const fetchProfile = async () => {
+    const fetchData = async () => {
+      try {
+        const userResponse = await api.get("/api/auth/me");
+        setFullName(userResponse.data.full_name || "");
+      } catch (err) {
+        console.error(err);
+      }
 
       try {
-
-        const response = await api.get(
-          "/api/candidate/profile"
-        );
-
+        const response = await api.get("/api/candidate/profile");
         setProfile(response.data);
-
       } catch (error) {
-
         console.error(error);
 
         if (error.response?.status === 401) {
-
           localStorage.removeItem("access_token");
           localStorage.removeItem("user_id");
           localStorage.removeItem("role");
-
           navigate("/login");
-
           return;
         }
 
         if (error.response?.status === 404) {
-
-          setError(
-            "Your candidate profile has not been created yet."
-          );
-
+          setError("Your candidate profile has not been created yet.");
         } else {
-
-          setError(
-            "Unable to load your profile."
-          );
-
+          setError("Unable to load your profile.");
         }
-
       } finally {
-
         setLoading(false);
-
       }
-
     };
 
-    fetchProfile();
-
+    fetchData();
   }, [navigate]);
-
-
-  // ==========================================
-  // LOGOUT
-  // ==========================================
-
-  const logout = () => {
-
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("role");
-
-    navigate("/login");
-
-  };
-
 
   // ==========================================
   // LOADING
   // ==========================================
 
   if (loading) {
-
     return (
-
-      <div className="dashboard-loading">
-
+      <div className="flex min-h-[60vh] items-center justify-center text-sx-text-secondary">
         Loading your profile...
-
       </div>
-
     );
-
   }
 
+  const displayName = profile?.full_name || fullName;
+  const firstLetter = displayName
+    ? displayName.trim().charAt(0).toUpperCase()
+    : "C";
 
   return (
+    <div className="px-10 py-8">
+      {/* =================================
+          HEADER
+      ================================== */}
 
-    <div className="dashboard">
+      <header className="mb-8 flex items-center justify-between">
+        <div>
+          <p className="text-xs font-bold tracking-widest text-sx-primary">
+            CANDIDATE WORKSPACE
+          </p>
 
-
-      {/* =====================================
-          SIDEBAR
-      ====================================== */}
-
-      <aside className="sidebar">
-
-        <div className="sidebar-logo">
-          SwipeX
+          <h1 className="mt-1 text-2xl font-bold text-sx-text">
+            Welcome back{displayName ? `, ${displayName}` : ""}!
+          </h1>
         </div>
 
+        <div className="rounded-full bg-sx-primary-soft px-4 py-1.5 text-sm font-semibold text-sx-primary-dark">
+          Candidate
+        </div>
+      </header>
 
-        <nav>
+      {/* =================================
+          PROFILE
+      ================================== */}
 
-          {/* Dashboard */}
+      {profile ? (
+        <section className="mb-10">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold tracking-widest text-sx-text-muted">
+                YOUR PROFILE
+              </p>
 
-          <button
-            type="button"
-            className="nav-item active"
-            onClick={() =>
-              navigate("/candidate")
-            }
-          >
-            Dashboard
-          </button>
-
-
-          {/* Discover Jobs */}
-
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() =>
-              navigate("/candidate/jobs")
-            }
-          >
-            Discover Jobs
-          </button>
-
-
-          {/* Matches */}
-
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() =>
-              navigate("/candidate/matches")
-            }
-          >
-            Matches
-          </button>
-
-
-          {/* Saved Jobs */}
-
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() =>
-              navigate("/candidate/saved-jobs")
-            }
-          >
-            Saved Jobs
-          </button>
-
-
-          {/* Applications */}
-
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() =>
-              navigate("/candidate/applications")
-            }
-          >
-            Applications
-          </button>
-
-
-          {/* Profile */}
-
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() =>
-              navigate(
-                "/candidate/profile/edit"
-              )
-            }
-          >
-            Profile
-          </button>
-
-
-          {/* Resume */}
-
-          <button
-            type="button"
-            className="nav-item"
-            onClick={() =>
-              navigate("/candidate/resume")
-            }
-          >
-            Resume
-          </button>
-
-        </nav>
-
-
-        {/* Logout */}
-
-        <button
-          type="button"
-          className="logout-button"
-          onClick={logout}
-        >
-          Logout
-        </button>
-
-      </aside>
-
-
-      {/* =====================================
-          MAIN CONTENT
-      ====================================== */}
-
-      <main className="dashboard-main">
-
-
-        {/* =================================
-            HEADER
-        ================================== */}
-
-        <header className="dashboard-header">
-
-          <div>
-
-            <p className="dashboard-label">
-              CANDIDATE WORKSPACE
-            </p>
-
-            <h1>
-              Welcome back! 👋
-            </h1>
-
-          </div>
-
-
-          <div className="candidate-badge">
-            Candidate
-          </div>
-
-        </header>
-
-
-        {/* =================================
-            PROFILE
-        ================================== */}
-
-        {profile ? (
-
-          <section className="profile-section">
-
-
-            <div className="section-header">
-
-              <div>
-
-                <p className="section-label">
-                  YOUR PROFILE
-                </p>
-
-                <h2>
-                  Candidate Profile
-                </h2>
-
-              </div>
-
-
-              <button
-                type="button"
-                className="edit-button"
-                onClick={() =>
-                  navigate(
-                    "/candidate/profile/edit"
-                  )
-                }
-              >
-                Edit Profile
-              </button>
-
+              <h2 className="mt-1 text-xl font-semibold text-sx-text">
+                Candidate Profile
+              </h2>
             </div>
-
-
-            <div className="profile-card">
-
-
-              {/* =================================
-                  PROFILE HEADER
-              ================================== */}
-
-              <div className="profile-header">
-
-                <div className="profile-initial">
-
-                  {profile.headline
-                    ? profile.headline
-                        .charAt(0)
-                        .toUpperCase()
-                    : "C"}
-
-                </div>
-
-
-                <div>
-
-                  <h2>
-                    {profile.headline ||
-                      "Candidate"}
-                  </h2>
-
-                  <p>
-                    {profile.location ||
-                      "Location not added"}
-                  </p>
-
-                </div>
-
-              </div>
-
-
-              {/* =================================
-                  PROFILE INFORMATION
-              ================================== */}
-
-              <div className="profile-grid">
-
-
-                {/* ABOUT */}
-
-                <div className="profile-field">
-
-                  <span>
-                    About
-                  </span>
-
-                  <p>
-                    {profile.bio ||
-                      "Not added"}
-                  </p>
-
-                </div>
-
-
-                {/* EDUCATION */}
-
-                <div className="profile-field">
-
-                  <span>
-                    Education
-                  </span>
-
-                  <p>
-                    {profile.education ||
-                      "Not added"}
-                  </p>
-
-                </div>
-
-
-                {/* SKILLS */}
-
-                <div className="profile-field">
-
-                  <span>
-                    Skills
-                  </span>
-
-
-                  {profile.skills ? (
-
-                    <div className="profile-skills">
-
-                      {profile.skills
-                        .split(",")
-                        .map(
-                          (skill) =>
-                            skill.trim()
-                        )
-                        .filter(Boolean)
-                        .map(
-                          (skill) => (
-
-                            <span
-                              className="profile-skill-tag"
-                              key={skill}
-                            >
-                              {skill}
-                            </span>
-
-                          )
-                        )}
-
-                    </div>
-
-                  ) : (
-
-                    <p>
-                      Not added
-                    </p>
-
-                  )}
-
-                </div>
-
-
-                {/* EXPERIENCE */}
-
-                <div className="profile-field">
-
-                  <span>
-                    Experience
-                  </span>
-
-                  <p>
-                    {profile.experience ||
-                      "Not added"}
-                  </p>
-
-                </div>
-
-
-                {/* PREFERRED ROLE */}
-
-                <div className="profile-field">
-
-                  <span>
-                    Preferred Role
-                  </span>
-
-                  <p>
-                    {profile.preferred_role ||
-                      "Not added"}
-                  </p>
-
-                </div>
-
-
-                {/* PREFERRED LOCATION */}
-
-                <div className="profile-field">
-
-                  <span>
-                    Preferred Location
-                  </span>
-
-                  <p>
-                    {profile.preferred_location ||
-                      "Not added"}
-                  </p>
-
-                </div>
-
-
-                {/* EXPECTED SALARY */}
-
-                <div className="profile-field">
-
-                  <span>
-                    Expected Salary
-                  </span>
-
-                  <p>
-                    {profile.expected_salary
-                      ? `₹${Number(
-                          profile.expected_salary
-                        ).toLocaleString("en-IN")}`
-                      : "Not added"}
-                  </p>
-
-                </div>
-
-
-              </div>
-
-            </div>
-
-          </section>
-
-        ) : (
-
-          <section className="empty-profile">
-
-            <h2>
-              Complete your profile
-            </h2>
-
-            <p>
-              {error}
-            </p>
 
             <button
               type="button"
-              onClick={() =>
-                navigate(
-                  "/candidate/profile/edit"
-                )
-              }
+              onClick={() => navigate("/candidate/profile/edit")}
+              className="rounded-lg border border-sx-border bg-sx-card px-4 py-2 text-sm font-semibold text-sx-primary transition hover:bg-sx-bg-soft"
             >
-              Create Profile
+              Edit Profile
             </button>
-
-          </section>
-
-        )}
-
-
-        {/* =================================
-            QUICK ACTIONS
-        ================================== */}
-
-        <section className="quick-section">
-
-          <p className="section-label">
-            QUICK ACTIONS
-          </p>
-
-          <h2>
-            Continue your job search
-          </h2>
-
-
-          <div className="quick-grid">
-
-
-            {/* Discover Jobs */}
-
-            <div
-              className="quick-card"
-              onClick={() =>
-                navigate("/candidate/jobs")
-              }
-            >
-
-              <h3>
-                Discover Jobs
-              </h3>
-
-              <p>
-                Find jobs that match your
-                skills and preferences.
-              </p>
-
-            </div>
-
-
-            {/* Saved Jobs */}
-
-            <div
-              className="quick-card"
-              onClick={() =>
-                navigate("/candidate/saved-jobs")
-              }
-            >
-
-              <h3>
-                Saved Jobs
-              </h3>
-
-              <p>
-                View jobs you saved and
-                continue exploring them later.
-              </p>
-
-            </div>
-
-
-            {/* Resume */}
-
-            <div
-              className="quick-card"
-              onClick={() =>
-                navigate("/candidate/resume")
-              }
-            >
-
-              <h3>
-                Resume
-              </h3>
-
-              <p>
-                Upload or manage your
-                resume.
-              </p>
-
-            </div>
-
-
-            {/* Applications */}
-
-            <div
-              className="quick-card"
-              onClick={() =>
-                navigate("/candidate/applications")
-              }
-            >
-
-              <h3>
-                Applications
-              </h3>
-
-              <p>
-                Track your submitted job
-                applications.
-              </p>
-
-            </div>
-
-
           </div>
 
+          <div className="rounded-2xl border border-sx-border bg-sx-card p-6 shadow-sm">
+            {/* =================================
+                PROFILE HEADER
+            ================================== */}
+
+            <div className="mb-6 flex items-center gap-4 border-b border-sx-border pb-6">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-sx-primary text-2xl font-bold text-white">
+                {firstLetter}
+              </div>
+
+              <div>
+                <h2 className="text-lg font-semibold text-sx-text">
+                  {displayName || "Candidate"}
+                </h2>
+                <p className="text-sm text-sx-text-secondary">
+                  {profile.headline || "Headline not added"}
+                </p>
+                <p className="text-sm text-sx-text-secondary">
+                  {profile.location || "Location not added"}
+                </p>
+              </div>
+            </div>
+
+            {/* =================================
+                PROFILE INFORMATION
+            ================================== */}
+
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+              {/* ABOUT */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  About
+                </span>
+                <p className="mt-1 text-sm text-sx-text">
+                  {profile.bio || "Not added"}
+                </p>
+              </div>
+
+              {/* EDUCATION */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Education
+                </span>
+                <p className="mt-1 text-sm text-sx-text">
+                  {profile.education || "Not added"}
+                </p>
+              </div>
+
+              {/* SKILLS */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Skills
+                </span>
+
+                {profile.skills ? (
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {profile.skills
+                      .split(",")
+                      .map((skill) => skill.trim())
+                      .filter(Boolean)
+                      .map((skill) => (
+                        <span
+                          key={skill}
+                          className="rounded-full bg-sx-primary-soft px-3 py-1 text-xs font-medium text-sx-primary-dark"
+                        >
+                          {skill}
+                        </span>
+                      ))}
+                  </div>
+                ) : (
+                  <p className="mt-1 text-sm text-sx-text">Not added</p>
+                )}
+              </div>
+
+              {/* EXPERIENCE */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Experience
+                </span>
+                <p className="mt-1 text-sm text-sx-text">
+                  {profile.experience || "Not added"}
+                </p>
+              </div>
+
+              {/* PREFERRED ROLE */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Preferred Role
+                </span>
+                <p className="mt-1 text-sm text-sx-text">
+                  {profile.preferred_role || "Not added"}
+                </p>
+              </div>
+
+              {/* PREFERRED LOCATION */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Preferred Location
+                </span>
+                <p className="mt-1 text-sm text-sx-text">
+                  {profile.preferred_location || "Not added"}
+                </p>
+              </div>
+
+              {/* EXPECTED SALARY */}
+
+              <div>
+                <span className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Expected Salary
+                </span>
+                <p className="mt-1 text-sm text-sx-text">
+                  {profile.expected_salary
+                    ? `₹${Number(profile.expected_salary).toLocaleString(
+                        "en-IN"
+                      )}`
+                    : "Not added"}
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
+      ) : (
+        <section className="mb-10 rounded-2xl border border-sx-border bg-sx-card p-8 text-center shadow-sm">
+          <h2 className="text-xl font-semibold text-sx-text">
+            Complete your profile
+          </h2>
+          <p className="mt-2 text-sm text-sx-text-secondary">{error}</p>
+          <button
+            type="button"
+            onClick={() => navigate("/candidate/profile/edit")}
+            className="mt-4 rounded-lg bg-sx-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sx-primary-dark"
+          >
+            Create Profile
+          </button>
+        </section>
+      )}
 
+      {/* =================================
+          QUICK ACTIONS
+      ================================== */}
 
-      </main>
+      <section>
+        <p className="text-xs font-bold tracking-widest text-sx-text-muted">
+          QUICK ACTIONS
+        </p>
+        <h2 className="mt-1 mb-5 text-xl font-semibold text-sx-text">
+          Continue your job search
+        </h2>
 
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Discover Jobs */}
+
+          <div
+            onClick={() => navigate("/candidate/jobs")}
+            className="cursor-pointer rounded-2xl border border-sx-border bg-sx-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          >
+            <h3 className="mb-1.5 font-semibold text-sx-text">
+              Discover Jobs
+            </h3>
+            <p className="text-sm text-sx-text-secondary">
+              Find jobs that match your skills and preferences.
+            </p>
+          </div>
+
+          {/* Saved Jobs */}
+
+          <div
+            onClick={() => navigate("/candidate/saved-jobs")}
+            className="cursor-pointer rounded-2xl border border-sx-border bg-sx-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          >
+            <h3 className="mb-1.5 font-semibold text-sx-text">Saved Jobs</h3>
+            <p className="text-sm text-sx-text-secondary">
+              View jobs you saved and continue exploring them later.
+            </p>
+          </div>
+
+          {/* Resume */}
+
+          <div
+            onClick={() => navigate("/candidate/resume")}
+            className="cursor-pointer rounded-2xl border border-sx-border bg-sx-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          >
+            <h3 className="mb-1.5 font-semibold text-sx-text">Resume</h3>
+            <p className="text-sm text-sx-text-secondary">
+              Upload or manage your resume.
+            </p>
+          </div>
+
+          {/* AI Recommendations */}
+
+          <div
+            onClick={() => navigate("/candidate/ai-recommendations")}
+            className="cursor-pointer rounded-2xl border border-sx-border bg-sx-card p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
+          >
+            <h3 className="mb-1.5 font-semibold text-sx-text">
+              AI Recommendations
+            </h3>
+            <p className="text-sm text-sx-text-secondary">
+              See your best matches and how to improve them.
+            </p>
+          </div>
+        </div>
+      </section>
     </div>
-
   );
-
 }
 
 export default CandidateDashboard;

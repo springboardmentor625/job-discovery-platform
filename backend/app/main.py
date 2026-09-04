@@ -4,14 +4,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from .database import Base, engine
 from . import models
 
-from .routes.swipe_routes import router as swipe_router
 from .routes.auth_routes import router as auth_router
 from .routes.candidate_routes import router as candidate_router
 from .routes.resume_routes import router as resume_router
 from .routes.job_routes import router as job_router
-from .routes.application_routes import router as application_router
 from .routes.saved_job_routes import router as saved_job_router
-from .routes import match_routes
+from .routes.recommendation_routes import router as recommendation_router
+from .routes.ats_routes import router as ats_router
 
 
 # ==========================================
@@ -75,15 +74,11 @@ app.include_router(
 )
 
 app.include_router(
-    swipe_router
+    recommendation_router
 )
 
 app.include_router(
-    match_routes.router
-)
-
-app.include_router(
-    application_router
+    ats_router
 )
 
 

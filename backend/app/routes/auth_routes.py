@@ -9,7 +9,8 @@ from ..models import User
 from ..auth import (
     hash_password,
     verify_password,
-    create_access_token
+    create_access_token,
+    get_current_user
 )
 
 
@@ -242,5 +243,36 @@ def login(
         "access_token": access_token,
         "token_type": "bearer",
         "user_id": user.user_id,
+        "role": user.role
+    }
+
+
+# ==========================================
+# CURRENT USER
+# ==========================================
+
+@router.get("/me")
+def get_current_user_info(
+    user_id: int = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+
+    user = db.query(
+        User
+    ).filter(
+        User.user_id == user_id
+    ).first()
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    return {
+        "user_id": user.user_id,
+        "full_name": user.full_name,
+        "email": user.email,
         "role": user.role
     }

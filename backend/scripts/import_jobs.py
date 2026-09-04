@@ -1,327 +1,196 @@
+# Before importing, clear the old jobs table: DELETE FROM jobs;
+
 import os
 import re
 import sys
+from collections import Counter
 
 import pandas as pd
 
 # Allow importing the FastAPI app modules
-sys.path.append(
-    os.path.abspath(
-        os.path.join(
-            os.path.dirname(__file__),
-            ".."
-        )
-    )
-)
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from app.database import SessionLocal
 from app.models import Job
 
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CSV_PATH = os.path.join(BASE_DIR, "naukri_jobs.csv")
 
-# ==========================================
-# DATASET PATH
-# ==========================================
+SKILL_FALLBACK_PATTERN = re.compile(r"[A-Z][a-z0-9]*(?:[A-Z][a-z0-9]*)*")
 
-BASE_DIR = os.path.dirname(
-    os.path.dirname(
-        os.path.abspath(__file__)
-    )
-)
-
-CSV_PATH = os.path.join(
-    BASE_DIR,
-    "Job_dataset.csv"
-)
-
-
-# ==========================================
-# CLEAN LOCATION
-# ==========================================
 
 def clean_location(value):
-
     if pd.isna(value):
         return "Not Specified"
 
     value = str(value).strip()
+    if not value:
+        return "Not Specified"
 
-    # Remove Hybrid / Remote information
-    value = re.sub(
-        r"\s*\(.*?\)",
-        "",
-        value
-    )
+    # Naukri locations can contain several comma-separated cities.
+    return re.sub(r"\s+", " ", value)
 
-    return value.strip()
-
-
-# ==========================================
-# EXTRACT EXPERIENCE
-# ==========================================
 
 def clean_experience(value):
-
     if pd.isna(value):
         return None
 
-    value = str(value)
-
-    match = re.search(
-        r"(\d+(?:\.\d+)?)",
-        value
-    )
-
-    if match:
-        return match.group(1)
-
-    return None
-
-
-# ==========================================
-# CLEAN SALARY
-# ==========================================
-
-def clean_salary(value):
-
-    if pd.isna(value):
-        return "Not Specified"
-
-    value = str(value)
-
-    numbers = re.findall(
-        r"[\d,]+",
-        value
-    )
-
-    numbers = [
-        number.replace(",", "")
-        for number in numbers
-    ]
-
-    if len(numbers) >= 2:
-
-        return (
-            f"₹{numbers[0]} - "
-            f"₹{numbers[1]} /year"
-        )
-
-    if len(numbers) == 1:
-
-        return (
-            f"₹{numbers[0]} /year"
-        )
-
-    return "Not Specified"
-
-
-# ==========================================
-# CLEAN SKILLS
-# ==========================================
-
-def clean_skills(value):
-
-    if pd.isna(value):
-        return "Not Specified"
-
     value = str(value).strip()
-
     if not value:
-        return "Not Specified"
+        return None
+
+    match = re.search(r"(\d+(?:\.\d+)?)\s*-\s*(\d+(?:\.\d+)?)\s*yrs?", value, re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} - {match.group(2)} years"
+
+    match = re.search(r"(\d+(?:\.\d+)?)\s*\+?\s*yrs?", value, re.IGNORECASE)
+    if match:
+        return f"{match.group(1)} years"
 
     return value
 
 
-# ==========================================
-# CREATE TEMPORARY JOB TITLE
-# ==========================================
+def clean_salary(value):
+    if pd.isna(value):
+        return "Not Specified"
 
-def create_job_title(skills):
+    value = re.sub(r"\s+", " ", str(value).strip())
+    if not value or value.lower() == "not disclosed by recruiter":
+        return "Not Specified"
 
-    if not skills or skills == "Not Specified":
-        return "Job Opportunity"
+    numbers = re.findall(r"\d[\d,]*(?:\.\d+)?", value)
+    numbers = [number.replace(",", "") for number in numbers]
 
-    # Use first skill as temporary title
-    first_skill = skills.split(
-        "MS-"
-    )[0].strip()
+    if len(numbers) >= 2:
+        return f"₹{numbers[0]} - ₹{numbers[1]} /year"
 
-    if first_skill:
-        return f"{first_skill} Opportunity"
+    if len(numbers) == 1:
+        return f"₹{numbers[0]} /year"
 
-    return "Job Opportunity"
+    return "Not Specified"
 
 
-# ==========================================
-# IMPORT JOBS
-# ==========================================
+def detect_skills_delimiter(sample):
+    comma_token_counts = []
+    for value in sample:
+        value = str(value).strip()
+        if value:
+            comma_token_counts.append(len([token for token in value.split(",") if token.strip()]))
+
+    average_token_count = (
+        sum(comma_token_counts) / len(comma_token_counts)
+        if comma_token_counts
+        else 0
+    )
+
+    if average_token_count > 1:
+        return "comma"
+
+    return "capitalized-word-boundary"
+
+
+def clean_skills(value, method):
+    if pd.isna(value):
+        return ""
+
+    value = str(value).strip()
+    if not value:
+        return ""
+
+    if method == "comma":
+        skills = [token.strip() for token in value.split(",") if token.strip()]
+    else:
+        skills = SKILL_FALLBACK_PATTERN.findall(value)
+
+    # Preserve order while removing duplicates.
+    skills = list(dict.fromkeys(skills))
+    return ", ".join(skills)
+
 
 def import_jobs():
-
-    print(
-        "Reading dataset..."
-    )
+    print(f"Reading dataset: {CSV_PATH}")
 
     if not os.path.exists(CSV_PATH):
-
-        print(
-            f"CSV file not found: {CSV_PATH}"
-        )
-
+        print(f"CSV file not found: {CSV_PATH}")
         return
 
+    df = pd.read_csv(CSV_PATH)
+    print(f"Found {len(df)} job records.")
 
-    df = pd.read_csv(
-        CSV_PATH
-    )
+    required_columns = {"jobtitle", "jobdescription", "skills"}
+    missing_columns = required_columns - set(df.columns)
+    if missing_columns:
+        raise ValueError(
+            f"Dataset is missing required columns: {', '.join(sorted(missing_columns))}"
+        )
 
-    print(
-        f"Found {len(df)} job records."
-    )
-
+    skill_method = detect_skills_delimiter(df["skills"].head(20).fillna("").tolist())
+    print(f"Skills delimiter method: {skill_method}")
 
     db = SessionLocal()
-
+    imported = 0
+    skipped = Counter()
 
     try:
-
-        imported = 0
-
-        skipped = 0
-
-
         for _, row in df.iterrows():
+            title = "" if pd.isna(row["jobtitle"]) else str(row["jobtitle"]).strip()
+            description = (
+                "" if pd.isna(row["jobdescription"])
+                else str(row["jobdescription"]).strip()
+            )
+            raw_skills = "" if pd.isna(row["skills"]) else str(row["skills"]).strip()
 
-            try:
+            if not title:
+                skipped["missing title"] += 1
+                continue
 
-                company = str(
-                    row["Company Name"]
-                ).strip()
+            if not description:
+                skipped["missing description"] += 1
+                continue
 
+            if not raw_skills:
+                skipped["missing skills"] += 1
+                continue
 
-                if not company:
+            job = Job(
+                recruiter_id=1,
+                title=title,
+                company=(
+                    "Not Specified"
+                    if pd.isna(row.get("company"))
+                    else str(row["company"]).strip() or "Not Specified"
+                ),
+                description=description,
+                location=clean_location(row.get("joblocation_address")),
+                employment_type="Not Specified",
+                experience_required=clean_experience(row.get("experience")),
+                salary=clean_salary(row.get("payrate")),
+                skills=clean_skills(row["skills"], skill_method),
+                status="active",
+            )
 
-                    skipped += 1
-
-                    continue
-
-
-                location = clean_location(
-                    row["Locations"]
-                )
-
-
-                salary = clean_salary(
-                    row["Salary"]
-                )
-
-
-                experience = clean_experience(
-                    row["Experience"]
-                )
-
-
-                skills = clean_skills(
-                    row["Skills"]
-                )
-
-
-                title = create_job_title(
-                    skills
-                )
-
-
-                job = Job(
-
-                    recruiter_id=1,
-
-                    title=title,
-
-                    company=company,
-
-                    description=(
-                        "Job opportunity "
-                        "imported from the "
-                        "temporary Kaggle dataset."
-                    ),
-
-                    location=location,
-
-                    employment_type=(
-                        "Not Specified"
-                    ),
-
-                    experience_required=(
-                        experience
-                    ),
-
-                    salary=salary,
-
-                    skills=skills,
-
-                    status="active"
-
-                )
-
-
-                db.add(job)
-
-                imported += 1
-
-
-            except Exception as error:
-
-                print(
-                    "Skipped row:",
-                    error
-                )
-
-                skipped += 1
-
+            db.add(job)
+            imported += 1
 
         db.commit()
 
+        print("\n================================")
+        print("JOB IMPORT COMPLETED")
+        print("================================")
+        print(f"Imported : {imported}")
+        print(f"Skipped  : {sum(skipped.values())}")
 
-        print(
-            "\n================================"
-        )
+        if skipped:
+            print("Skip reasons:")
+            for reason, count in skipped.items():
+                print(f"  - {reason}: {count}")
 
-        print(
-            "JOB IMPORT COMPLETED"
-        )
-
-        print(
-            "================================"
-        )
-
-        print(
-            f"Imported : {imported}"
-        )
-
-        print(
-            f"Skipped  : {skipped}"
-        )
-
-
-    except Exception as error:
-
+    except Exception:
         db.rollback()
-
-        print(
-            "Import failed:"
-        )
-
-        print(error)
-
-
+        raise
     finally:
-
         db.close()
 
 
-# ==========================================
-# RUN
-# ==========================================
-
 if __name__ == "__main__":
-
     import_jobs()

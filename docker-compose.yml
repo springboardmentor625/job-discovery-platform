@@ -1,0 +1,62 @@
+services:
+
+  db:
+    image: postgres:16
+
+    container_name: swipex-db
+
+    environment:
+      POSTGRES_DB: swipex
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+
+    ports:
+      - "5432:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d swipex"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+
+  backend:
+    build:
+      context: ./backend
+
+    container_name: swipex-backend
+
+    ports:
+      - "8000:8000"
+
+    environment:
+      DATABASE_URL: postgresql://postgres:root@db:5432/swipex
+      SECRET_KEY: swipex-secret-key
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      - ./backend/uploads:/app/uploads
+
+
+  frontend:
+    build:
+      context: ./frontend
+
+    container_name: swipex-frontend
+
+    ports:
+      - "5173:5173"
+
+    depends_on:
+      - backend
+
+
+volumes:
+
+  postgres_data:

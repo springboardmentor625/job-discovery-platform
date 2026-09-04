@@ -1,9 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
+import {
+  FaCloudUploadAlt,
+  FaCheckCircle,
+  FaExclamationTriangle,
+  FaFileAlt,
+} from "react-icons/fa";
 import api from "../api";
 
 function Resume() {
-
   const navigate = useNavigate();
 
   // ==========================================
@@ -11,7 +16,6 @@ function Resume() {
   // ==========================================
 
   const fileInputRef = useRef(null);
-
 
   const [file, setFile] = useState(null);
   const [resume, setResume] = useState(null);
@@ -24,19 +28,35 @@ function Resume() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-
   // ==========================================
   // OPEN FILE PICKER
   // ==========================================
 
   const openFilePicker = () => {
-
     if (fileInputRef.current) {
-
       fileInputRef.current.click();
-
     }
+  };
 
+  // ==========================================
+  // LOAD ATS ANALYSIS
+  // ==========================================
+
+  const loadATS = async () => {
+    setAtsLoading(true);
+
+    try {
+      const response = await api.get("/api/candidate/resume/ats");
+      setAtsData(response.data);
+    } catch (err) {
+      console.error("ATS analysis error:", err);
+
+      if (err.response?.status === 404) {
+        setAtsData(null);
+      }
+    } finally {
+      setAtsLoading(false);
+    }
   };
 
 
@@ -45,1023 +65,434 @@ function Resume() {
   // ==========================================
 
   useEffect(() => {
-
     const loadResume = async () => {
-
       try {
-
-        const response = await api.get(
-          "/api/candidate/resume"
-        );
-
+        const response = await api.get("/api/candidate/resume");
         setResume(response.data);
-
         await loadATS();
-
       } catch (err) {
-
         if (err.response?.status === 401) {
-
-          localStorage.removeItem(
-            "access_token"
-          );
-
+          localStorage.removeItem("access_token");
           navigate("/login");
-
           return;
-
         }
 
         if (err.response?.status === 404) {
-
           setResume(null);
           setAtsData(null);
-
         } else {
-
-          setError(
-            "Unable to load your resume."
-          );
-
+          setError("Unable to load your resume.");
         }
-
       } finally {
-
         setLoading(false);
-
       }
-
     };
 
-
     loadResume();
-
   }, [navigate]);
-
-
-  // ==========================================
-  // LOAD ATS ANALYSIS
-  // ==========================================
-
-  const loadATS = async () => {
-
-    setAtsLoading(true);
-
-    try {
-
-      const response = await api.get(
-        "/api/candidate/resume/ats"
-      );
-
-      setAtsData(
-        response.data
-      );
-
-    } catch (err) {
-
-      console.error(
-        "ATS analysis error:",
-        err
-      );
-
-      if (
-        err.response?.status === 404
-      ) {
-
-        setAtsData(null);
-
-      }
-
-    } finally {
-
-      setAtsLoading(false);
-
-    }
-
-  };
-
 
   // ==========================================
   // FILE SELECTION
   // ==========================================
 
   const handleFileChange = (e) => {
-
-    const selectedFile =
-      e.target.files[0];
+    const selectedFile = e.target.files[0];
 
     setMessage("");
     setError("");
 
-
     if (!selectedFile) {
-
       setFile(null);
-
       return;
-
     }
 
-
-    const fileName =
-      selectedFile.name.toLowerCase();
-
+    const fileName = selectedFile.name.toLowerCase();
 
     // ========================================
     // VALIDATE FILE TYPE
     // ========================================
 
-    if (
-      !fileName.endsWith(".pdf") &&
-      !fileName.endsWith(".docx")
-    ) {
-
-      setError(
-        "Only PDF and DOCX files are allowed."
-      );
-
+    if (!fileName.endsWith(".pdf") && !fileName.endsWith(".docx")) {
+      setError("Only PDF and DOCX files are allowed.");
       setFile(null);
-
       e.target.value = "";
-
       return;
-
     }
 
-
-    setFile(
-      selectedFile
-    );
-
+    setFile(selectedFile);
   };
-
 
   // ==========================================
   // UPLOAD RESUME
   // ==========================================
 
   const handleUpload = async () => {
-
     if (!file) {
-
-      setError(
-        "Please select a resume first."
-      );
-
+      setError("Please select a resume first.");
       return;
-
     }
-
 
     setUploading(true);
     setMessage("");
     setError("");
 
-
     try {
+      const formData = new FormData();
+      formData.append("file", file);
 
-      const formData =
-        new FormData();
+      await api.post("/api/candidate/resume", formData);
 
-
-      formData.append(
-        "file",
-        file
-      );
-
-
-      await api.post(
-        "/api/candidate/resume",
-        formData
-      );
-
-
-      setMessage(
-        "Resume uploaded successfully."
-      );
-
-
+      setMessage("Resume uploaded successfully.");
       setFile(null);
-
 
       // ======================================
       // RESET FILE INPUT
       // ======================================
 
       if (fileInputRef.current) {
-
         fileInputRef.current.value = "";
-
       }
-
 
       // ======================================
       // RELOAD RESUME
       // ======================================
 
-      const resumeResponse =
-        await api.get(
-          "/api/candidate/resume"
-        );
-
-
-      setResume(
-        resumeResponse.data
-      );
-
+      const resumeResponse = await api.get("/api/candidate/resume");
+      setResume(resumeResponse.data);
 
       // ======================================
       // RELOAD ATS
       // ======================================
 
       await loadATS();
-
-
     } catch (err) {
-
       console.error(err);
 
-
-      if (
-        err.response?.status === 401
-      ) {
-
-        localStorage.removeItem(
-          "access_token"
-        );
-
+      if (err.response?.status === 401) {
+        localStorage.removeItem("access_token");
         navigate("/login");
-
         return;
-
       }
 
-
-      setError(
-        err.response?.data?.detail ||
-        "Resume upload failed."
-      );
-
-
+      setError(err.response?.data?.detail || "Resume upload failed.");
     } finally {
-
       setUploading(false);
-
     }
-
   };
-
 
   // ==========================================
   // LOADING
   // ==========================================
 
   if (loading) {
-
     return (
-
-      <div className="dashboard-loading">
-
+      <div className="flex min-h-[60vh] items-center justify-center text-sx-text-secondary">
         Loading your resume...
-
       </div>
-
     );
-
   }
 
-
-  // ==========================================
-  // SCORE CLASS
-  // ==========================================
-
-  const getScoreClass = (score) => {
-
-    if (score >= 80) {
-      return "ats-score-excellent";
-    }
-
-    if (score >= 65) {
-      return "ats-score-good";
-    }
-
-    if (score >= 50) {
-      return "ats-score-warning";
-    }
-
-    return "ats-score-low";
-
-  };
-
-
   return (
-
-    <div className="resume-page">
-
-      <div className="resume-container">
-
-
-        {/* ================================= */}
-        {/* BACK */}
-        {/* ================================= */}
-
-        <button
-          type="button"
-          className="back-button"
-          onClick={() =>
-            navigate("/candidate")
-          }
-        >
-
-          ← Back to Dashboard
-
-        </button>
-
-
+    <div className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-5xl">
         {/* ================================= */}
         {/* HEADER */}
         {/* ================================= */}
 
-        <div className="resume-header">
-
-          <p className="section-label">
+        <div className="mb-7 border-b border-sx-border pb-6">
+          <p className="text-xs font-bold tracking-widest text-sx-primary">
             RESUME MANAGEMENT
           </p>
 
-          <h1>
-            Resume
-          </h1>
+          <h1 className="mt-2 text-3xl font-bold text-sx-text">Resume</h1>
 
-          <p>
-            Upload your latest resume to improve
-            your job recommendations.
+          <p className="mt-1 text-sm text-sx-text-secondary">
+            Upload your latest resume to improve your job recommendations.
           </p>
-
         </div>
 
-
         {/* ================================= */}
-        {/* CURRENT RESUME */}
-        {/* ================================= */}
-
-        {resume && (
-
-          <div className="current-resume-card">
-
-            <div className="current-resume-icon">
-              📄
-            </div>
-
-
-            <div className="current-resume-info">
-
-              <p className="section-label">
-                CURRENT RESUME
-              </p>
-
-              <h2>
-                {resume.file_name}
-              </h2>
-
-              <p>
-
-                {resume.file_type?.toUpperCase()}
-
-                {" • "}
-
-                {resume.text_length}
-                {" characters"}
-
-              </p>
-
-
-              {resume.uploaded_at && (
-
-                <small>
-
-                  Uploaded on{" "}
-
-                  {new Date(
-                    resume.uploaded_at
-                  ).toLocaleString()}
-
-                </small>
-
-              )}
-
-            </div>
-
-
-            <div className="resume-current-status">
-
-              <span>
-                ✓
-              </span>
-
-              Uploaded
-
-            </div>
-
-          </div>
-
-        )}
-
-
-        {/* ================================= */}
-        {/* ATS ANALYSIS */}
+        {/* UPLOAD + CURRENT RESUME ROW */}
         {/* ================================= */}
 
-        {resume && (
-
-          <div className="ats-analysis-card">
-
-            <div className="ats-header">
-
-              <div>
-
-                <p className="section-label">
-                  SWIPEX INTELLIGENCE
-                </p>
-
-                <h2>
-                  ATS Resume Analysis
-                </h2>
-
-                <p>
-                  Analyze your resume quality and
-                  compatibility before discovering jobs.
-                </p>
-
-              </div>
-
-              <div className="ats-ai-icon">
-                ✦
-              </div>
-
-            </div>
-
-
-            {atsLoading && (
-
-              <div className="ats-loading">
-
-                Analyzing your resume...
-
-              </div>
-
-            )}
-
-
-            {!atsLoading && atsData && (
-
-              <>
-
-                {/* SCORE */}
-
-                <div className="ats-score-section">
-
-                  <div
-                    className={`ats-score-circle ${getScoreClass(
-                      atsData.ats_score
-                    )}`}
-                  >
-
-                    <strong>
-                      {atsData.ats_score}
-                    </strong>
-
-                    <span>
-                      / 100
-                    </span>
-
-                  </div>
-
-
-                  <div className="ats-score-info">
-
-                    <span className="ats-score-label">
-                      ATS SCORE
-                    </span>
-
-                    <h3>
-                      {atsData.ats_status}
-                    </h3>
-
-                    <p>
-                      Your resume has been analyzed
-                      by SwipeX's resume intelligence.
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                {/* ANALYSIS METRICS */}
-
-                {atsData.analysis && (
-
-                  <div className="ats-metrics">
-
-                    <div className="ats-metric">
-
-                      <span>
-                        Resume Sections
-                      </span>
-
-                      <strong>
-                        {atsData.analysis.section_score}
-                        / 100
-                      </strong>
-
-                      <div className="ats-progress">
-
-                        <div
-                          style={{
-                            width:
-                              `${atsData.analysis.section_score}%`
-                          }}
-                        />
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="ats-metric">
-
-                      <span>
-                        Skills
-                      </span>
-
-                      <strong>
-                        {atsData.analysis.skill_score}
-                        / 20
-                      </strong>
-
-                      <div className="ats-progress">
-
-                        <div
-                          style={{
-                            width:
-                              `${atsData.analysis.skill_score * 5}%`
-                          }}
-                        />
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="ats-metric">
-
-                      <span>
-                        Profile
-                      </span>
-
-                      <strong>
-                        {atsData.analysis.profile_score}
-                        / 10
-                      </strong>
-
-                      <div className="ats-progress">
-
-                        <div
-                          style={{
-                            width:
-                              `${atsData.analysis.profile_score * 10}%`
-                          }}
-                        />
-
-                      </div>
-
-                    </div>
-
-
-                    <div className="ats-metric">
-
-                      <span>
-                        Resume Length
-                      </span>
-
-                      <strong>
-                        {atsData.analysis.length_score}
-                        / 10
-                      </strong>
-
-                      <div className="ats-progress">
-
-                        <div
-                          style={{
-                            width:
-                              `${atsData.analysis.length_score * 10}%`
-                          }}
-                        />
-
-                      </div>
-
-                    </div>
-
-                  </div>
-
-                )}
-
-
-                {/* RESUME STATS */}
-
-                <div className="ats-stats">
-
-                  <div>
-
-                    <strong>
-                      {atsData.word_count}
-                    </strong>
-
-                    <span>
-                      Words
-                    </span>
-
-                  </div>
-
-
-                  <div>
-
-                    <strong>
-                      {atsData.character_count}
-                    </strong>
-
-                    <span>
-                      Characters
-                    </span>
-
-                  </div>
-
-
-                  <div>
-
-                    <strong>
-                      {atsData.profile_fields_completed}
-                    </strong>
-
-                    <span>
-                      Profile Fields
-                    </span>
-
-                  </div>
-
-                </div>
-
-
-                {/* DETECTED SKILLS */}
-
-                {atsData.detected_skills?.length > 0 && (
-
-                  <div className="ats-skills-section">
-
-                    <div className="ats-subtitle">
-                      Detected Skills
-                    </div>
-
-                    <div className="ats-skills">
-
-                      {atsData.detected_skills.map(
-                        (skill) => (
-
-                          <span
-                            key={skill}
-                            className="ats-skill-tag"
-                          >
-
-                            {skill}
-
-                          </span>
-
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-                )}
-
-
-                {/* SECTIONS */}
-
-                {atsData.sections && (
-
-                  <div className="ats-sections">
-
-                    <div className="ats-subtitle">
-                      Resume Sections
-                    </div>
-
-
-                    <div className="ats-section-grid">
-
-                      {Object.entries(
-                        atsData.sections
-                      ).map(
-                        ([section, available]) => (
-
-                          <div
-                            key={section}
-                            className={
-                              available
-                                ? "ats-section-item completed"
-                                : "ats-section-item missing"
-                            }
-                          >
-
-                            <span>
-
-                              {available
-                                ? "✓"
-                                : "○"}
-
-                            </span>
-
-                            <span>
-
-                              {section
-                                .charAt(0)
-                                .toUpperCase() +
-                                section.slice(1)}
-
-                            </span>
-
-                          </div>
-
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-                )}
-
-
-                {/* RECOMMENDATIONS */}
-
-                <div className="ats-recommendations">
-
-                  <div className="ats-subtitle">
-                    Resume Recommendations
-                  </div>
-
-
-                  {atsData.recommendations?.length === 0 ? (
-
-                    <div className="ats-success">
-
-                      <span>
-                        ✓
-                      </span>
-
-                      <div>
-
-                        <strong>
-                          No major issues found
-                        </strong>
-
-                        <p>
-                          Your resume looks strong and
-                          is ready for job discovery.
-                        </p>
-
-                      </div>
-
-                    </div>
-
-                  ) : (
-
-                    atsData.recommendations.map(
-                      (recommendation, index) => (
-
-                        <div
-                          key={index}
-                          className="ats-recommendation"
-                        >
-
-                          <span>
-                            !
-                          </span>
-
-                          {recommendation}
-
-                        </div>
-
-                      )
-                    )
-
-                  )}
-
-                </div>
-
-              </>
-
-            )}
-
-          </div>
-
-        )}
-
-
-        {/* ================================= */}
-        {/* RESUME UPLOAD CARD */}
-        {/* ================================= */}
-
-        <div className="resume-upload-card">
-
-
+        <div
+          className={`mb-7 grid grid-cols-1 items-stretch gap-6 ${
+            resume ? "lg:grid-cols-2" : "max-w-3xl"
+          }`}
+        >
           {/* ================================= */}
-          {/* HIDDEN FILE INPUT */}
+          {/* RESUME UPLOAD CARD */}
           {/* ================================= */}
 
-          <input
-            ref={fileInputRef}
-            id="resume-upload"
-            type="file"
-            accept=".pdf,.docx"
-            onChange={handleFileChange}
-            hidden
-          />
+          <div className="flex min-h-[330px] flex-col items-center justify-center rounded-2xl border border-sx-border bg-sx-card p-8 text-center shadow-sm">
+            {/* ================================= */}
+            {/* HIDDEN FILE INPUT */}
+            {/* ================================= */}
 
+            <input
+              ref={fileInputRef}
+              id="resume-upload"
+              type="file"
+              accept=".pdf,.docx"
+              onChange={handleFileChange}
+              hidden
+            />
 
-          {/* ================================= */}
-          {/* UPLOAD ARROW */}
-          {/* ================================= */}
-
-          <button
-            type="button"
-            className="resume-upload-arrow"
-            onClick={openFilePicker}
-            aria-label="Upload resume"
-          >
-
-            <span className="upload-arrow-icon">
-              ↑
-            </span>
-
-          </button>
-
-
-          <h2>
-
-            {resume
-              ? "Replace Resume"
-              : "Upload Resume"}
-
-          </h2>
-
-
-          <p>
-            Click the upload arrow to select your resume
-          </p>
-
-
-          <small>
-            Supported formats: PDF and DOCX
-          </small>
-
-
-          {/* ================================= */}
-          {/* SELECTED FILE */}
-          {/* ================================= */}
-
-          {file && (
-
-            <div className="selected-file">
-
-              <div>
-
-                <strong>
-                  {file.name}
-                </strong>
-
-                <span>
-
-                  {(
-                    file.size /
-                    1024 /
-                    1024
-                  ).toFixed(2)}
-
-                  {" MB"}
-
-                </span>
-
-              </div>
-
-
-              <button
-                type="button"
-                onClick={() => {
-
-                  setFile(null);
-
-                  if (fileInputRef.current) {
-
-                    fileInputRef.current.value = "";
-
-                  }
-
-                }}
-              >
-
-                Remove
-
-              </button>
-
-            </div>
-
-          )}
-
-
-          {/* ================================= */}
-          {/* UPLOAD BUTTON */}
-          {/* ================================= */}
-
-          {file && (
+            {/* ================================= */}
+            {/* UPLOAD BUTTON */}
+            {/* ================================= */}
 
             <button
               type="button"
-              className="upload-button"
-              onClick={handleUpload}
-              disabled={uploading}
+              onClick={openFilePicker}
+              aria-label="Upload resume"
+              className="group relative mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-sx-primary to-sx-primary-dark text-3xl text-white shadow-lg shadow-sx-primary/25 ring-4 ring-sx-primary-soft transition-transform duration-200 hover:scale-105 hover:shadow-xl hover:shadow-sx-primary/30"
             >
-
-              {uploading
-                ? "Uploading..."
-                : resume
-                  ? "Replace Resume"
-                  : "Upload Resume"}
-
+              <FaCloudUploadAlt className="transition-transform duration-200 group-hover:-translate-y-0.5" />
             </button>
 
-          )}
+            <h2 className="mt-4 text-lg font-bold text-sx-text">
+              {resume ? "Replace Resume" : "Upload Resume"}
+            </h2>
 
-
-          {/* ================================= */}
-          {/* SUCCESS MESSAGE */}
-          {/* ================================= */}
-
-          {message && (
-
-            <div className="success-message">
-
-              {message}
-
-            </div>
-
-          )}
-
-
-          {/* ================================= */}
-          {/* ERROR MESSAGE */}
-          {/* ================================= */}
-
-          {error && (
-
-            <div className="login-error">
-
-              {error}
-
-            </div>
-
-          )}
-
-        </div>
-
-
-        {/* ================================= */}
-        {/* NO RESUME */}
-        {/* ================================= */}
-
-        {!resume && !error && (
-
-          <div className="no-resume-card">
-
-            <h3>
-              No resume uploaded yet
-            </h3>
-
-            <p>
-              Upload your resume to help SwipeX
-              provide better job recommendations.
+            <p className="mt-1 text-sm text-sx-text-secondary">
+              Click the button above to select your resume
             </p>
 
+            <small className="mt-1 block text-xs text-sx-text-muted">
+              Supported formats: PDF and DOCX
+            </small>
+
+            {/* ================================= */}
+            {/* SELECTED FILE */}
+            {/* ================================= */}
+
+            {file && (
+              <div className="mt-5 flex w-full max-w-md items-center justify-between gap-4 rounded-lg border border-sx-border bg-sx-bg-soft px-4 py-3 text-left">
+                <div className="min-w-0">
+                  <strong className="block truncate text-sm text-sx-text">
+                    {file.name}
+                  </strong>
+                  <span className="text-xs text-sx-text-muted">
+                    {(file.size / 1024 / 1024).toFixed(2)}
+                    {" MB"}
+                  </span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFile(null);
+                    if (fileInputRef.current) {
+                      fileInputRef.current.value = "";
+                    }
+                  }}
+                  className="flex-shrink-0 text-sm font-semibold text-sx-danger hover:text-red-700"
+                >
+                  Remove
+                </button>
+              </div>
+            )}
+
+            {/* ================================= */}
+            {/* SUBMIT UPLOAD */}
+            {/* ================================= */}
+
+            {file && (
+              <button
+                type="button"
+                onClick={handleUpload}
+                disabled={uploading}
+                className="mt-4 rounded-lg bg-sx-primary px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-sx-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {uploading
+                  ? "Uploading..."
+                  : resume
+                  ? "Replace Resume"
+                  : "Upload Resume"}
+              </button>
+            )}
+
+            {/* ================================= */}
+            {/* SUCCESS MESSAGE */}
+            {/* ================================= */}
+
+            {message && (
+              <div className="mt-4 rounded-lg border border-sx-success-border bg-sx-success-bg px-4 py-3 text-sm text-sx-success">
+                {message}
+              </div>
+            )}
+
+            {/* ================================= */}
+            {/* ERROR MESSAGE */}
+            {/* ================================= */}
+
+            {error && (
+              <div className="mt-4 rounded-lg border border-sx-danger-border bg-sx-danger-bg px-4 py-3 text-sm text-sx-danger">
+                {error}
+              </div>
+            )}
           </div>
 
+          {/* ================================= */}
+          {/* CURRENT RESUME FILE */}
+          {/* ================================= */}
+
+          {resume && (
+            <div className="flex min-h-[330px] flex-col rounded-2xl border border-sx-border bg-sx-card p-8 shadow-sm">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-xl bg-sx-primary-soft text-lg text-sx-primary-dark">
+                  <FaFileAlt />
+                </div>
+                <span className="inline-flex flex-shrink-0 items-center gap-1.5 rounded-full bg-sx-success-bg px-3 py-1.5 text-xs font-semibold text-sx-success">
+                  <FaCheckCircle className="text-[10px]" />
+                  Uploaded
+                </span>
+              </div>
+
+              <div className="mt-8 min-w-0">
+                <p className="text-xs font-semibold uppercase tracking-wide text-sx-text-muted">
+                  Current Resume
+                </p>
+                <p className="mt-2 break-words text-base font-semibold leading-snug text-sx-text">
+                  {resume.file_name}
+                </p>
+                {resume.uploaded_at && (
+                  <p className="mt-2 text-xs text-sx-text-muted">
+                    Uploaded on{" "}
+                    {new Date(resume.uploaded_at).toLocaleDateString(
+                      "en-IN",
+                      {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      }
+                    )}
+                  </p>
+                )}
+              </div>
+
+              <div className="mt-auto pt-8">
+                <p className="text-sm leading-relaxed text-sx-text-secondary">
+                  Your resume is parsed automatically and used to improve job recommendations.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ================================= */}
+        {/* ATS ANALYSIS: DETECTED SKILLS, */}
+        {/* SECTIONS, RECOMMENDATIONS ONLY  */}
+        {/* ================================= */}
+
+        {resume && atsLoading && (
+          <div className="rounded-2xl border border-sx-border bg-sx-card p-6 text-sm text-sx-text-secondary shadow-sm">
+            Analyzing your resume...
+          </div>
         )}
 
+        {resume && !atsLoading && atsData && (
+          <div className="flex flex-col gap-6">
+            {/* DETECTED SKILLS + SECTIONS */}
+
+            <div className="grid grid-cols-1 items-stretch gap-5 lg:grid-cols-2">
+              {/* DETECTED SKILLS */}
+
+              {atsData.detected_skills?.length > 0 && (
+                <div className="rounded-2xl border border-sx-border bg-sx-card p-6 shadow-sm">
+                  <h2 className="mb-3 text-sm font-semibold text-sx-text">
+                    Detected Skills
+                  </h2>
+
+                  <div className="flex flex-wrap gap-2">
+                    {atsData.detected_skills.map((skill) => (
+                      <span
+                        key={skill}
+                        className="rounded-full bg-sx-primary-soft px-3 py-1.5 text-xs font-medium text-sx-primary-dark"
+                      >
+                        {skill}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTIONS */}
+
+              {atsData.sections && (
+                <div className="rounded-2xl border border-sx-border bg-sx-card p-6 shadow-sm">
+                  <h2 className="mb-3 text-sm font-semibold text-sx-text">
+                    Resume Sections
+                  </h2>
+
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-2 xl:grid-cols-3">
+                    {Object.entries(atsData.sections).map(
+                      ([section, available]) => (
+                        <div
+                          key={section}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
+                            available
+                              ? "border-sx-success-border bg-sx-success-bg text-sx-success"
+                              : "border-sx-border bg-sx-bg-soft text-sx-text-muted"
+                          }`}
+                        >
+                          {available ? (
+                            <FaCheckCircle className="text-xs" />
+                          ) : (
+                            <span className="h-2.5 w-2.5 rounded-full border border-current" />
+                          )}
+                          <span>
+                            {section.charAt(0).toUpperCase() +
+                              section.slice(1)}
+                          </span>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* RECOMMENDATIONS */}
+
+            <div className="rounded-2xl border border-sx-border bg-sx-card p-6 shadow-sm">
+              <h2 className="mb-3 text-sm font-semibold text-sx-text">
+                Resume Recommendations
+              </h2>
+
+              {atsData.recommendations?.length === 0 ? (
+                <div className="flex items-start gap-3 rounded-lg border border-sx-success-border bg-sx-success-bg p-4">
+                  <FaCheckCircle className="mt-0.5 text-sx-success" />
+                  <div>
+                    <strong className="block text-sm text-sx-text">
+                      No major issues found
+                    </strong>
+                    <p className="mt-1 text-sm text-sx-text-secondary">
+                      Your resume looks strong and is ready for job
+                      discovery.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 lg:grid-cols-2">
+                  {atsData.recommendations.map((recommendation, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start gap-2 rounded-lg border border-sx-border bg-sx-bg-soft px-4 py-3 text-sm text-sx-text-secondary"
+                    >
+                      <FaExclamationTriangle className="mt-0.5 flex-shrink-0 text-sx-warning" />
+                      {recommendation}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
-
     </div>
-
   );
-
 }
 
 export default Resume;

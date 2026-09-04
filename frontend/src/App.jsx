@@ -10,67 +10,36 @@ import Login from "./pages/Login";
 import CandidateDashboard from "./pages/CandidateDashboard";
 import EditProfile from "./pages/EditProfile";
 import Resume from "./pages/Resume";
-import JobDiscovery from "./pages/JobDiscovery";
-import Applications from "./pages/Applications";
-import Matches from "./pages/Matches";
+import Discover from "./pages/Discover";
 import SavedJobs from "./pages/SavedJobs";
+import AIRecommendations from "./pages/AIRecommendations";
+import Layout from "./components/Layout";
 
 function App() {
-
   return (
-
     <BrowserRouter>
-
       <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route path="/" element={<Navigate to="/login" />} />
 
-        <Route
-          path="/login"
-          element={<Login />}
-        />
-        <Route
-          path="/candidate/resume"
-          element={<Resume />}
-        />
-        <Route
-          path="/candidate/applications"
-          element={<Applications />}
-        />
-        <Route
-          path="/candidate"
-          element={<CandidateDashboard />}
-        />
-        <Route
-          path="/candidate/saved-jobs"
-          element={<SavedJobs />}
-        />       
-                <Route
-          path="/candidate/profile/edit"
-           element={<EditProfile />}
-        />
-        <Route
-          path="/"
-          element={
-            <Navigate to="/login" />
-          }
-        />
-        <Route
-          path="/register"
-          element={<Register />}
-        />
-        <Route
-          path="/candidate/jobs"
-          element={<JobDiscovery />}
-        />
-        <Route
-        path="/candidate/matches"
-        element={<Matches />}
-        />
+        {/* ==========================================
+            CANDIDATE AREA — persistent sidebar layout
+        =========================================== */}
 
-        
+        <Route element={<Layout />}>
+          <Route path="/candidate" element={<CandidateDashboard />} />
+          <Route path="/candidate/jobs" element={<Discover />} />
+          <Route path="/candidate/saved-jobs" element={<SavedJobs />} />
+          <Route path="/candidate/profile/edit" element={<EditProfile />} />
+          <Route path="/candidate/resume" element={<Resume />} />
+          <Route
+            path="/candidate/ai-recommendations"
+            element={<AIRecommendations />}
+          />
+        </Route>
       </Routes>
-
     </BrowserRouter>
-
   );
 }
 

@@ -2,8 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from ..database import get_db
-from ..models import CandidateProfile
+from ..models import CandidateProfile, User
 from ..auth import get_current_user
+from .job_routes import invalidate_recommendation_cache
 from ..schemas import CandidateProfileCreate
 
 
@@ -53,6 +54,7 @@ def create_profile(
     db.add(profile)
     db.commit()
     db.refresh(profile)
+    invalidate_recommendation_cache(user_id)
 
     return {
         "message": "Candidate profile created successfully",
@@ -83,9 +85,16 @@ def get_profile(
             detail="Candidate profile not found"
         )
 
+    user = db.query(
+        User
+    ).filter(
+        User.user_id == user_id
+    ).first()
+
     return {
         "profile_id": profile.profile_id,
         "user_id": profile.user_id,
+        "full_name": user.full_name if user else None,
         "headline": profile.headline,
         "bio": profile.bio,
         "location": profile.location,
@@ -141,6 +150,7 @@ def update_profile(
         db.commit()
 
         db.refresh(profile)
+        invalidate_recommendation_cache(user_id)
 
         return {
             "message": "Candidate profile created successfully",
@@ -184,6 +194,7 @@ def update_profile(
     db.commit()
 
     db.refresh(profile)
+    invalidate_recommendation_cache(user_id)
 
 
     return {

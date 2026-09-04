@@ -5,7 +5,6 @@ import {
 } from "react";
 
 import { useNavigate } from "react-router-dom";
-
 import api from "../api";
 
 
@@ -31,52 +30,123 @@ const EXPERIENCE_LEVELS = [
 // ==========================================
 
 const AVAILABLE_SKILLS = [
+
+  // Programming Languages
   "C",
   "C++",
+  "C#",
   "Java",
   "Python",
   "JavaScript",
   "TypeScript",
+  "Go",
+  "Rust",
+  "PHP",
+  "Kotlin",
+  "Swift",
+  "R",
+
+  // Frontend
+  "HTML",
+  "CSS",
+  "SASS",
+  "Bootstrap",
+  "Tailwind CSS",
   "React",
+  "Next.js",
+  "Angular",
+  "Vue.js",
+  "Redux",
+
+  // Backend
   "Node.js",
   "Express.js",
   "FastAPI",
   "Django",
-  "HTML",
-  "CSS",
-  "Tailwind CSS",
+  "Flask",
+  "Spring Boot",
+  ".NET",
+  "Laravel",
+
+  // Databases
   "SQL",
-  "PostgreSQL",
   "MySQL",
+  "PostgreSQL",
   "MongoDB",
+  "SQLite",
+  "Oracle",
+  "Redis",
+  "Firebase",
+
+  // DevOps & Cloud
   "Git",
   "GitHub",
+  "GitLab",
   "Docker",
+  "Kubernetes",
+  "Jenkins",
   "AWS",
+  "Azure",
+  "Google Cloud",
+  "Linux",
+
+  // Data & AI
   "Machine Learning",
+  "Deep Learning",
   "Data Science",
+  "Data Analysis",
+  "Data Engineering",
+  "Artificial Intelligence",
   "TensorFlow",
   "PyTorch",
+  "Scikit-learn",
+  "Pandas",
+  "NumPy",
+  "Power BI",
+  "Tableau",
+
+  // Mobile
+  "Android Development",
+  "Flutter",
+  "React Native",
+  "Android Studio",
+
+  // Tools
+  "VS Code",
+  "Postman",
+  "Jira",
   "Figma",
   "UI/UX",
+
+  // Concepts
+  "REST API",
+  "GraphQL",
+  "Microservices",
+  "System Design",
+  "OOP",
+  "DSA",
+  "Computer Networks",
+  "Operating Systems",
+  "Cybersecurity",
+
+  // Custom option
   "Other",
 ];
 
+
+// ==========================================
+// COMPONENT
+// ==========================================
 
 function EditProfile() {
 
   const navigate = useNavigate();
 
-
-  // ==========================================
-  // SKILL AREA REF
-  // ==========================================
-
   const skillAreaRef = useRef(null);
 
 
   // ==========================================
-  // FORM
+  // FORM STATE
   // ==========================================
 
   const [form, setForm] = useState({
@@ -95,24 +165,20 @@ function EditProfile() {
 
 
   // ==========================================
-  // SKILLS
+  // SKILL STATES
   // ==========================================
 
   const [selectedSkills, setSelectedSkills] =
     useState([]);
 
-
   const [skillSearch, setSkillSearch] =
     useState("");
-
 
   const [skillDropdownOpen, setSkillDropdownOpen] =
     useState(false);
 
-
   const [customSkill, setCustomSkill] =
     useState("");
-
 
   const [showCustomSkill, setShowCustomSkill] =
     useState(false);
@@ -125,21 +191,21 @@ function EditProfile() {
   const [loading, setLoading] =
     useState(true);
 
+  const [fullName, setFullName] =
+    useState("");
 
   const [saving, setSaving] =
     useState(false);
 
-
   const [message, setMessage] =
     useState("");
-
 
   const [error, setError] =
     useState("");
 
 
   // ==========================================
-  // CLOSE SKILL AREA WHEN CLICKING OUTSIDE
+  // CLOSE DROPDOWN WHEN CLICKING OUTSIDE
   // ==========================================
 
   useEffect(() => {
@@ -148,16 +214,20 @@ function EditProfile() {
 
       if (
         skillAreaRef.current &&
-        !skillAreaRef.current.contains(
-          event.target
-        )
+        !skillAreaRef.current.contains(event.target)
       ) {
 
+        // Close dropdown
         setSkillDropdownOpen(false);
 
+        // Close custom skill input
         setShowCustomSkill(false);
 
+        // Clear search
         setSkillSearch("");
+
+        // Clear unfinished custom skill
+        setCustomSkill("");
 
       }
 
@@ -183,7 +253,7 @@ function EditProfile() {
 
 
   // ==========================================
-  // LOAD EXISTING PROFILE
+  // LOAD PROFILE
   // ==========================================
 
   useEffect(() => {
@@ -192,48 +262,69 @@ function EditProfile() {
 
       try {
 
+        const userResponse = await api.get(
+          "/api/auth/me"
+        );
+
+        setFullName(
+          userResponse.data.full_name || ""
+        );
+
+      } catch (err) {
+
+        console.error(
+          "USER LOAD ERROR:",
+          err
+        );
+
+      }
+
+      try {
+
         const response = await api.get(
           "/api/candidate/profile"
         );
 
-
         const profile = response.data;
+
+        if (profile.full_name) {
+
+          setFullName(
+            profile.full_name
+          );
+
+        }
 
 
         // --------------------------------------
-        // Load saved skills
+        // LOAD SAVED SKILLS
         // --------------------------------------
 
         const existingSkills =
           profile.skills
-
             ? profile.skills
                 .split(",")
-                .map(
-                  (skill) =>
-                    skill.trim()
+                .map((skill) =>
+                  skill.trim()
                 )
                 .filter(Boolean)
-
             : [];
 
 
-        // Never store "Other" as a skill
+        // Remove "Other" if somehow saved
 
         const cleanedSkills =
           existingSkills.filter(
             (skill) =>
-              skill !== "Other"
+              skill.toLowerCase() !== "other"
           );
 
 
-        setSelectedSkills(
-          cleanedSkills
-        );
+        setSelectedSkills(cleanedSkills);
 
 
         // --------------------------------------
-        // Load form
+        // LOAD FORM
         // --------------------------------------
 
         setForm({
@@ -275,10 +366,6 @@ function EditProfile() {
         );
 
 
-        // --------------------------------------
-        // Unauthorized
-        // --------------------------------------
-
         if (
           err.response?.status === 401
         ) {
@@ -293,10 +380,6 @@ function EditProfile() {
 
         }
 
-
-        // --------------------------------------
-        // 404 = profile not created yet
-        // --------------------------------------
 
         if (
           err.response?.status !== 404
@@ -334,15 +417,13 @@ function EditProfile() {
     } = e.target;
 
 
-    setForm(
-      (previous) => ({
+    setForm((previous) => ({
 
-        ...previous,
+      ...previous,
 
-        [name]: value,
+      [name]: value,
 
-      })
-    );
+    }));
 
 
     setError("");
@@ -351,14 +432,16 @@ function EditProfile() {
 
 
   // ==========================================
-  // CHECK CUSTOM SKILL
+  // CHECK CUSTOM SKILLS
   // ==========================================
 
   const hasCustomSkill =
     selectedSkills.some(
       (skill) =>
-        !AVAILABLE_SKILLS.includes(
-          skill
+        !AVAILABLE_SKILLS.some(
+          (availableSkill) =>
+            availableSkill.toLowerCase() ===
+            skill.toLowerCase()
         )
     );
 
@@ -370,7 +453,7 @@ function EditProfile() {
   const addSkill = (skill) => {
 
     // ----------------------------------------
-    // OTHER
+    // CUSTOM SKILL
     // ----------------------------------------
 
     if (skill === "Other") {
@@ -381,6 +464,8 @@ function EditProfile() {
 
       setSkillSearch("");
 
+      setCustomSkill("");
+
       setError("");
 
       return;
@@ -389,22 +474,23 @@ function EditProfile() {
 
 
     // ----------------------------------------
-    // NORMAL SKILL
+    // CHECK DUPLICATE
     // ----------------------------------------
 
-    if (
-      !selectedSkills.includes(
-        skill
-      )
-    ) {
+    const alreadyExists =
+      selectedSkills.some(
+        (selectedSkill) =>
+          selectedSkill.toLowerCase() ===
+          skill.toLowerCase()
+      );
+
+
+    if (!alreadyExists) {
 
       setSelectedSkills(
         (previous) => [
-
           ...previous,
-
           skill,
-
         ]
       );
 
@@ -412,7 +498,7 @@ function EditProfile() {
 
 
     // ----------------------------------------
-    // CLOSE DROPDOWN
+    // RESET
     // ----------------------------------------
 
     setSkillSearch("");
@@ -436,24 +522,10 @@ function EditProfile() {
       (previous) =>
         previous.filter(
           (skill) =>
-            skill !==
-            skillToRemove
+            skill.toLowerCase() !==
+            skillToRemove.toLowerCase()
         )
     );
-
-
-    // If custom skill was removed,
-    // Other can be selected again.
-
-    if (
-      !AVAILABLE_SKILLS.includes(
-        skillToRemove
-      )
-    ) {
-
-      setShowCustomSkill(false);
-
-    }
 
 
     setError("");
@@ -472,7 +544,7 @@ function EditProfile() {
 
 
     // ----------------------------------------
-    // Empty validation
+    // EMPTY VALIDATION
     // ----------------------------------------
 
     if (!value) {
@@ -487,28 +559,43 @@ function EditProfile() {
 
 
     // ----------------------------------------
-    // Allow comma-separated skills
+    // SPLIT MULTIPLE SKILLS
     // ----------------------------------------
 
     const skillsToAdd =
       value
         .split(",")
-        .map(
-          (skill) =>
-            skill.trim()
+        .map((skill) =>
+          skill.trim()
         )
-        .filter(Boolean);
+        .filter(Boolean)
+        .filter(
+          (skill) =>
+            skill.toLowerCase() !== "other"
+        );
 
 
-    let addedAtLeastOne =
-      false;
+    if (skillsToAdd.length === 0) {
 
+      setError(
+        "Please enter a valid skill."
+      );
+
+      return;
+
+    }
+
+
+    // ----------------------------------------
+    // ADD SKILLS
+    // ----------------------------------------
 
     setSelectedSkills(
       (previous) => {
 
-        const updated =
-          [...previous];
+        const updated = [
+          ...previous,
+        ];
 
 
         skillsToAdd.forEach(
@@ -517,22 +604,14 @@ function EditProfile() {
             const alreadyExists =
               updated.some(
                 (existingSkill) =>
-                  existingSkill
-                    .toLowerCase() ===
+                  existingSkill.toLowerCase() ===
                   skill.toLowerCase()
               );
 
 
-            if (
-              !alreadyExists &&
-              skill.toLowerCase() !==
-                "other"
-            ) {
+            if (!alreadyExists) {
 
               updated.push(skill);
-
-              addedAtLeastOne =
-                true;
 
             }
 
@@ -547,22 +626,19 @@ function EditProfile() {
 
 
     // ----------------------------------------
-    // CLOSE CUSTOM SKILL AREA
+    // IMPORTANT:
+    // CLOSE CUSTOM AREA AFTER ADDING
     // ----------------------------------------
 
-    if (addedAtLeastOne) {
+    setCustomSkill("");
 
-      setCustomSkill("");
+    setShowCustomSkill(false);
 
-      setShowCustomSkill(false);
+    setSkillDropdownOpen(false);
 
-      setSkillDropdownOpen(false);
+    setSkillSearch("");
 
-      setSkillSearch("");
-
-      setError("");
-
-    }
+    setError("");
 
   };
 
@@ -575,9 +651,7 @@ function EditProfile() {
     e
   ) => {
 
-    if (
-      e.key === "Enter"
-    ) {
+    if (e.key === "Enter") {
 
       e.preventDefault();
 
@@ -596,49 +670,38 @@ function EditProfile() {
     AVAILABLE_SKILLS.filter(
       (skill) => {
 
-        // Hide already selected skills
+        // Hide selected skills
 
-        if (
-          selectedSkills.includes(
-            skill
-          )
-        ) {
+        const alreadySelected =
+          selectedSkills.some(
+            (selectedSkill) =>
+              selectedSkill.toLowerCase() ===
+              skill.toLowerCase()
+          );
 
+
+        if (alreadySelected) {
           return false;
-
         }
 
 
-        // Hide Other after custom skill
-        // has already been added
+        // No search
 
         if (
-          skill === "Other" &&
-          hasCustomSkill
+          skillSearch.trim() === ""
         ) {
-
-          return false;
-
+          return true;
         }
 
 
         // Search
 
-        if (
-          skillSearch.trim() === ""
-        ) {
-
-          return true;
-
-        }
-
-
         return skill
           .toLowerCase()
           .includes(
             skillSearch
-              .toLowerCase()
               .trim()
+              .toLowerCase()
           );
 
       }
@@ -646,7 +709,7 @@ function EditProfile() {
 
 
   // ==========================================
-  // SUBMIT
+  // SUBMIT PROFILE
   // ==========================================
 
   const handleSubmit = async (
@@ -654,7 +717,6 @@ function EditProfile() {
   ) => {
 
     e.preventDefault();
-
 
     setSaving(true);
 
@@ -667,9 +729,7 @@ function EditProfile() {
     // EXPERIENCE VALIDATION
     // ========================================
 
-    if (
-      !form.experience
-    ) {
+    if (!form.experience) {
 
       setError(
         "Please select your experience level."
@@ -708,9 +768,7 @@ function EditProfile() {
     }
 
 
-    if (
-      salary <= 10000
-    ) {
+    if (salary <= 10000) {
 
       setError(
         "Expected salary must be more than ₹10,000."
@@ -745,7 +803,7 @@ function EditProfile() {
     try {
 
       // --------------------------------------
-      // Prepare data
+      // PREPARE DATA
       // --------------------------------------
 
       const profileData = {
@@ -780,14 +838,8 @@ function EditProfile() {
       };
 
 
-      console.log(
-        "PROFILE DATA:",
-        profileData
-      );
-
-
       // --------------------------------------
-      // Save profile
+      // SAVE PROFILE
       // --------------------------------------
 
       const response =
@@ -808,37 +860,25 @@ function EditProfile() {
       );
 
 
-      // --------------------------------------
-      // Go back to dashboard
-      // --------------------------------------
+      setTimeout(() => {
 
-      setTimeout(
-        () => {
+        navigate("/candidate");
 
-          navigate(
-            "/candidate"
-          );
+      }, 1000);
 
-        },
-        1000
-      );
 
     } catch (err) {
 
       console.error(
         "PROFILE UPDATE ERROR:",
-        err.response?.data ||
-          err
+        err.response?.data || err
       );
 
 
-      // --------------------------------------
       // Unauthorized
-      // --------------------------------------
 
       if (
-        err.response?.status ===
-        401
+        err.response?.status === 401
       ) {
 
         localStorage.removeItem(
@@ -852,13 +892,10 @@ function EditProfile() {
       }
 
 
-      // --------------------------------------
       // Validation error
-      // --------------------------------------
 
       if (
-        err.response?.status ===
-        422
+        err.response?.status === 422
       ) {
 
         const detail =
@@ -869,24 +906,19 @@ function EditProfile() {
           Array.isArray(detail)
         ) {
 
-          const messages =
+          setError(
             detail
               .map(
-                (item) =>
-                  item.msg
+                (item) => item.msg
               )
-              .join(", ");
-
-
-          setError(
-            messages
+              .join(", ")
           );
 
         } else {
 
           setError(
             detail ||
-              "Invalid profile information."
+            "Invalid profile information."
           );
 
         }
@@ -896,13 +928,9 @@ function EditProfile() {
       }
 
 
-      // --------------------------------------
-      // Other backend errors
-      // --------------------------------------
-
       setError(
         err.response?.data?.detail ||
-          "Failed to save profile."
+        "Failed to save profile."
       );
 
     } finally {
@@ -919,615 +947,356 @@ function EditProfile() {
   // ==========================================
 
   if (loading) {
-
     return (
-
-      <div className="dashboard-loading">
-
+      <div className="flex min-h-[60vh] items-center justify-center text-sx-text-secondary">
         Loading profile...
-
       </div>
-
     );
-
   }
-
 
   // ==========================================
   // UI
   // ==========================================
 
+  const inputClasses =
+    "w-full rounded-lg border border-sx-border px-3.5 py-2.5 text-sm text-sx-text outline-none transition focus:border-sx-primary focus:ring-2 focus:ring-sx-primary/20";
+
   return (
+    <div className="px-6 py-10">
+      <div className="mx-auto max-w-4xl rounded-2xl border border-sx-border bg-sx-card p-8 shadow-sm">
+        {/* HEADER */}
 
-    <div className="edit-profile-page">
-
-      <div className="edit-profile-card">
-
-
-        {/* ==================================
-            HEADER
-        =================================== */}
-
-        <div className="edit-profile-header">
-
-          <button
-            type="button"
-            className="back-button"
-            onClick={() =>
-              navigate(
-                "/candidate"
-              )
-            }
-          >
-
-            ← Back
-
-          </button>
-
-
-          <div>
-
-            <p className="section-label">
-
-              CANDIDATE PROFILE
-
-            </p>
-
-
-            <h1>
-
-              Edit Profile
-
-            </h1>
-
-
-            <p>
-
-              Keep your profile updated to get
-              better job recommendations.
-
-            </p>
-
-          </div>
-
+        <div className="mb-6">
+          <p className="text-xs font-bold tracking-widest text-sx-primary">
+            CANDIDATE PROFILE
+          </p>
+          <h1 className="mt-2 text-2xl font-bold text-sx-text">
+            Edit Profile
+          </h1>
+          <p className="mt-1 text-sm text-sx-text-secondary">
+            Keep your profile updated to get better job recommendations.
+          </p>
         </div>
 
-
-        {/* ==================================
-            SUCCESS
-        =================================== */}
+        {/* SUCCESS */}
 
         {message && (
-
-          <div className="success-message">
-
+          <div className="mb-4 rounded-lg border border-sx-success-border bg-sx-success-bg px-4 py-3 text-sm text-sx-success">
             {message}
-
           </div>
-
         )}
 
-
-        {/* ==================================
-            ERROR
-        =================================== */}
+        {/* ERROR */}
 
         {error && (
-
-          <div className="login-error">
-
+          <div className="mb-4 rounded-lg border border-sx-danger-border bg-sx-danger-bg px-4 py-3 text-sm text-sx-danger">
             {error}
-
           </div>
-
         )}
 
+        {/* FORM */}
 
-        {/* ==================================
-            FORM
-        =================================== */}
+        <form onSubmit={handleSubmit}>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+            {/* FULL NAME (READ-ONLY) */}
 
-        <form
-          onSubmit={handleSubmit}
-        >
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-sx-text-secondary">
+                Full Name
+              </label>
 
-          <div className="edit-form-grid">
+              <input
+                value={fullName}
+                disabled
+                readOnly
+                className={`${inputClasses} cursor-not-allowed bg-sx-bg-soft text-sx-text-secondary`}
+              />
 
+              <small className="text-xs text-sx-text-muted">
+                Your name is set at registration and can't be changed here.
+              </small>
+            </div>
 
             {/* HEADLINE */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Headline
-
               </label>
-
 
               <input
                 name="headline"
-                value={
-                  form.headline
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.headline}
+                onChange={handleChange}
                 placeholder="Example: CSE Student"
+                className={inputClasses}
               />
-
             </div>
-
 
             {/* LOCATION */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Location
-
               </label>
-
 
               <input
                 name="location"
-                value={
-                  form.location
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.location}
+                onChange={handleChange}
                 placeholder="Example: Bengaluru"
+                className={inputClasses}
               />
-
             </div>
-
 
             {/* BIO */}
 
-            <div className="form-group full-width">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5 sm:col-span-2">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 About / Bio
-
               </label>
-
 
               <textarea
                 name="bio"
-                value={
-                  form.bio
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.bio}
+                onChange={handleChange}
                 placeholder="Tell recruiters about yourself"
                 rows="4"
+                className={inputClasses}
               />
-
             </div>
-
 
             {/* EDUCATION */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Education
-
               </label>
-
 
               <input
                 name="education"
-                value={
-                  form.education
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.education}
+                onChange={handleChange}
                 placeholder="Example: B.E Computer Science"
+                className={inputClasses}
               />
-
             </div>
-
 
             {/* EXPERIENCE */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Experience
-
               </label>
-
 
               <select
                 name="experience"
-                value={
-                  form.experience
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.experience}
+                onChange={handleChange}
+                className={inputClasses}
               >
+                <option value="">Select experience level</option>
 
-                <option value="">
-
-                  Select experience level
-
-                </option>
-
-
-                {EXPERIENCE_LEVELS.map(
-                  (level) => (
-
-                    <option
-                      key={level}
-                      value={level}
-                    >
-
-                      {level}
-
-                    </option>
-
-                  )
-                )}
-
+                {EXPERIENCE_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
               </select>
-
             </div>
 
-
-            {/* =================================
-                SKILLS
-            ================================= */}
+            {/* SKILLS */}
 
             <div
-              className="form-group full-width"
+              className="relative flex flex-col gap-1.5 sm:col-span-2"
               ref={skillAreaRef}
             >
-
-              <label>
-
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Skills
-
               </label>
-
 
               {/* SELECTED SKILLS */}
 
               {selectedSkills.length > 0 && (
+                <div className="mb-1 flex flex-wrap gap-2">
+                  {selectedSkills.map((skill) => (
+                    <div
+                      key={skill}
+                      className="flex items-center gap-1.5 rounded-full bg-sx-primary-soft px-3 py-1.5 text-xs font-medium text-sx-primary-dark"
+                    >
+                      <span>{skill}</span>
 
-                <div className="selected-skills">
-
-                  {selectedSkills.map(
-                    (skill) => (
-
-                      <div
-                        className="skill-chip"
-                        key={skill}
+                      <button
+                        type="button"
+                        onClick={() => removeSkill(skill)}
+                        aria-label={`Remove ${skill}`}
+                        className="text-sx-primary-dark/70 hover:text-sx-primary-dark"
                       >
-
-                        <span>
-
-                          {skill}
-
-                        </span>
-
-
-                        <button
-                          type="button"
-                          onClick={() =>
-                            removeSkill(
-                              skill
-                            )
-                          }
-                          aria-label={
-                            `Remove ${skill}`
-                          }
-                        >
-
-                          ×
-
-                        </button>
-
-                      </div>
-
-                    )
-                  )}
-
+                        ×
+                      </button>
+                    </div>
+                  ))}
                 </div>
-
               )}
 
+              {/* SEARCH */}
 
-              {/* SEARCH SKILLS */}
-
-              <div className="skill-selector">
-
+              <div className="relative">
                 <input
                   type="text"
-                  value={
-                    skillSearch
-                  }
+                  value={skillSearch}
                   onChange={(e) => {
-
-                    setSkillSearch(
-                      e.target.value
-                    );
-
-                    setSkillDropdownOpen(
-                      true
-                    );
-
+                    setSkillSearch(e.target.value);
+                    setSkillDropdownOpen(true);
                   }}
-                  onFocus={() =>
-                    setSkillDropdownOpen(
-                      true
-                    )
-                  }
+                  onFocus={() => setSkillDropdownOpen(true)}
                   placeholder="Search or select a skill..."
-                  className="skill-search-input"
+                  className={inputClasses}
                 />
-
 
                 {/* DROPDOWN */}
 
                 {skillDropdownOpen && (
-
-                  <div className="skills-dropdown">
-
-                    {filteredSkills.length >
-                    0 ? (
-
-                      filteredSkills.map(
-                        (skill) => (
-
-                          <button
-                            type="button"
-                            className="skill-option"
-                            key={skill}
-                            onClick={() =>
-                              addSkill(
-                                skill
-                              )
-                            }
-                          >
-
-                            {skill}
-
-                          </button>
-
-                        )
-                      )
-
+                  <div className="absolute z-10 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border border-sx-border bg-sx-card shadow-lg">
+                    {filteredSkills.length > 0 ? (
+                      filteredSkills.map((skill) => (
+                        <button
+                          type="button"
+                          key={skill}
+                          onClick={() => addSkill(skill)}
+                          className="block w-full px-3.5 py-2 text-left text-sm text-sx-text transition hover:bg-sx-bg-soft"
+                        >
+                          {skill}
+                        </button>
+                      ))
                     ) : (
-
-                      <div className="no-skill-result">
-
+                      <div className="px-3.5 py-3 text-sm text-sx-text-muted">
                         No matching skills found
-
                       </div>
-
                     )}
-
                   </div>
-
                 )}
-
               </div>
 
-
-              {/* =================================
-                  CUSTOM SKILL
-              ================================= */}
+              {/* CUSTOM SKILL */}
 
               {showCustomSkill && (
-
-                <div className="custom-skill-area">
-
-                  <label>
-
-                    Add Your Skill
-
+                <div className="mt-2 rounded-lg border border-sx-border bg-sx-bg-soft p-3">
+                  <label className="text-sm font-medium text-sx-text-secondary">
+                    Add Custom Skill
                   </label>
 
-
-                  <div className="custom-skill-row">
-
+                  <div className="mt-2 flex gap-2">
                     <input
                       type="text"
-                      value={
-                        customSkill
-                      }
-                      onChange={(e) =>
-                        setCustomSkill(
-                          e.target.value
-                        )
-                      }
-                      onKeyDown={
-                        handleCustomSkillKeyDown
-                      }
+                      value={customSkill}
+                      onChange={(e) => setCustomSkill(e.target.value)}
+                      onKeyDown={handleCustomSkillKeyDown}
                       placeholder="Example: Flutter"
-                      className="custom-skill-input"
                       autoFocus
+                      className={`flex-1 ${inputClasses}`}
                     />
-
 
                     <button
                       type="button"
-                      className="custom-skill-add-button"
-                      onClick={
-                        addCustomSkill
-                      }
+                      onClick={addCustomSkill}
+                      className="rounded-lg bg-sx-primary px-4 py-2 text-sm font-semibold text-white transition hover:bg-sx-primary-dark"
                     >
-
                       Add
-
                     </button>
-
                   </div>
 
-
-                  <small className="field-help">
-
-                    Enter your skill and click
-                    Add or press Enter.
-
+                  <small className="mt-1.5 block text-xs text-sx-text-muted">
+                    Enter a skill and click Add or press Enter. You can add
+                    multiple skills separated by commas.
                   </small>
-
                 </div>
-
               )}
 
-
-              <small className="field-help">
-
-                Select multiple skills that match
-                your experience.
-
+              <small className="text-xs text-sx-text-muted">
+                Select multiple skills that match your experience.
               </small>
-
             </div>
-
 
             {/* PREFERRED ROLE */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Preferred Role
-
               </label>
-
 
               <input
                 name="preferred_role"
-                value={
-                  form.preferred_role
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.preferred_role}
+                onChange={handleChange}
                 placeholder="Example: Software Developer"
+                className={inputClasses}
               />
-
             </div>
-
 
             {/* PREFERRED LOCATION */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Preferred Location
-
               </label>
-
 
               <input
                 name="preferred_location"
-                value={
-                  form.preferred_location
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.preferred_location}
+                onChange={handleChange}
                 placeholder="Example: Bengaluru"
+                className={inputClasses}
               />
-
             </div>
-
 
             {/* EXPECTED SALARY */}
 
-            <div className="form-group">
-
-              <label>
-
+            <div className="flex flex-col gap-1.5">
+              <label className="text-sm font-medium text-sx-text-secondary">
                 Expected Salary
-
               </label>
-
 
               <input
                 type="number"
                 name="expected_salary"
-                value={
-                  form.expected_salary
-                }
-                onChange={
-                  handleChange
-                }
+                value={form.expected_salary}
+                onChange={handleChange}
                 min="10001"
                 step="1"
                 placeholder="Example: 600000"
+                className={inputClasses}
               />
 
-
-              <small className="field-help">
-
-                Minimum expected salary:
-                ₹10,001
-
+              <small className="text-xs text-sx-text-muted">
+                Minimum expected salary: ₹10,001
               </small>
-
             </div>
-
           </div>
 
+          {/* ACTIONS */}
 
-          {/* ==================================
-              ACTIONS
-          =================================== */}
-
-          <div className="edit-actions">
-
+          <div className="mt-8 flex justify-end gap-3">
             <button
               type="button"
-              className="cancel-button"
-              onClick={() =>
-                navigate(
-                  "/candidate"
-                )
-              }
+              onClick={() => navigate("/candidate")}
+              className="rounded-lg border border-sx-border px-5 py-2.5 text-sm font-semibold text-sx-text-secondary transition hover:bg-sx-bg-soft"
             >
-
               Cancel
-
             </button>
-
 
             <button
               type="submit"
-              className="save-button"
               disabled={saving}
+              className="rounded-lg bg-sx-primary px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-sx-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
             >
-
-              {saving
-                ? "Saving..."
-                : "Save Changes"}
-
+              {saving ? "Saving..." : "Save Changes"}
             </button>
-
           </div>
-
         </form>
-
       </div>
-
     </div>
-
   );
-
 }
-
 
 export default EditProfile;

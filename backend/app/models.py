@@ -5,7 +5,10 @@ from sqlalchemy import (
     Integer,
     String,
     Boolean,
-    DateTime
+    DateTime,
+    Float,
+    ForeignKey,
+    UniqueConstraint
 )
 
 from .database import Base
@@ -73,6 +76,7 @@ class CandidateProfile(Base):
 
     user_id = Column(
         Integer,
+        ForeignKey("users.user_id"),
         nullable=False,
         unique=True
     )
@@ -133,6 +137,7 @@ class Resume(Base):
 
     user_id = Column(
         Integer,
+        ForeignKey("users.user_id"),
         nullable=False,
         index=True
     )
@@ -201,6 +206,7 @@ class Job(Base):
 
     recruiter_id = Column(
         Integer,
+        ForeignKey("users.user_id"),
         nullable=False,
         index=True
     )
@@ -245,6 +251,32 @@ class Job(Base):
         nullable=True
     )
 
+    # ==========================================
+    # COMPANY TYPE (for MNC / Startup filtering)
+    # Nullable: not populated for existing
+    # imported test data until set explicitly.
+    # ==========================================
+
+    company_type = Column(
+        String(30),
+        nullable=True
+    )
+
+    # ==========================================
+    # PREFERRED (NICE-TO-HAVE) SKILLS
+    # Separate from the required `skills` field,
+    # used by ats_service's preferred_skills_match
+    # component. Nullable: unpopulated for
+    # existing imported test data — that
+    # component returns a neutral score rather
+    # than penalizing jobs with no data here.
+    # ==========================================
+
+    preferred_skills = Column(
+        String(1000),
+        nullable=True
+    )
+
     status = Column(
         String(30),
         default="active",
@@ -267,12 +299,14 @@ class JobSwipe(Base):
 
     user_id = Column(
         Integer,
+        ForeignKey("users.user_id"),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
+        ForeignKey("jobs.job_id"),
         nullable=False,
         index=True
     )
@@ -280,6 +314,19 @@ class JobSwipe(Base):
     action = Column(
         String(20),
         nullable=False
+    )
+
+    # ==========================================
+    # MATCH SCORE AT TIME OF SWIPE
+    # Persisted so we can show a genuine trend
+    # (this week vs last week) later, rather
+    # than recomputing history that no longer
+    # reflects the candidate's current profile.
+    # ==========================================
+
+    match_score = Column(
+        Float,
+        nullable=True
     )
 
     created_at = Column(
@@ -290,6 +337,14 @@ class SavedJob(Base):
 
     __tablename__ = "saved_jobs"
 
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "job_id",
+            name="uq_saved_job_user_job"
+        ),
+    )
+
     saved_job_id = Column(
         Integer,
         primary_key=True,
@@ -298,12 +353,14 @@ class SavedJob(Base):
 
     user_id = Column(
         Integer,
+        ForeignKey("users.user_id"),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
+        ForeignKey("jobs.job_id"),
         nullable=False,
         index=True
     )
@@ -312,11 +369,31 @@ class SavedJob(Base):
         DateTime,
         default=datetime.utcnow
     )
-class Application(Base):
+# ==========================================
+# NOTE: The `Application` model (apply/track
+# applications feature) was removed from the
+# ORM layer per product decision to drop that
+# feature. The `applications` table itself was
+# NOT dropped from the database — if it already
+# has real application rows, deleting it would
+# lose that data. It's just no longer modeled
+# or written to by this codebase.
+# ==========================================
 
-    __tablename__ = "applications"
 
-    application_id = Column(
+class ATSReport(Base):
+
+    __tablename__ = "ats_reports"
+
+    __table_args__ = (
+        UniqueConstraint(
+            "user_id",
+            "job_id",
+            name="uq_ats_report_user_job"
+        ),
+    )
+
+    report_id = Column(
         Integer,
         primary_key=True,
         index=True
@@ -324,29 +401,45 @@ class Application(Base):
 
     user_id = Column(
         Integer,
+        ForeignKey("users.user_id"),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
+        ForeignKey("jobs.job_id"),
         nullable=False,
         index=True
     )
 
-    status = Column(
-        String(30),
-        default="applied",
+    resume_id = Column(
+        Integer,
+        ForeignKey("resumes.resume_id"),
         nullable=False
     )
 
-    applied_at = Column(
-        DateTime,
-        default=datetime.utcnow
+    ats_score = Column(
+        Float,
+        nullable=False
     )
 
-    updated_at = Column(
+    required_skills_score = Column(Float)
+    preferred_skills_score = Column(Float)
+    experience_score = Column(Float)
+    semantic_score = Column(Float)
+    education_score = Column(Float)
+
+    missing_skills = Column(
+        String(1000)
+    )
+
+    job_category = Column(
+        String(100),
+        nullable=True
+    )
+
+    created_at = Column(
         DateTime,
-        default=datetime.utcnow,
-        onupdate=datetime.utcnow
+        default=datetime.utcnow
     )
