@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
-import Header from "./components/Header";
+import AppLayout from "./components/AppLayout";
 
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -14,6 +14,7 @@ import Companies from "./pages/Companies";
 import InterestedJobs from "./pages/InterestedJobs";
 import Notifications from "./pages/Notifications";
 import Recommendations from "./pages/Recommendations";
+import SwipeHistory from "./pages/SwipeHistory";
 import JobDetails from "./pages/JobDetails";
 import Analytics from "./pages/Analytics";
 import Profile from "./pages/Profile";
@@ -43,105 +44,107 @@ function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
-        <Header />
-        <Routes>
+        <AppLayout>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/companies" element={<Companies />} />
 
-          <Route path="/" element={<Home />} />
-
-          <Route path="/login" element={<Login />} />
-
-          <Route path="/register" element={<Register />} />
-
-          <Route path="/companies" element={<Companies />} />
-
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <Dashboard />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/jobs"
-            element={
-              <ProtectedRoute>
-                <Jobs />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/apply/:jobId"
-            element={
-              <ProtectedRoute>
-                <ApplyJob />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/resumes"
-            element={
-              <ProtectedRoute>
-                <Resumes />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/applications"
-            element={
-              <ProtectedRoute>
-                <Applications />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/interested-jobs"
-            element={<InterestedJobs />}
-          />
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <Notifications />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/recommendations"
-            element={
-              <ProtectedRoute>
-                <Recommendations />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/jobs/:jobId"
-            element={
-              <ProtectedRoute>
-                <JobDetails />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/profile"
-            element={
-              <ProtectedRoute>
-                <Profile />
-              </ProtectedRoute>
-            }
-          />
-
-
-
-        </Routes>
+            <Route
+              path="/dashboard"
+              element={
+                <ProtectedRoute>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/jobs"
+              element={
+                <ProtectedRoute>
+                  <Jobs />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/apply/:jobId"
+              element={
+                <ProtectedRoute>
+                  <ApplyJob />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/resumes"
+              element={
+                <ProtectedRoute>
+                  <Resumes />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/applications"
+              element={
+                <ProtectedRoute>
+                  <Applications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/interested-jobs"
+              element={<InterestedJobs />}
+            />
+            <Route
+              path="/notifications"
+              element={
+                <ProtectedRoute>
+                  <Notifications />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/recommendations"
+              element={
+                <ProtectedRoute>
+                  <Recommendations />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/swipe-history"
+              element={
+                <ProtectedRoute>
+                  <SwipeHistory />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/jobs/:jobId"
+              element={
+                <ProtectedRoute>
+                  <JobDetails />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/analytics"
+              element={
+                <ProtectedRoute>
+                  <Analytics />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+          </Routes>
+        </AppLayout>
       </BrowserRouter>
     </AuthProvider>
   );

@@ -10,7 +10,7 @@ from .jobs import router as jobs_router
 from .resumes import router as resumes_router
 from .auth import hash_password, verify_password, create_access_token, get_current_user, require_role
 from .applications import router as applications_router
-from .swipes import router as swipes_router
+from .swipes import router as swipes_router, get_swipe_history
 from .notifications import router as notifications_router
 from .recommendations import router as recommendations_router
 from .ats_reports import router as ats_reports_router
@@ -22,6 +22,7 @@ from dotenv import load_dotenv
 
 # Load environment variables
 load_dotenv()
+
 
 app = FastAPI(
     title = "SwipeX API"
@@ -84,6 +85,14 @@ def get_current_user_info(
         "email": current_user.email,
         "role": current_user.role
     }
+
+@app.get("/swipe-history", response_model=list[schemas.SwipeHistoryResponse])
+def get_user_swipe_history(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return get_swipe_history(current_user=current_user, db=db)
+
 
 
 @app.post("/register")

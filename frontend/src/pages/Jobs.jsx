@@ -20,7 +20,8 @@ import {
   Loader2,
   AlertCircle,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  ArrowRight
 } from "lucide-react";
 
 function Jobs() {
@@ -355,33 +356,26 @@ function Jobs() {
                   transition={{ duration: 0.25 }}
                   className="bg-slate-900/95 border border-slate-800 rounded-3xl p-6 md:p-8 shadow-2xl backdrop-blur-xl relative"
                 >
-                  {/* Top Bar: Progress & Competition */}
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
-                    <div className="flex items-center gap-2">
-                      {currentJob.is_early_applicant ? (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                          <Flame className="w-3.5 h-3.5 text-emerald-400" />
-                          🔥 Early Applicant ({currentJob.applicant_count || 0} applied)
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30">
-                          {currentJob.competition_level || "Active"} • {currentJob.applicant_count || 0} applicants
-                        </span>
-                      )}
-                    </div>
-
+                  {/* Top Bar: Progress Indicator */}
+                  <div className="flex items-center justify-end mb-4">
                     <span className="text-xs text-slate-400 font-semibold bg-slate-800/80 px-3 py-1 rounded-lg border border-slate-700/60">
                       Job {currentIndex + 1} of {filteredJobs.length}
                     </span>
                   </div>
 
-                  {/* Job Title & Company */}
-                  <h2 className="text-2xl md:text-3xl font-extrabold text-white tracking-tight">
-                    {currentJob.title}
-                  </h2>
-                  <p className="text-blue-400 font-medium text-sm mt-1">
-                    Job ID: #{currentJob.job_id}
-                  </p>
+                  {/* Job Title & ID */}
+                  <div>
+                    <h2
+                      onClick={() => navigate(`/jobs/${currentJob.job_id}`)}
+                      className="text-2xl md:text-3xl font-extrabold text-white tracking-tight hover:text-blue-400 transition-colors cursor-pointer"
+                      title="Click to view full job details"
+                    >
+                      {currentJob.title}
+                    </h2>
+                    <p className="text-blue-400 font-medium text-sm mt-1">
+                      Job ID: #{currentJob.job_id}
+                    </p>
+                  </div>
 
                   {/* Meta Tags */}
                   <div className="flex flex-wrap items-center gap-2.5 mt-4 text-xs text-slate-300">
@@ -417,7 +411,7 @@ function Jobs() {
                       <div className="flex items-center justify-between text-xs mb-2">
                         <span className="font-semibold text-slate-300 flex items-center gap-1.5">
                           <Zap className="w-3.5 h-3.5 text-blue-400" />
-                          Resume Match Compatibility
+                          Resume Match Score
                         </span>
                         <span className="font-bold text-emerald-400">{matchScore}% Match</span>
                       </div>
@@ -461,50 +455,31 @@ function Jobs() {
                     </div>
                   )}
 
-                  {/* Swipe Action Controls */}
-                  <div className="flex items-center justify-center gap-4 mt-8 pt-6 border-t border-slate-800">
-                    {/* Previous Button */}
-                    <button
-                      onClick={prevJob}
-                      disabled={currentIndex === 0}
-                      className="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition disabled:opacity-30 cursor-pointer"
-                      title="Previous Job"
-                    >
-                      <RotateCcw className="w-4 h-4" />
-                    </button>
-
-                    {/* Pass Button */}
+                  {/* Swipe Action Controls: ❌ Skip/Reject, ⭐ Save/Favorite, ❤️ Interested/Apply */}
+                  <div className="flex items-center justify-center gap-6 mt-8 pt-6 border-t border-slate-800">
+                    {/* ❌ Skip / Reject Button */}
                     <button
                       onClick={handlePass}
                       className="w-14 h-14 rounded-full bg-rose-500/15 border border-rose-500/30 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center text-xl font-bold shadow-lg transition-all hover:scale-105 cursor-pointer"
-                      title="Pass / Next"
+                      title="Skip / Reject"
                     >
                       <X className="w-6 h-6" />
                     </button>
 
-                    {/* Star / Interested Button */}
+                    {/* ⭐ Save / Favorite (Interested) Button */}
                     <button
                       onClick={handleInterested}
                       className="w-14 h-14 rounded-full bg-amber-500/15 border border-amber-500/30 text-amber-300 hover:bg-amber-500 hover:text-white flex items-center justify-center shadow-lg transition-all hover:scale-105 cursor-pointer"
-                      title="Mark as Interested"
+                      title="Save / Favorite"
                     >
                       <Star className="w-6 h-6 fill-current" />
                     </button>
 
-                    {/* View Details Button */}
-                    <button
-                      onClick={() => navigate(`/jobs/${currentJob.job_id}`)}
-                      className="w-11 h-11 rounded-full bg-slate-800 border border-slate-700 text-slate-300 hover:text-white flex items-center justify-center transition cursor-pointer"
-                      title="View Full Details"
-                    >
-                      <ChevronRight className="w-5 h-5" />
-                    </button>
-
-                    {/* 1-Click Apply Button */}
+                    {/* ❤️ Interested / Apply Button */}
                     <button
                       onClick={() => navigate(`/apply/${currentJob.job_id}`)}
                       className="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-500 text-white flex items-center justify-center shadow-lg shadow-emerald-500/25 transition-all hover:scale-105 cursor-pointer"
-                      title="1-Click Apply"
+                      title="Interested / Apply"
                     >
                       <Heart className="w-6 h-6 fill-current" />
                     </button>

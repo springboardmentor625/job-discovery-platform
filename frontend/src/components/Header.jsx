@@ -42,12 +42,10 @@ export default function Header() {
         { path: "/dashboard", label: "Dashboard", icon: Home },
         { path: "/jobs", label: "Discover Jobs", icon: Briefcase },
         { path: "/recommendations", label: "Recommended", icon: Zap },
-        { path: "/interested-jobs", label: "Interested", icon: Sparkles },
-        { path: "/applications", label: "Applications", icon: FileText },
+        { path: "/swipe-history", label: "Swipe History", icon: Zap },
         { path: "/resumes", label: "Resumes & ATS", icon: FileText },
         { path: "/companies", label: "Companies", icon: Users },
         { path: "/notifications", label: "Notifications", icon: Bell, badge: unreadCount },
-        { path: "/analytics", label: "Analytics", icon: BarChart3 },
       ]
     : [
         { path: "/", label: "Home", icon: Home },

@@ -335,3 +335,25 @@ class AnalyticsDashboardResponse(BaseModel):
     skill_gaps: list[dict]
     status_distribution: list[dict]
     application_trends: list[dict]
+
+
+# -------------------------
+# Swipe History Schemas
+# -------------------------
+
+class SwipeHistoryResponse(BaseModel):
+    swipe_id: int
+    user_id: int
+    job_id: int
+    swipe_action: str
+    swiped_at: datetime
+    job_title: Optional[str] = None
+    company_name: Optional[str] = None
+    company_id: Optional[int] = None
+    location: Optional[str] = None
+    employment_type: Optional[str] = None
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+
+    model_config = ConfigDict(from_attributes=True)
+

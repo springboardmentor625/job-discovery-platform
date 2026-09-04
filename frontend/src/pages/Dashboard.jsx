@@ -15,7 +15,8 @@ import {
   AlertCircle,
   ArrowRight,
   TrendingUp,
-  UserCheck
+  UserCheck,
+  History
 } from "lucide-react";
 
 function Dashboard() {
@@ -31,10 +32,10 @@ function Dashboard() {
   const [loadingCompletion, setLoadingCompletion] = useState(true);
 
   useEffect(() => {
-    fetchProfileCompletion();
+    fetchCompletion();
   }, []);
 
-  const fetchProfileCompletion = async () => {
+  const fetchCompletion = async () => {
     try {
       setLoadingCompletion(true);
       const res = await api.get("/candidate-profile/completion");
@@ -64,11 +65,12 @@ function Dashboard() {
       badge: "AI Powered",
     },
     {
-      title: "My Applications",
-      description: "Track the real-time status of all your submitted job applications.",
-      icon: CheckCircle2,
-      path: "/applications",
+      title: "Swipe History",
+      description: "Review your recent 30 job discovery swipes and interactions.",
+      icon: History,
+      path: "/swipe-history",
       gradient: "from-emerald-600 to-teal-600",
+      badge: "Recent 30",
     },
     {
       title: "My Resume & ATS",
@@ -78,18 +80,11 @@ function Dashboard() {
       gradient: "from-amber-600 to-orange-600",
     },
     {
-      title: "Analytics Dashboard",
-      description: "Visualize application response rates, ATS scores, and skill gaps.",
-      icon: BarChart3,
-      path: "/analytics",
-      gradient: "from-cyan-600 to-blue-600",
-    },
-    {
-      title: "Interested Roles",
-      description: "View jobs you swiped right on and marked as interested.",
-      icon: Star,
-      path: "/interested-jobs",
-      gradient: "from-yellow-600 to-amber-600",
+      title: "Companies & Startups",
+      description: "Explore top companies and fast-growing tech startups actively hiring.",
+      icon: Building,
+      path: "/companies",
+      gradient: "from-indigo-600 to-violet-600",
     },
     {
       title: "Notifications",
@@ -97,13 +92,6 @@ function Dashboard() {
       icon: Bell,
       path: "/notifications",
       gradient: "from-rose-600 to-red-600",
-    },
-    {
-      title: "Companies & Startups",
-      description: "Explore top companies and fast-growing tech startups actively hiring.",
-      icon: Building,
-      path: "/companies",
-      gradient: "from-indigo-600 to-violet-600",
     },
   ];
 
