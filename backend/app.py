@@ -1691,6 +1691,8 @@ def get_recommendations():
     # ----------------------------------------------------
 
     scored_jobs = []
+    ml_features = []
+    ml_items = []
 
     for job in jobs:
 
@@ -1771,34 +1773,17 @@ def get_recommendations():
 
         if use_ml:
 
-            # -------------------------------------------
-            # ML MODEL
-            # -------------------------------------------
+            ml_features.append([
+                skill_match,
+                location_match,
+                job_type_match
+            ])
 
-            ml_score = float(
-                ml_model.predict_proba(
-                    [[
-                        skill_match,
-                        location_match,
-                        job_type_match
-                    ]]
-                )[0][1] * 100
-            )
-
-            recommendation_score = float(
-                round(
-                    ml_score,
-                    2
-                )
-            )
-
-            print(
-                f"ML SCORE: {ml_score:.2f} | "
-                f"SKILL: {skill_match:.2f} | "
-                f"LOCATION: {location_match:.2f} | "
-                f"JOB TYPE: {job_type_match:.2f}",
-                flush=True
-            )
+            ml_items.append({
+                "job": job,
+                "required_skills": required_skills,
+                "matched_skills": matched_skills
+            })
 
         else:
 
@@ -1810,17 +1795,11 @@ def get_recommendations():
             # Job Type    = 15%
             # -------------------------------------------
 
-            skill_score = (
-                skill_match * 0.70
-            )
+            skill_score = skill_match * 0.70
 
-            location_score = (
-                location_match * 0.15
-            )
+            location_score = location_match * 0.15
 
-            job_type_score = (
-                job_type_match * 0.15
-            )
+            job_type_score = job_type_match * 0.15
 
             recommendation_score = float(
                 round(
@@ -1831,23 +1810,55 @@ def get_recommendations():
                 )
             )
 
-        # -----------------------------------------------
-        # STORE SCORE INFORMATION
-        # -----------------------------------------------
+            scored_jobs.append({
 
-        scored_jobs.append({
+                "job": job,
 
-            "job": job,
+                "required_skills":
+                    required_skills,
 
-            "required_skills":
-                required_skills,
+                "matched_skills":
+                    matched_skills,
 
-            "matched_skills":
-                matched_skills,
+                "recommendation_score":
+                    recommendation_score
+            })
+    # ----------------------------------------------------
+    # BATCH ML PREDICTION
+    # ----------------------------------------------------
 
-            "recommendation_score":
-                recommendation_score
-        })
+    if use_ml:
+
+        ml_scores = (
+            ml_model.predict_proba(
+                ml_features
+            )[:, 1] * 100
+        )
+
+        for item, score in zip(
+            ml_items,
+            ml_scores
+        ):
+
+            scored_jobs.append({
+
+                "job":
+                    item["job"],
+
+                "required_skills":
+                    item["required_skills"],
+
+                "matched_skills":
+                    item["matched_skills"],
+
+                "recommendation_score":
+                    float(
+                        round(
+                            score,
+                            2
+                        )
+                    )
+            })
 
     print(
         "JOBS SCORED:",
@@ -1865,10 +1876,10 @@ def get_recommendations():
     )
 
     # ----------------------------------------------------
-    # TAKE ONLY TOP 20
+    # TAKE ONLY TOP 50 JOBS
     # ----------------------------------------------------
 
-    top_jobs = scored_jobs[:20]
+    top_jobs = scored_jobs[:50]
 
     print(
         "TOP JOBS SELECTED:",
