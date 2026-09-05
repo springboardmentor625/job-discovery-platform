@@ -1689,16 +1689,30 @@ def get_recommendations():
     # ----------------------------------------------------
     # CALCULATE SCORE FOR ALL JOBS
     # ----------------------------------------------------
-
     scored_jobs = []
     ml_features = []
     ml_items = []
 
+    # ----------------------------------------------------
+    # REMOVE ALREADY SWIPED JOBS
+    # ----------------------------------------------------
+
+    swiped_job_ids = {
+        swipe.job_id
+        for swipe in SwipeHistory.query.filter_by(
+            user_id=user_id
+        ).all()
+    }
+
     for job in jobs:
+
+        if job.job_id in swiped_job_ids:
+            continue
 
         # -----------------------------------------------
         # REQUIRED SKILLS
         # -----------------------------------------------
+
 
         try:
             required_skills = json.loads(
