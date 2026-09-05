@@ -19,13 +19,6 @@ The candidate experience is organized around a persistent dashboard where Discov
 
 The backend reads authentication settings from `backend/.env`.
 
-Example:
-
-```env
-DATABASE_URL=postgresql://postgres:root@localhost:5432/swipex
-SECRET_KEY=swipex-secret-key
-ALGORITHM=HS256
-```
 
 ---
 
@@ -299,19 +292,7 @@ The improvement suggestion and resume skill extraction can use the Groq API when
 
 ---
 
-# 🔔 Notifications and Feedback
 
-SwipeX provides immediate feedback for important candidate actions, including:
-
-- Job saved
-- Job removed
-- Job liked
-- Job rejected
-- Profile updated
-- Resume-related actions
-- API errors
-
----
 
 # 🧭 Candidate Dashboard
 
@@ -377,7 +358,6 @@ SwipeX
 ├── Backend
 │   ├── FastAPI
 │   ├── SQLAlchemy
-│   ├── Alembic
 │   ├── JWT Authentication
 │   ├── PostgreSQL
 │   ├── Resume Parsing
@@ -394,7 +374,6 @@ SwipeX
     ├── Saved Jobs
     ├── Job Swipes
     ├── Resumes
-    └── ATS Reports
 ```
 
 ---
@@ -415,7 +394,7 @@ SwipeX
 | `/api/swipes` | POST | Like/pass interaction |
 | `/api/swipes/history` | GET | Candidate swipe history with job details |
 | `/api/saved-jobs` | GET / POST / DELETE | Saved jobs |
-| `/api/ats/{job_id}` | GET | Per-job ATS score |
+
 
 ---
 
@@ -462,23 +441,6 @@ Semantic matching uses `sentence-transformers` when available and falls back to 
 
 ---
 
-# 🗄️ Database and Migrations
-
-SwipeX uses PostgreSQL.
-
-The backend uses SQLAlchemy for database access and Alembic for schema migrations.
-
-Before starting the backend, configure:
-
-```env
-DATABASE_URL=postgresql://postgres:root@localhost:5432/swipex
-SECRET_KEY=swipex-secret-key
-ALGORITHM=HS256
-```
-
-Make sure the PostgreSQL database named `swipex` exists and is accessible with the configured credentials.
-
----
 
 # ▶️ Running the Project
 
@@ -545,7 +507,6 @@ job-discovery-platform/
 │   │   ├── auth.py
 │   │   └── main.py
 │   │
-│   ├── alembic/
 │   ├── ml_models/
 │   ├── scripts/
 │   ├── .env
@@ -582,16 +543,6 @@ The project keeps environment configuration in:
 ```text
 backend/.env
 ```
-
-The current configuration contains:
-
-```env
-DATABASE_URL=postgresql://postgres:root@localhost:5432/swipex
-SECRET_KEY=swipex-secret-key
-ALGORITHM=HS256
-```
-
-Optional integrations can be configured separately when required, such as the Groq API key for ATS improvement suggestions and resume skill extraction.
 
 ---
 
