@@ -2,6 +2,11 @@ import re
 
 from pypdf import PdfReader
 from docx import Document
+from dotenv import load_dotenv
+
+load_dotenv()
+
+_GROQ_SKILL_EXTRACTION_DISABLED = False
 
 # ==========================================
 # ALL RESUME PARSING LOGIC LIVES HERE.
@@ -320,23 +325,28 @@ def extract_skills(text):
 
 
 def extract_skills_with_llm(text):
-    """Extract skills from unstructured text with OpenAI when configured."""
+    """Extract skills from unstructured text with Groq when configured."""
     if not text:
         return set()
 
     import json
     import os
 
-    api_key = os.getenv("OPENAI_API_KEY")
+    global _GROQ_SKILL_EXTRACTION_DISABLED
+
+    if _GROQ_SKILL_EXTRACTION_DISABLED:
+        return set()
+
+    api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         return set()
 
     try:
-        from openai import OpenAI
+        from groq import Groq
 
-        client = OpenAI(api_key=api_key)
+        client = Groq(api_key=api_key)
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
             response_format={"type": "json_object"},
             messages=[
                 {
@@ -358,6 +368,19 @@ def extract_skills_with_llm(text):
             if isinstance(skill, str) and skill.strip()
         }
     except Exception as error:  # noqa: BLE001
+        error_text = str(error)
+        if (
+            "rate_limit_exceeded" in error_text
+            or "insufficient_quota" in error_text
+            or "credit_balance_exhausted" in error_text
+        ):
+            _GROQ_SKILL_EXTRACTION_DISABLED = True
+            print(
+                "[resume_parser] Groq rate limit reached — disabling optional "
+                "LLM skill extraction for this process."
+            )
+            return set()
+
         print(f"[resume_parser] LLM skill extraction skipped: {error}")
         return set()
 

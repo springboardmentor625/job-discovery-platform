@@ -34,6 +34,11 @@ WEIGHTS = {
 REQUIRED_SKILL_SHARE = 0.70
 PREFERRED_SKILL_SHARE = 0.30
 
+# An exhausted Groq account will reject every subsequent optional
+# suggestion request. Remember that state for this process so ATS scoring
+# does not keep making doomed API calls.
+_GROQ_SUGGESTIONS_DISABLED = False
+
 
 # ==========================================
 # CANDIDATE EXPERIENCE LEVEL -> APPROX YEARS
@@ -353,10 +358,10 @@ def calculate_ats_score(resume_data, job_data):
 
 
 # ==========================================
-# OPTIONAL: OPENAI IMPROVEMENT SUGGESTION
+# OPTIONAL: GROQ IMPROVEMENT SUGGESTION
 #
 # Skips gracefully (returns None) if
-# OPENAI_API_KEY isn't set — this is an
+# GROQ_API_KEY isn't set — this is an
 # enhancement, not a required part of the score.
 # ==========================================
 
@@ -364,11 +369,18 @@ def generate_improvement_suggestion(missing_skills, job_title):
 
     import os
 
-    api_key = os.getenv("OPENAI_API_KEY")
+    global _GROQ_SUGGESTIONS_DISABLED
+
+    from dotenv import load_dotenv
+
+    load_dotenv()
+    if _GROQ_SUGGESTIONS_DISABLED:
+        return None
+    api_key = os.getenv("GROQ_API_KEY")
 
     if not api_key:
         print(
-            "[ats_service] OPENAI_API_KEY not set — skipping "
+            "[ats_service] GROQ_API_KEY not set — skipping "
             "AI-generated improvement suggestion, missing_skills "
             "list is still returned as-is."
         )
@@ -378,29 +390,43 @@ def generate_improvement_suggestion(missing_skills, job_title):
         return None
 
     try:
-        from openai import OpenAI
+        from groq import Groq
 
-        client = OpenAI(api_key=api_key)
+        client = Groq(api_key=api_key)
 
         prompt = (
             f"A candidate is missing these skills for a '{job_title}' "
-            f"role: {', '.join(missing_skills[:5])}. In 1-2 sentences, "
-            "give a specific, encouraging suggestion for how they could "
-            "close this gap or reframe their existing experience."
+            f"role: {', '.join(missing_skills[:5])}. Write exactly one "
+            "complete, specific, encouraging sentence of no more than "
+            "35 words explaining how to improve these skills. Do not "
+            "include a heading or bullet point."
         )
 
         response = client.chat.completions.create(
-            model="gpt-4o-mini",
+            model=os.getenv("GROQ_MODEL", "openai/gpt-oss-20b"),
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=100,
+            max_tokens=300,
         )
 
         return response.choices[0].message.content.strip()
 
     except Exception as error:  # noqa: BLE001
 
+        error_text = str(error)
+        if (
+            "rate_limit_exceeded" in error_text
+            or "insufficient_quota" in error_text
+            or "credit_balance_exhausted" in error_text
+        ):
+            _GROQ_SUGGESTIONS_DISABLED = True
+            print(
+                "[ats_service] Groq rate limit reached — disabling optional "
+                "suggestions for this process."
+            )
+            return None
+
         print(
-            f"[ats_service] OpenAI suggestion generation failed: {error} "
+            f"[ats_service] Groq suggestion generation failed: {error} "
             "— continuing without it."
         )
         return None

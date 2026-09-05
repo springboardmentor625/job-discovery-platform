@@ -74,8 +74,7 @@ Each candidate receives a ranked swipe deck containing jobs that match their pro
 - Drag right beyond the swipe threshold → Like
 - Drag left beyond the swipe threshold → Pass
 - Drag down beyond the save threshold → Save
-- Heart button → Like
-- X button → Pass
+ The improvement suggestion and resume skill extraction can use the Groq API when a `GROQ_API_KEY` is configured.
 - Bookmark button → Save
 - Pointer Events support mouse and touch interaction
 - Small horizontal movements snap back without triggering Like/Pass
@@ -87,8 +86,9 @@ Each job card can show:
 
 - Match score
 - Company
-- Job title
+ Groq API
 - Location
+ Optional integrations can be configured separately when required, such as the Groq API key for ATS improvement suggestions and resume skill extraction.
 - Employment type
 - Salary
 - Required experience
@@ -295,7 +295,7 @@ The job details view can display:
 - Missing skills
 - Optional improvement suggestion
 
-The improvement suggestion can use the OpenAI API when an `OPENAI_API_KEY` is configured.
+The improvement suggestion and resume skill extraction can use the Groq API when a `GROQ_API_KEY` is configured.
 
 ---
 
@@ -446,7 +446,7 @@ SwipeX
 - NumPy
 - pypdf / PyPDF2
 - python-docx
-- OpenAI API
+- Groq API
 
 ## Machine Learning
 
@@ -591,7 +591,7 @@ SECRET_KEY=swipex-secret-key
 ALGORITHM=HS256
 ```
 
-Optional integrations can be configured separately when required, such as the OpenAI API key for ATS improvement suggestions.
+Optional integrations can be configured separately when required, such as the Groq API key for ATS improvement suggestions and resume skill extraction.
 
 ---
 
