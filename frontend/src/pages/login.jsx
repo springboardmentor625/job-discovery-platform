@@ -69,7 +69,7 @@ function Login() {
 
       toast.success("Login successful!");
 
-      navigate("/profile", { replace: true });
+      navigate("/view-profile");
     } catch (error) {
       console.error("================================");
       console.error("LOGIN ERROR:", error);

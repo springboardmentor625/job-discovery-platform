@@ -7,7 +7,6 @@ import {
 
 import Register from "./pages/Register";
 import Login from "./pages/Login.jsx";
-import Dashboard from "./pages/Dashboard";
 import CreateProfile from "./pages/CreateProfile";
 import ViewProfile from "./pages/ViewProfile";
 import EditProfile from "./pages/EditProfile";
@@ -16,7 +15,7 @@ import Jobs from "./pages/Jobs";
 import Applications from "./pages/Applications";
 import Settings from "./pages/Settings";
 import ApplyJob from "./pages/ApplyJob";
-
+import Recommendations from "./pages/Recommendations";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -51,15 +50,15 @@ function App() {
           }
         >
 
-          {/* Dashboard */}
-          <Route
-            path="/dashboard"
-            element={<Dashboard />}
-          />
-
           {/* Profile */}
           <Route
             path="/profile"
+            element={<ViewProfile />}
+          />
+
+          {/* View Profile */}
+          <Route
+            path="/view-profile"
             element={<ViewProfile />}
           />
 
@@ -67,12 +66,6 @@ function App() {
           <Route
             path="/create-profile"
             element={<CreateProfile />}
-          />
-
-          {/* View Profile */}
-          <Route
-            path="/view-profile"
-            element={<ViewProfile />}
           />
 
           {/* Edit Profile */}
@@ -98,19 +91,24 @@ function App() {
             path="/applications"
             element={<Applications />}
           />
-
+          {/* AI Recommendations */}
+        <Route
+          path="/recommendations"
+          element={<Recommendations />}
+        />
           {/* Settings */}
           <Route
             path="/settings"
             element={<Settings />}
           />
 
-        </Route>
-        <Route
-  path="/apply/:id"
-  element={<ApplyJob />}
-/>
+          {/* Apply Job */}
+          <Route
+            path="/apply/:id"
+            element={<ApplyJob />}
+          />
 
+        </Route>
 
         {/* ========================= */}
         {/* FALLBACK */}

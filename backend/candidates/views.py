@@ -21,6 +21,7 @@ from .serializers import (
     JobSerializer,
     JobSwipeSerializer,
     ApplicationSerializer,
+    RecommendationSerializer,
 )
 
 from .auth_serializers import RegisterSerializer
@@ -30,6 +31,7 @@ from .services.resume_service import ResumeService
 from .services.recommendation_service import RecommendationService
 from .services.file_service import FileService
 from .services.application_service import ApplicationService
+from rest_framework.response import Response
 
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
@@ -316,45 +318,99 @@ class ResumeViewSet(viewsets.ModelViewSet):
 
 
 # =====================================
-# JOB RECOMMENDATIONS
+# AI RECOMMENDATIONS
 # =====================================
+
+class RecommendationView(
+    generics.GenericAPIView
+):
+
+    serializer_class = RecommendationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        recommendations = (
+            RecommendationService
+            .get_recommendations(
+                request.user
+            )
+        )
+
+        serializer = self.get_serializer(
+            recommendations,
+            many=True
+        )
+
+        return Response(
+            serializer.data
+        )
+
 # =====================================
 # JOBS
 # =====================================
 
 class JobViewSet(viewsets.ReadOnlyModelViewSet):
+
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+
+        # ---------------------------------
+        # SINGLE JOB
+        # ---------------------------------
         if self.action == "retrieve":
             return Job.objects.all()
 
+        # ---------------------------------
+        # JOB RECOMMENDATIONS
+        # ---------------------------------
         try:
+
             jobs = RecommendationService.get_recommended_jobs(
                 self.request.user
             )
 
             if isinstance(jobs, list):
-                ids = [job.id for job in jobs]
-                queryset = Job.objects.filter(id__in=ids)
 
-                # preserve recommendation order
-                queryset = sorted(
-                    queryset,
-                    key=lambda j: ids.index(j.id)
+                ids = [
+                    job.id
+                    for job in jobs
+                    if getattr(job, "id", None)
+                ]
+
+                if not ids:
+                    return Job.objects.all()
+
+                queryset = Job.objects.filter(
+                    id__in=ids
                 )
 
-                return queryset
+                # Preserve recommendation order
+                jobs_by_id = {
+                    job.id: job
+                    for job in queryset
+                }
+
+                ordered_jobs = [
+                    jobs_by_id[job_id]
+                    for job_id in ids
+                    if job_id in jobs_by_id
+                ]
+
+                return ordered_jobs
 
             return jobs
 
         except Exception as e:
-            print("Recommendation Error:", e)
-            return Job.objects.all()
 
-    def get_object(self):
-        return Job.objects.get(pk=self.kwargs["pk"])
+            print(
+                "RECOMMENDATION ERROR:",
+                repr(e)
+            )
+
+            return Job.objects.all()
 
     
 class JobSwipeViewSet(viewsets.ModelViewSet):

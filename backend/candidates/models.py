@@ -133,7 +133,9 @@ class Job(models.Model):
     location = models.CharField(
         max_length=100
     )
-
+    description = models.TextField(
+        blank=True,default=""
+    )
     required_skills = models.TextField()
 
     min_ats = models.IntegerField(

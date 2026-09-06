@@ -2,8 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Toaster, toast } from "react-hot-toast";
 import Swal from "sweetalert2";
+
 import {
-  FaArrowLeft,
   FaCheckCircle,
   FaDownload,
   FaEye,
@@ -20,15 +20,20 @@ function MyResume() {
 
   const [resume, setResume] = useState(null);
   const [loading, setLoading] = useState(true);
+
   const [selectedFile, setSelectedFile] = useState(null);
+
   const [uploading, setUploading] = useState(false);
+  const [viewing, setViewing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const BASE_URL =
     import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 
-  // ============================================
+  // =========================================================
   // LOAD RESUME
-  // ============================================
+  // =========================================================
 
   useEffect(() => {
     fetchResume();
@@ -59,9 +64,9 @@ function MyResume() {
     }
   };
 
-  // ============================================
+  // =========================================================
   // FILE SELECTION
-  // ============================================
+  // =========================================================
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
@@ -85,6 +90,7 @@ function MyResume() {
 
       event.target.value = "";
       setSelectedFile(null);
+
       return;
     }
 
@@ -93,15 +99,16 @@ function MyResume() {
 
       event.target.value = "";
       setSelectedFile(null);
+
       return;
     }
 
     setSelectedFile(file);
   };
 
-  // ============================================
+  // =========================================================
   // UPLOAD / REPLACE
-  // ============================================
+  // =========================================================
 
   const handleUpload = async () => {
     if (!selectedFile) {
@@ -110,6 +117,7 @@ function MyResume() {
     }
 
     const formData = new FormData();
+
     formData.append("resume_file", selectedFile);
 
     let loadingToast;
@@ -169,7 +177,10 @@ function MyResume() {
 
       if (typeof data === "string") {
         toast.error(data);
-      } else if (data && typeof data === "object") {
+      } else if (
+        data &&
+        typeof data === "object"
+      ) {
         const messages = Object.entries(data)
           .map(([key, value]) => {
             const message = Array.isArray(value)
@@ -191,9 +202,9 @@ function MyResume() {
     }
   };
 
-  // ============================================
-  // AUTHENTICATED RESUME FILE
-  // ============================================
+  // =========================================================
+  // GET AUTHENTICATED RESUME FILE
+  // =========================================================
 
   const fetchResumeBlob = async () => {
     const token = localStorage.getItem("access");
@@ -227,21 +238,24 @@ function MyResume() {
     return await response.blob();
   };
 
-  // ============================================
+  // =========================================================
   // VIEW RESUME
-  // ============================================
+  // =========================================================
 
   const handleView = async () => {
     let newTab;
     let loadingToast;
 
     try {
+      setViewing(true);
+
       newTab = window.open("", "_blank");
 
       if (!newTab) {
         toast.error(
           "Please allow popups for localhost."
         );
+
         return;
       }
 
@@ -251,6 +265,7 @@ function MyResume() {
           <head>
             <title>Opening Resume...</title>
           </head>
+
           <body style="
             margin:0;
             height:100vh;
@@ -260,11 +275,15 @@ function MyResume() {
             font-family:Arial,sans-serif;
             background:#f3f4f6;
           ">
+
             <div style="text-align:center;">
+
               <div style="
                 font-size:40px;
                 margin-bottom:15px;
-              ">📄</div>
+              ">
+                📄
+              </div>
 
               <h2 style="
                 color:#4f46e5;
@@ -276,7 +295,9 @@ function MyResume() {
               <p style="color:#6b7280;">
                 Please wait...
               </p>
+
             </div>
+
           </body>
         </html>
       `);
@@ -293,6 +314,7 @@ function MyResume() {
       newTab.location.href = blobUrl;
 
       toast.dismiss(loadingToast);
+
       toast.success(
         "Resume opened successfully."
       );
@@ -315,17 +337,21 @@ function MyResume() {
       }
 
       handleFileError(error);
+    } finally {
+      setViewing(false);
     }
   };
 
-  // ============================================
+  // =========================================================
   // DOWNLOAD RESUME
-  // ============================================
+  // =========================================================
 
   const handleDownload = async () => {
     let loadingToast;
 
     try {
+      setDownloading(true);
+
       loadingToast = toast.loading(
         "Downloading resume..."
       );
@@ -349,7 +375,9 @@ function MyResume() {
       link.download = fileName;
 
       document.body.appendChild(link);
+
       link.click();
+
       document.body.removeChild(link);
 
       setTimeout(() => {
@@ -357,6 +385,7 @@ function MyResume() {
       }, 5000);
 
       toast.dismiss(loadingToast);
+
       toast.success(
         "Resume downloaded successfully!"
       );
@@ -371,12 +400,14 @@ function MyResume() {
       }
 
       handleFileError(error);
+    } finally {
+      setDownloading(false);
     }
   };
 
-  // ============================================
-  // FILE ERROR HANDLER
-  // ============================================
+  // =========================================================
+  // FILE ERROR
+  // =========================================================
 
   const handleFileError = (error) => {
     const message = error?.message;
@@ -390,6 +421,7 @@ function MyResume() {
       localStorage.removeItem("refresh");
 
       navigate("/");
+
       return;
     }
 
@@ -397,6 +429,7 @@ function MyResume() {
       toast.error(
         "You are not authorized to access this resume."
       );
+
       return;
     }
 
@@ -407,15 +440,18 @@ function MyResume() {
       toast.error(
         "Resume file was not found on the server."
       );
+
       return;
     }
 
-    toast.error("Unable to access resume.");
+    toast.error(
+      "Unable to access resume."
+    );
   };
 
-  // ============================================
+  // =========================================================
   // DELETE RESUME
-  // ============================================
+  // =========================================================
 
   const handleDelete = async () => {
     if (!resume?.id) {
@@ -440,6 +476,8 @@ function MyResume() {
     let loadingToast;
 
     try {
+      setDeleting(true);
+
       loadingToast = toast.loading(
         "Deleting resume..."
       );
@@ -482,6 +520,7 @@ function MyResume() {
         localStorage.removeItem("refresh");
 
         navigate("/");
+
         return;
       }
 
@@ -489,23 +528,27 @@ function MyResume() {
         toast.error(
           "You are not authorized to delete this resume."
         );
+
         return;
       }
 
       if (status === 404) {
         toast.error("Resume not found.");
+
         return;
       }
 
       toast.error(
         "Unable to delete resume."
       );
+    } finally {
+      setDeleting(false);
     }
   };
 
-  // ============================================
+  // =========================================================
   // LOADING
-  // ============================================
+  // =========================================================
 
   if (loading) {
     return (
@@ -513,21 +556,25 @@ function MyResume() {
         <Toaster position="top-right" />
 
         <div className="min-h-screen bg-gray-100 flex items-center justify-center">
+
           <div className="text-center">
+
             <div className="w-12 h-12 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin mx-auto" />
 
             <p className="mt-4 text-gray-600 font-semibold">
               Loading resume...
             </p>
+
           </div>
+
         </div>
       </>
     );
   }
 
-  // ============================================
+  // =========================================================
   // FILE INFORMATION
-  // ============================================
+  // =========================================================
 
   const fileName =
     resume?.original_filename ||
@@ -546,9 +593,53 @@ function MyResume() {
   const atsScore =
     resume?.ats_score ?? null;
 
-  // ============================================
+  // =========================================================
+  // AI DATA
+  // =========================================================
+
+  /*
+   * Django TextField returns strings.
+   *
+   * Example:
+   * "Python, Django, Git"
+   *
+   * React needs:
+   * ["Python", "Django", "Git"]
+   */
+
+  const extractedSkills =
+    typeof resume?.extracted_skills === "string"
+      ? resume.extracted_skills
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+      : Array.isArray(resume?.extracted_skills)
+      ? resume.extracted_skills
+      : [];
+
+  const missingSkills =
+    typeof resume?.missing_skills === "string"
+      ? resume.missing_skills
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean)
+      : Array.isArray(resume?.missing_skills)
+      ? resume.missing_skills
+      : [];
+
+  const atsSuggestions =
+    typeof resume?.ats_suggestions === "string"
+      ? resume.ats_suggestions
+          .split("\n")
+          .map((suggestion) => suggestion.trim())
+          .filter(Boolean)
+      : Array.isArray(resume?.ats_suggestions)
+      ? resume.ats_suggestions
+      : [];
+
+  // =========================================================
   // PAGE
-  // ============================================
+  // =========================================================
 
   return (
     <>
@@ -560,50 +651,49 @@ function MyResume() {
       />
 
       <div className="min-h-screen bg-gray-100 px-4 py-6 md:px-8 md:py-10">
+
         <div className="max-w-5xl mx-auto">
 
-          {/* HEADER */}
+          {/* =================================================
+              PAGE HEADER
+          ================================================= */}
 
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+          <div className="mb-8">
 
-            <div>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
-                My Resume
-              </h1>
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-800">
+              My Resume
+            </h1>
 
-              <p className="text-gray-500 mt-2">
-                Upload and manage the resume used
-                for your job applications.
-              </p>
-            </div>
+            <p className="text-gray-500 mt-2">
+              Upload and manage the resume used
+              for your job applications.
+            </p>
 
           </div>
 
-          {/* UPLOAD CARD */}
+          {/* =================================================
+              UPLOAD CARD
+          ================================================= */}
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-7 mb-6">
 
-            <div className="flex items-start gap-4">
+            <div>
 
-              <div className="bg-purple-100 text-purple-600 p-4 rounded-xl">
-                <FaUpload className="text-xl" />
-              </div>
+              <h2 className="text-xl font-bold text-gray-800">
+                {resume
+                  ? "Upload New Resume"
+                  : "Upload Resume"}
+              </h2>
 
-              <div>
-                <h2 className="text-xl font-bold text-gray-800">
-                  {resume
-                    ? "Upload New Resume"
-                    : "Upload Resume"}
-                </h2>
-
-                <p className="text-gray-500 text-sm mt-1">
-                  PDF or DOCX • Maximum 5 MB
-                </p>
-              </div>
+              <p className="text-gray-500 text-sm mt-1">
+                PDF or DOCX • Maximum 5 MB
+              </p>
 
             </div>
 
-            <div className="mt-6 flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="mt-5 flex flex-col sm:flex-row sm:items-center gap-4">
+
+              {/* CHOOSE BUTTON */}
 
               <label
                 htmlFor="resume-upload"
@@ -622,17 +712,26 @@ function MyResume() {
                 className="hidden"
               />
 
+              {/* SELECTED FILE */}
+
               {selectedFile && (
                 <div className="flex-1 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3">
 
                   <div className="min-w-0">
+
                     <p className="font-semibold text-indigo-700 truncate">
                       {selectedFile.name}
                     </p>
 
                     <p className="text-xs text-gray-500 mt-1">
-                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      {(
+                        selectedFile.size /
+                        1024 /
+                        1024
+                      ).toFixed(2)}{" "}
+                      MB
                     </p>
+
                   </div>
 
                   <button
@@ -655,13 +754,17 @@ function MyResume() {
 
           </div>
 
-          {/* NO RESUME */}
+          {/* =================================================
+              NO RESUME
+          ================================================= */}
 
           {!resume ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-10 text-center">
 
               <div className="w-20 h-20 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto">
+
                 <FaFileAlt className="text-3xl" />
+
               </div>
 
               <h2 className="text-2xl font-bold text-gray-800 mt-5">
@@ -677,18 +780,26 @@ function MyResume() {
             </div>
           ) : (
 
-            /* RESUME CARD */
+            /* =================================================
+               RESUME CARD
+            ================================================= */
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 md:p-7">
 
+              {/* =================================================
+                  FILE + ATS
+              ================================================= */}
+
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
 
-                {/* FILE INFO */}
+                {/* FILE */}
 
                 <div className="flex items-start gap-4 min-w-0">
 
                   <div className="w-14 h-14 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shrink-0">
+
                     <FaFileAlt className="text-2xl" />
+
                   </div>
 
                   <div className="min-w-0">
@@ -741,13 +852,16 @@ function MyResume() {
 
               </div>
 
-              {/* STATUS */}
+              {/* =================================================
+                  STATUS
+              ================================================= */}
 
               <div className="mt-6 flex items-center gap-3 bg-green-50 border border-green-100 rounded-xl px-4 py-3">
 
                 <FaCheckCircle className="text-green-500 shrink-0" />
 
                 <div>
+
                   <p className="font-semibold text-green-700">
                     Resume is ready
                   </p>
@@ -756,39 +870,163 @@ function MyResume() {
                     This resume can be used for
                     AI job matching and applications.
                   </p>
+
                 </div>
 
               </div>
 
-              {/* ACTIONS */}
+              {/* =================================================
+                  EXTRACTED SKILLS
+              ================================================= */}
+
+              {extractedSkills.length > 0 && (
+                <div className="mt-6 border border-gray-200 rounded-xl p-5">
+
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">
+                    Extracted Skills
+                  </h3>
+
+                  <div className="flex flex-wrap gap-2">
+
+                    {extractedSkills.map(
+                      (skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-semibold"
+                        >
+                          {skill}
+                        </span>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* =================================================
+                  MISSING SKILLS
+              ================================================= */}
+
+              {missingSkills.length > 0 && (
+                <div className="mt-5 border border-red-100 rounded-xl p-5">
+
+                  <h3 className="text-lg font-bold text-gray-800 mb-4">
+                    Missing Skills
+                  </h3>
+
+                  <div className="flex flex-wrap gap-2">
+
+                    {missingSkills.map(
+                      (skill, index) => (
+                        <span
+                          key={index}
+                          className="px-3 py-1.5 bg-red-100 text-red-600 rounded-full text-sm font-semibold"
+                        >
+                          {skill}
+                        </span>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* =================================================
+                  AI SUGGESTIONS
+              ================================================= */}
+
+              {atsSuggestions.length > 0 && (
+                <div className="mt-5 bg-indigo-50 border border-indigo-100 rounded-xl p-5">
+
+                  <h3 className="text-lg font-bold text-indigo-700 mb-4">
+                    AI Resume Suggestions
+                  </h3>
+
+                  <div className="space-y-3">
+
+                    {atsSuggestions.map(
+                      (suggestion, index) => (
+                        <div
+                          key={index}
+                          className="flex items-start gap-3 text-gray-700"
+                        >
+
+                          {/* ONE SIMPLE SYMBOL */}
+
+                          <span className="text-indigo-600 font-bold">
+                            •
+                          </span>
+
+                          <p className="leading-relaxed">
+                            {suggestion}
+                          </p>
+
+                        </div>
+                      )
+                    )}
+
+                  </div>
+
+                </div>
+              )}
+
+              {/* =================================================
+                  ACTION BUTTONS
+              ================================================= */}
 
               <div className="flex flex-wrap gap-3 mt-6">
+
+                {/* VIEW */}
 
                 <button
                   type="button"
                   onClick={handleView}
-                  className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition"
+                  disabled={viewing}
+                  className="inline-flex items-center gap-2 bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-indigo-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
+
                   <FaEye />
-                  View
+
+                  {viewing
+                    ? "Opening..."
+                    : "View"}
+
                 </button>
+
+                {/* DOWNLOAD */}
 
                 <button
                   type="button"
                   onClick={handleDownload}
-                  className="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-green-700 transition"
+                  disabled={downloading}
+                  className="inline-flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-green-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
+
                   <FaDownload />
-                  Download
+
+                  {downloading
+                    ? "Downloading..."
+                    : "Download"}
+
                 </button>
+
+                {/* DELETE */}
 
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="inline-flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-red-700 transition"
+                  disabled={deleting}
+                  className="inline-flex items-center gap-2 bg-red-600 text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-red-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
+
                   <FaTrash />
-                  Delete
+
+                  {deleting
+                    ? "Deleting..."
+                    : "Delete"}
+
                 </button>
 
               </div>
@@ -797,6 +1035,7 @@ function MyResume() {
           )}
 
         </div>
+
       </div>
     </>
   );

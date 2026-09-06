@@ -132,18 +132,101 @@ class CandidateSerializer(serializers.ModelSerializer):
 
 class ResumeSerializer(serializers.ModelSerializer):
 
+    extracted_skills = serializers.SerializerMethodField()
+    missing_skills = serializers.SerializerMethodField()
+    ats_suggestions = serializers.SerializerMethodField()
+
     class Meta:
         model = Resume
 
-        fields = "__all__"
+        fields = [
+            "id",
+            "candidate",
+            "resume_file",
+            "preview_pdf",
+            "original_filename",
+
+            "extracted_text",
+            "extracted_skills",
+            "extracted_experience",
+            "extracted_education",
+
+            "ats_score",
+            "probability_score",
+            "missing_skills",
+            "ats_suggestions",
+
+            "uploaded_at",
+        ]
 
         read_only_fields = [
             "id",
             "candidate",
+            "original_filename",
+            "preview_pdf",
+
+            "extracted_text",
+            "extracted_skills",
+            "extracted_experience",
+            "extracted_education",
+
             "ats_score",
+            "probability_score",
+            "missing_skills",
+            "ats_suggestions",
+
             "uploaded_at",
         ]
 
+    # =====================================
+    # EXTRACTED SKILLS
+    # =====================================
+
+    def get_extracted_skills(self, obj):
+
+        if not obj.extracted_skills:
+            return []
+
+        return [
+            skill.strip()
+            for skill in obj.extracted_skills.split(",")
+            if skill.strip()
+        ]
+
+    # =====================================
+    # MISSING SKILLS
+    # =====================================
+
+    def get_missing_skills(self, obj):
+
+        if not obj.missing_skills:
+            return []
+
+        return [
+            skill.strip()
+            for skill in obj.missing_skills.split(",")
+            if skill.strip()
+        ]
+
+    # =====================================
+    # ATS SUGGESTIONS
+    # =====================================
+
+    def get_ats_suggestions(self, obj):
+
+        if not obj.ats_suggestions:
+            return []
+
+        return [
+            suggestion.strip()
+            for suggestion in obj.ats_suggestions.split("\n")
+            if suggestion.strip()
+        ]
+
+
+# =====================================
+# JOB SERIALIZER
+# =====================================
 
 # =====================================
 # JOB SERIALIZER
@@ -152,17 +235,23 @@ class ResumeSerializer(serializers.ModelSerializer):
 class JobSerializer(serializers.ModelSerializer):
 
     ats_score = serializers.SerializerMethodField()
+
     matched_skills = serializers.SerializerMethodField()
+
     missing_skills = serializers.SerializerMethodField()
 
     skill_match_percentage = serializers.SerializerMethodField()
+
     match_percentage = serializers.SerializerMethodField()
 
     recommendation_score = serializers.SerializerMethodField()
+
     resume_match = serializers.SerializerMethodField()
+
     interest_match = serializers.SerializerMethodField()
 
     class Meta:
+
         model = Job
 
         fields = [
@@ -170,6 +259,7 @@ class JobSerializer(serializers.ModelSerializer):
             "title",
             "company",
             "location",
+            "description",
             "required_skills",
             "min_ats",
 
@@ -190,10 +280,6 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_candidate(self):
 
-        # ---------------------------------
-        # USE CACHED CANDIDATE
-        # ---------------------------------
-
         if hasattr(self, "_candidate"):
             return self._candidate
 
@@ -207,15 +293,9 @@ class JobSerializer(serializers.ModelSerializer):
             self._candidate = None
             return None
 
-        try:
-
-            self._candidate = Candidate.objects.get(
-                email__iexact=request.user.email
-            )
-
-        except Candidate.DoesNotExist:
-
-            self._candidate = None
+        self._candidate = Candidate.objects.filter(
+            email__iexact=request.user.email
+        ).first()
 
         return self._candidate
 
@@ -233,6 +313,7 @@ class JobSerializer(serializers.ModelSerializer):
         if not candidate or not candidate.skills:
 
             self._candidate_skills = []
+
             return self._candidate_skills
 
         self._candidate_skills = [
@@ -244,6 +325,18 @@ class JobSerializer(serializers.ModelSerializer):
         return self._candidate_skills
 
     # =====================================
+    # NORMALIZE SKILL
+    # =====================================
+
+    def normalize_skill(self, skill):
+
+        return (
+            str(skill)
+            .strip()
+            .lower()
+        )
+
+    # =====================================
     # REQUIRED SKILLS
     # =====================================
 
@@ -252,11 +345,62 @@ class JobSerializer(serializers.ModelSerializer):
         if not obj.required_skills:
             return []
 
-        return [
-            skill.strip().lower()
-            for skill in obj.required_skills.split(",")
-            if skill.strip()
-        ]
+        value = str(
+            obj.required_skills
+        )
+
+        value = value.replace(
+            "\n",
+            ","
+        )
+
+        value = value.replace(
+            ";",
+            ","
+        )
+
+        skills = []
+
+        for skill in value.split(","):
+
+            skill = self.normalize_skill(skill)
+
+            if skill and skill not in skills:
+                skills.append(skill)
+
+        return skills
+
+    # =====================================
+    # SKILL MATCHING
+    # =====================================
+
+    def skill_matches(
+        self,
+        required_skill,
+        candidate_skill
+    ):
+
+        required_skill = self.normalize_skill(
+            required_skill
+        )
+
+        candidate_skill = self.normalize_skill(
+            candidate_skill
+        )
+
+        if not required_skill or not candidate_skill:
+            return False
+
+        if required_skill == candidate_skill:
+            return True
+
+        if (
+            required_skill in candidate_skill
+            or candidate_skill in required_skill
+        ):
+            return True
+
+        return False
 
     # =====================================
     # ATS SCORE
@@ -269,19 +413,16 @@ class JobSerializer(serializers.ModelSerializer):
         if not candidate:
             return 0
 
-        try:
+        resume = getattr(
+            candidate,
+            "resume",
+            None
+        )
 
-            resume = candidate.resume
-
-            return resume.ats_score or 0
-
-        except Resume.DoesNotExist:
-
+        if not resume:
             return 0
 
-        except Exception:
-
-            return 0
+        return resume.ats_score or 0
 
     # =====================================
     # MATCHED SKILLS
@@ -289,15 +430,30 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_matched_skills(self, obj):
 
-        candidate_skills = self.get_candidate_skills()
+        candidate_skills = (
+            self.get_candidate_skills()
+        )
 
-        required_skills = self.get_required_skills(obj)
+        required_skills = (
+            self.get_required_skills(obj)
+        )
 
-        return [
-            skill
-            for skill in required_skills
-            if skill in candidate_skills
-        ]
+        matched = []
+
+        for required in required_skills:
+
+            for candidate_skill in candidate_skills:
+
+                if self.skill_matches(
+                    required,
+                    candidate_skill
+                ):
+
+                    matched.append(required)
+
+                    break
+
+        return matched
 
     # =====================================
     # MISSING SKILLS
@@ -305,14 +461,18 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_missing_skills(self, obj):
 
-        candidate_skills = self.get_candidate_skills()
+        required_skills = (
+            self.get_required_skills(obj)
+        )
 
-        required_skills = self.get_required_skills(obj)
+        matched_skills = (
+            self.get_matched_skills(obj)
+        )
 
         return [
             skill
             for skill in required_skills
-            if skill not in candidate_skills
+            if skill not in matched_skills
         ]
 
     # =====================================
@@ -321,19 +481,24 @@ class JobSerializer(serializers.ModelSerializer):
 
     def get_skill_match_percentage(self, obj):
 
-        required_skills = self.get_required_skills(obj)
+        required_skills = (
+            self.get_required_skills(obj)
+        )
 
         if not required_skills:
             return 0
 
-        matched_skills = self.get_matched_skills(obj)
+        matched_skills = (
+            self.get_matched_skills(obj)
+        )
 
-        percentage = (
-            len(matched_skills)
-            / len(required_skills)
-        ) * 100
-
-        return round(percentage)
+        return round(
+            (
+                len(matched_skills)
+                /
+                len(required_skills)
+            ) * 100
+        )
 
     # =====================================
     # OVERALL MATCH %
@@ -347,18 +512,11 @@ class JobSerializer(serializers.ModelSerializer):
             self.get_skill_match_percentage(obj)
         )
 
-        # ---------------------------------
-        # ATS = 60%
-        # SKILLS = 40%
-        # ---------------------------------
-
-        match = (
+        return round(
             (ats_score * 0.60)
             +
             (skill_percentage * 0.40)
         )
-
-        return round(match)
 
     # =====================================
     # RECOMMENDATION SCORE
@@ -398,23 +556,34 @@ class JobSerializer(serializers.ModelSerializer):
 
 
 # =====================================
-# JOB SWIPE SERIALIZER
+# JOB MINI SERIALIZER
 # =====================================
 
 class JobMiniSerializer(serializers.ModelSerializer):
+
     class Meta:
         model = Job
+
         fields = [
             "id",
             "title",
             "company",
             "location",
+            "description",
+            "required_skills",
+            "min_ats",
         ]
 
 
+# =====================================
+# JOB SWIPE SERIALIZER
+# =====================================
+
 class JobSwipeSerializer(serializers.ModelSerializer):
 
-    job = JobMiniSerializer(read_only=True)
+    job = JobMiniSerializer(
+        read_only=True
+    )
 
     job_id = serializers.PrimaryKeyRelatedField(
         queryset=Job.objects.all(),
@@ -424,6 +593,7 @@ class JobSwipeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = JobSwipe
+
         fields = [
             "id",
             "candidate",
@@ -432,6 +602,7 @@ class JobSwipeSerializer(serializers.ModelSerializer):
             "decision",
             "created_at",
         ]
+
         read_only_fields = [
             "id",
             "candidate",
@@ -439,14 +610,15 @@ class JobSwipeSerializer(serializers.ModelSerializer):
             "created_at",
         ]
 
-
 # =====================================
 # APPLICATION SERIALIZER
 # =====================================
 
 class ApplicationSerializer(serializers.ModelSerializer):
 
-    job = JobMiniSerializer(read_only=True)
+    job = JobMiniSerializer(
+        read_only=True
+    )
 
     job_id = serializers.PrimaryKeyRelatedField(
         queryset=Job.objects.all(),
@@ -454,25 +626,209 @@ class ApplicationSerializer(serializers.ModelSerializer):
         write_only=True
     )
 
+    matched_skills = serializers.SerializerMethodField()
+    missing_skills = serializers.SerializerMethodField()
+    match_score = serializers.SerializerMethodField()
+
     class Meta:
+
         model = Application
+
         fields = [
-    "id",
-    "candidate",
-    "job",
-    "job_id",
-    "cover_letter",
-    "portfolio_url",
-    "linkedin_url",
-    "github_url",
-    "expected_salary",
-    "available_from",
-    "applied_resume",
-    "applied_at",
-]
+            "id",
+            "candidate",
+            "job",
+            "job_id",
+
+            "cover_letter",
+            "portfolio_url",
+            "linkedin_url",
+            "github_url",
+            "expected_salary",
+            "available_from",
+
+            "applied_resume",
+            "applied_at",
+
+            "matched_skills",
+            "missing_skills",
+            "match_score",
+        ]
+
         read_only_fields = [
             "id",
             "candidate",
             "job",
+            "applied_resume",
             "applied_at",
+            "matched_skills",
+            "missing_skills",
+            "match_score",
         ]
+
+    # ============================================
+    # NORMALIZE SKILLS
+    # ============================================
+
+    def normalize_skills(self, value):
+
+        if not value:
+            return []
+
+        value = str(value)
+
+        value = value.replace("\n", ",")
+        value = value.replace(";", ",")
+
+        skills = value.split(",")
+
+        cleaned = []
+
+        for skill in skills:
+
+            skill = skill.strip()
+
+            if not skill:
+                continue
+
+            skill = skill.lower()
+
+            if skill not in cleaned:
+                cleaned.append(skill)
+
+        return cleaned
+
+    # ============================================
+    # RESUME SKILLS
+    # ============================================
+
+    def get_resume_skills(self, obj):
+
+        resume = obj.applied_resume
+
+        if not resume:
+            return []
+
+        return self.normalize_skills(
+            resume.extracted_skills
+        )
+
+    # ============================================
+    # JOB SKILLS
+    # ============================================
+
+    def get_job_skills(self, obj):
+
+        if not obj.job:
+            return []
+
+        return self.normalize_skills(
+            obj.job.required_skills
+        )
+
+    # ============================================
+    # MATCHED SKILLS
+    # ============================================
+
+    def get_matched_skills(self, obj):
+
+        resume_skills = self.get_resume_skills(obj)
+        job_skills = self.get_job_skills(obj)
+
+        matched = []
+
+        for job_skill in job_skills:
+
+            for resume_skill in resume_skills:
+
+                if (
+                    job_skill == resume_skill
+                    or job_skill in resume_skill
+                    or resume_skill in job_skill
+                ):
+
+                    if job_skill not in matched:
+                        matched.append(job_skill)
+
+                    break
+
+        return matched
+
+    # ============================================
+    # MISSING SKILLS
+    # ============================================
+
+    def get_missing_skills(self, obj):
+
+        job_skills = self.get_job_skills(obj)
+        matched = self.get_matched_skills(obj)
+
+        return [
+            skill
+            for skill in job_skills
+            if skill not in matched
+        ]
+
+    # ============================================
+    # MATCH SCORE
+    # ============================================
+
+    def get_match_score(self, obj):
+
+        job_skills = self.get_job_skills(obj)
+
+        if not job_skills:
+            return 0
+
+        matched = self.get_matched_skills(obj)
+
+        score = (
+            len(matched)
+            / len(job_skills)
+        ) * 100
+
+        return round(score)
+
+# =====================================
+# AI RECOMMENDATION SERIALIZER
+# =====================================
+
+class RecommendationSerializer(
+    serializers.Serializer
+):
+
+    job = JobMiniSerializer(
+        read_only=True
+    )
+
+    match_score = serializers.IntegerField(
+        read_only=True
+    )
+
+    skill_match_percentage = serializers.IntegerField(
+        read_only=True
+    )
+
+    recommendation_score = serializers.IntegerField(
+        read_only=True
+    )
+
+    matched_skills = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True
+    )
+
+    missing_skills = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True
+    )
+
+    resume_skills = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True
+    )
+
+    reasons = serializers.ListField(
+        child=serializers.CharField(),
+        read_only=True
+    )

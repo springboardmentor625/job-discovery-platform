@@ -1,6 +1,10 @@
 from rest_framework import serializers
 
-from ..models import Candidate, Application
+from ..models import (
+    Candidate,
+    Application,
+    Resume,
+)
 
 
 class ApplicationService:
@@ -30,6 +34,7 @@ class ApplicationService:
             )
 
         except Candidate.DoesNotExist:
+
             raise serializers.ValidationError({
                 "detail": "Candidate profile not found."
             })
@@ -41,6 +46,7 @@ class ApplicationService:
         job = serializer.validated_data.get("job")
 
         if not job:
+
             raise serializers.ValidationError({
                 "job_id": "Job is required."
             })
@@ -55,15 +61,25 @@ class ApplicationService:
         ).exists():
 
             raise serializers.ValidationError({
-                "detail": "You have already applied for this job."
+                "detail":
+                "You have already applied for this job."
             })
+
+        # =====================================
+        # GET CURRENT RESUME
+        # =====================================
+
+        resume = Resume.objects.filter(
+            candidate=candidate
+        ).first()
 
         # =====================================
         # CREATE APPLICATION
         # =====================================
 
         application = serializer.save(
-            candidate=candidate
+            candidate=candidate,
+            applied_resume=resume
         )
 
         return application

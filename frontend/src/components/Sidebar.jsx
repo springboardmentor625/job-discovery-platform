@@ -3,12 +3,11 @@ import { NavLink, useNavigate } from "react-router-dom";
 import {
   FaHome,
   FaBriefcase,
-  FaRobot,
   FaFileAlt,
-  FaUser,
   FaClipboardList,
   FaCog,
   FaSignOutAlt,
+  FaRobot,
 } from "react-icons/fa";
 
 function Sidebar() {
@@ -22,45 +21,36 @@ function Sidebar() {
   };
 
   const linkClass = ({ isActive }) =>
-    `flex items-center gap-3 px-4 py-3 rounded-xl transition ${
+    `flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-300 ${
       isActive
-        ? "bg-indigo-600 text-white shadow-md"
-        : "text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+        ? "bg-white text-indigo-700 shadow-lg"
+        : "text-indigo-100 hover:bg-indigo-500 hover:text-white"
     }`;
 
   return (
-    <aside className="
-      fixed
-      left-0
-      top-0
-      z-40
-      hidden
-      md:flex
-      w-64
-      h-screen
-      bg-white
-      border-r
-      border-gray-200
-      flex-col
-      p-5
-    ">
-
+    <aside
+      className="
+        fixed
+        left-0
+        top-0
+        z-40
+        hidden
+        md:flex
+        w-64
+        h-screen
+        bg-indigo-600
+        flex-col
+        p-5
+      "
+    >
       {/* LOGO */}
 
       <div className="mb-8">
-        <h1 className="
-          text-2xl
-          font-extrabold
-          text-indigo-600
-        ">
+        <h1 className="text-3xl font-extrabold text-white">
           SwipeX
         </h1>
 
-        <p className="
-          text-xs
-          text-gray-400
-          mt-1
-        ">
+        <p className="text-sm text-indigo-200 mt-1">
           AI Job Discovery
         </p>
       </div>
@@ -70,11 +60,11 @@ function Sidebar() {
       <nav className="space-y-2 flex-1">
 
         <NavLink
-          to="/dashboard"
+          to="/view-profile"
           className={linkClass}
         >
           <FaHome />
-          Dashboard
+          Profile
         </NavLink>
 
         <NavLink
@@ -94,19 +84,21 @@ function Sidebar() {
         </NavLink>
 
         <NavLink
-          to="/view-profile"
-          className={linkClass}
-        >
-          <FaUser />
-          Profile
-        </NavLink>
-
-        <NavLink
           to="/applications"
           className={linkClass}
         >
           <FaClipboardList />
           Applications
+        </NavLink>
+
+        {/* AI RECOMMENDATIONS */}
+
+        <NavLink
+          to="/recommendations"
+          className={linkClass}
+        >
+          <FaRobot />
+          AI Recommendations
         </NavLink>
 
         <NavLink
@@ -130,9 +122,11 @@ function Sidebar() {
           px-4
           py-3
           rounded-xl
-          text-red-500
-          hover:bg-red-50
-          transition
+          text-indigo-100
+          hover:bg-red-500
+          hover:text-white
+          transition-all
+          duration-300
           font-medium
         "
       >
