@@ -2,17 +2,19 @@
 
 ## Overview
 
-The SwipeX database is designed to support an AI-powered job discovery platform that enables candidates to create professional profiles, upload resumes, receive AI-based resume analysis, calculate job matching probability, and apply for suitable job opportunities. The database follows a relational design with normalized tables to maintain data integrity, reduce redundancy, and efficiently manage relationships between users, jobs, resumes, and ATS reports.
+The **SwipeX** database is designed to support an AI-powered job discovery platform that enables candidates to create professional profiles, upload resumes, receive AI-powered resume analysis, calculate ATS scores and job match probability, receive intelligent job recommendations, and apply for suitable job opportunities.
+
+The database follows a **normalized relational design** to ensure data integrity, minimize redundancy, and efficiently manage relationships between users, resumes, companies, jobs, applications, and AI-generated analytics.
 
 ---
 
 # Database Schema Diagram
 
-The Entity-Relationship (ER) Diagram below illustrates the database structure and relationships between all entities.
+The Entity-Relationship (ER) diagram below illustrates the complete database structure and relationships among all core entities.
 
 > **Figure:** SwipeX Database Schema / Entity-Relationship Diagram
 
-![SwipeX Database Schema](SwipeX%20database.png)
+![SwipeX Database Schema](SwipeX_database.png)
 
 ---
 
@@ -22,10 +24,12 @@ The Entity-Relationship (ER) Diagram below illustrates the database structure an
 
 Stores authentication and account information for all platform users.
 
-**Primary Key**
+### Primary Key
+
 - user_id
 
-**Important Attributes**
+### Important Attributes
+
 - full_name
 - email
 - password_hash
@@ -35,12 +39,13 @@ Stores authentication and account information for all platform users.
 - is_verified
 - created_at
 
-**Relationships**
+### Relationships
+
 - One User has one Candidate Profile.
 - One User can upload multiple Resumes.
+- One User can submit multiple Applications.
+- One User can receive multiple Recommendations.
 - One User can receive multiple Notifications.
-- One User can apply for multiple Jobs.
-- One User can have multiple Recommendations.
 - One User can perform multiple Swipe actions.
 
 ---
@@ -49,13 +54,16 @@ Stores authentication and account information for all platform users.
 
 Stores candidate-specific professional information.
 
-**Primary Key**
+### Primary Key
+
 - profile_id
 
-**Foreign Key**
+### Foreign Key
+
 - user_id → Users
 
-**Important Attributes**
+### Important Attributes
+
 - headline
 - summary
 - location
@@ -66,7 +74,8 @@ Stores candidate-specific professional information.
 - preferred_job_type
 - preferred_location
 
-**Relationship**
+### Relationship
+
 - One-to-One with Users.
 
 ---
@@ -75,32 +84,38 @@ Stores candidate-specific professional information.
 
 Stores employer information.
 
-**Primary Key**
+### Primary Key
+
 - company_id
 
-**Important Attributes**
+### Important Attributes
+
 - company_name
 - company_type
 - industry
 - website
 - headquarters
 
-**Relationship**
+### Relationship
+
 - One Company can post multiple Jobs.
 
 ---
 
 ## 4. Jobs
 
-Stores job listings available on the platform.
+Stores job listings published by companies.
 
-**Primary Key**
+### Primary Key
+
 - job_id
 
-**Foreign Key**
+### Foreign Key
+
 - company_id → Companies
 
-**Important Attributes**
+### Important Attributes
+
 - title
 - description
 - location
@@ -112,7 +127,8 @@ Stores job listings available on the platform.
 - posted_date
 - status
 
-**Relationship**
+### Relationships
+
 - One Company has many Jobs.
 - One Job can receive multiple Applications.
 - One Job can appear in multiple Recommendations.
@@ -125,21 +141,26 @@ Stores job listings available on the platform.
 
 Stores uploaded resumes and extracted information.
 
-**Primary Key**
+### Primary Key
+
 - resume_id
 
-**Foreign Key**
+### Foreign Key
+
 - user_id → Users
 
-**Important Attributes**
+### Important Attributes
+
 - resume_name
 - file_path
 - extracted_skills
 - uploaded_at
 - is_default
 
-**Relationship**
+### Relationships
+
 - One User can upload multiple Resumes.
+- One Resume can be used for multiple Applications.
 - One Resume can generate multiple ATS Reports.
 
 ---
@@ -148,37 +169,44 @@ Stores uploaded resumes and extracted information.
 
 Stores job applications submitted by candidates.
 
-**Primary Key**
+### Primary Key
+
 - application_id
 
-**Foreign Keys**
+### Foreign Keys
+
 - user_id → Users
 - job_id → Jobs
 - resume_id → Resumes
 
-**Important Attributes**
+### Important Attributes
+
 - status
 - applied_at
 
-**Relationship**
-- Many-to-One with Users.
-- Many-to-One with Jobs.
-- Many-to-One with Resumes.
+### Relationships
+
+- Many Applications belong to one User.
+- Many Applications belong to one Job.
+- Many Applications use one Resume.
 
 ---
 
 ## 7. ATS Reports
 
-Stores AI-generated resume analysis results.
+Stores AI-generated resume evaluation results for a specific resume against a particular job.
 
-**Primary Key**
+### Primary Key
+
 - ats_report_id
 
-**Foreign Keys**
+### Foreign Keys
+
 - resume_id → Resumes
 - job_id → Jobs
 
-**Important Attributes**
+### Important Attributes
+
 - ats_score
 - match_percentage
 - missing_skills
@@ -186,7 +214,8 @@ Stores AI-generated resume analysis results.
 - suggestions
 - analyzed_at
 
-**Relationship**
+### Relationships
+
 - One Resume can generate multiple ATS Reports.
 - One Job can have multiple ATS Reports.
 
@@ -194,21 +223,25 @@ Stores AI-generated resume analysis results.
 
 ## 8. Recommendations
 
-Stores AI-generated job recommendations.
+Stores AI-generated personalized job recommendations.
 
-**Primary Key**
+### Primary Key
+
 - recommendation_id
 
-**Foreign Keys**
+### Foreign Keys
+
 - user_id → Users
 - job_id → Jobs
 
-**Important Attributes**
+### Important Attributes
+
 - recommendation_score
 - recommendation_reason
 - generated_at
 
-**Relationship**
+### Relationships
+
 - Many Recommendations belong to one User.
 - Many Recommendations reference one Job.
 
@@ -216,20 +249,27 @@ Stores AI-generated job recommendations.
 
 ## 9. Swipe History
 
-Stores swipe interactions between candidates and jobs.
+Stores swipe interactions between candidates and job postings.
 
-**Primary Key**
+### Primary Key
+
 - swipe_id
 
-**Foreign Keys**
+### Foreign Keys
+
 - user_id → Users
 - job_id → Jobs
 
-**Important Attributes**
+### Important Attributes
+
 - swipe_action
+  - LEFT
+  - RIGHT
+  - SAVE
 - swiped_at
 
-**Relationship**
+### Relationships
+
 - Many Swipe records belong to one User.
 - Many Swipe records reference one Job.
 
@@ -237,21 +277,25 @@ Stores swipe interactions between candidates and jobs.
 
 ## 10. Notifications
 
-Stores notifications sent to users.
+Stores notifications delivered to platform users.
 
-**Primary Key**
+### Primary Key
+
 - notification_id
 
-**Foreign Key**
+### Foreign Key
+
 - user_id → Users
 
-**Important Attributes**
+### Important Attributes
+
 - title
 - message
 - is_read
 - created_at
 
-**Relationship**
+### Relationship
+
 - One User can receive multiple Notifications.
 
 ---
@@ -264,13 +308,13 @@ Stores notifications sent to users.
 | Users | Resumes | One-to-Many |
 | Users | Applications | One-to-Many |
 | Users | Recommendations | One-to-Many |
-| Users | Notifications | One-to-Many 
+| Users | Notifications | One-to-Many |
 | Users | Swipe History | One-to-Many |
 | Companies | Jobs | One-to-Many |
 | Jobs | Applications | One-to-Many |
-| Jobs | ATS Reports | One-to-Many |
 | Jobs | Recommendations | One-to-Many |
 | Jobs | Swipe History | One-to-Many |
+| Jobs | ATS Reports | One-to-Many |
 | Resumes | Applications | One-to-Many |
 | Resumes | ATS Reports | One-to-Many |
 
@@ -278,16 +322,16 @@ Stores notifications sent to users.
 
 # AI Resume Analysis Workflow
 
-The ATS module follows the workflow below:
+The ATS evaluation pipeline follows these steps:
 
 1. Candidate uploads a resume.
-2. Resume text is extracted using AI-powered parsing.
-3. Skills, education, experience, and projects are identified.
-4. Resume content is compared with job requirements.
-5. Matching skills and missing skills are identified.
-6. ATS Score and Match Probability are calculated.
-7. Improvement suggestions are generated.
-8. Results are displayed to the candidate.
+2. Resume content is extracted using an AI-powered parser.
+3. Skills, education, experience, certifications, and projects are identified.
+4. Resume content is compared against job requirements.
+5. Matching and missing skills are identified.
+6. ATS Score and Match Percentage are calculated.
+7. Personalized improvement suggestions are generated.
+8. Results are stored in the ATS Reports table and displayed to the candidate.
 
 ---
 
@@ -302,6 +346,11 @@ The ATS module follows the workflow below:
 - Natural Language Processing (NLP)
 
 ---
+
 # Conclusion
 
-The SwipeX database is designed to support scalable recruitment workflows by integrating user management, resume analysis, ATS evaluation, AI-powered recommendations, job applications, and swipe-based job discovery. The relational schema ensures data consistency while enabling efficient retrieval of candidate, job, and resume information for intelligent job matching.
+The SwipeX database is designed to support scalable, AI-driven recruitment workflows by integrating user management, resume parsing, ATS evaluation, intelligent job recommendations, swipe-based job discovery, and application tracking.
+
+The relational schema maintains data consistency through well-defined primary and foreign key relationships while enabling efficient retrieval of candidate, resume, company, and job information for intelligent job matching and recommendation.
+
+The modular design also allows future enhancements such as interview scheduling, recruiter dashboards, analytics, and machine learning models without significant changes to the core database architecture.
