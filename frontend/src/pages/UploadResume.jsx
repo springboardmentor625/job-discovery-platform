@@ -1,166 +1,761 @@
+
+
 import { useState } from "react";
+
 import { useNavigate } from "react-router-dom";
 
+import api from "../api/api";
+
+
+
 function UploadResume() {
+
   const navigate = useNavigate();
 
+
+
   const [selectedFile, setSelectedFile] = useState(null);
+
   const [error, setError] = useState("");
+
+  const [isUploading, setIsUploading] = useState(false);
+
+
+
+  // =========================================================
+  // CONSTANTS
+  // =========================================================
+
+
 
   const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
+
+
   const allowedFileTypes = [
+
     "application/pdf",
+
     "application/msword",
+
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+
   ];
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
+
+
+  // =========================================================
+  // FILE CHANGE
+  // =========================================================
+
+
+
+  const handleFileChange = (event) => {
+
+    const file = event.target.files[0];
+
+
 
     setError("");
+
     setSelectedFile(null);
+
+
 
     if (!file) {
+
       return;
+
     }
 
-    // Check file type
+
+
+    // -------------------------------------------------------
+    // CHECK FILE TYPE
+    // -------------------------------------------------------
+
+
+
     if (!allowedFileTypes.includes(file.type)) {
+
       setError(
+
         "Invalid file type. Please upload a PDF, DOC, or DOCX file."
+
       );
 
-      e.target.value = "";
+
+
+      event.target.value = "";
+
       return;
+
     }
 
-    // Check file size
+
+
+    // -------------------------------------------------------
+    // CHECK FILE SIZE
+    // -------------------------------------------------------
+
+
+
     if (file.size > MAX_FILE_SIZE) {
+
       setError("File size must not exceed 5 MB.");
 
-      e.target.value = "";
+
+
+      event.target.value = "";
+
       return;
+
     }
 
+
+
+    // -------------------------------------------------------
+    // FILE IS VALID
+    // -------------------------------------------------------
+
+
+
     setSelectedFile(file);
+
   };
 
+
+
+  // =========================================================
+  // REMOVE SELECTED FILE
+  // =========================================================
+
+
+
   const handleRemoveFile = () => {
+
     setSelectedFile(null);
+
     setError("");
+
+
 
     const fileInput = document.getElementById("resume");
 
+
+
     if (fileInput) {
+
       fileInput.value = "";
+
     }
+
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+
+
+  // =========================================================
+  // UPLOAD RESUME
+  // =========================================================
+
+
+
+  const handleSubmit = async (event) => {
+
+    event.preventDefault();
+
+
+
+    // -------------------------------------------------------
+    // CHECK FILE
+    // -------------------------------------------------------
+
+
 
     if (!selectedFile) {
+
       setError("Please select a resume before continuing.");
+
       return;
+
     }
 
-    console.log("Resume selected:", selectedFile);
 
-    /*
-      Later, the selected file will be sent
-      to the backend for actual upload and
-      AI resume parsing.
 
-      For now, move to the frontend
-      AI Resume Parsing screen.
-    */
+    setIsUploading(true);
 
-    navigate("/resume-parsing");
+    setError("");
+
+
+
+    // -------------------------------------------------------
+    // CREATE FORM DATA
+    // -------------------------------------------------------
+
+
+
+    const formData = new FormData();
+
+
+
+    formData.append("file", selectedFile);
+
+
+
+    // -------------------------------------------------------
+    // SEND TO BACKEND
+    // -------------------------------------------------------
+
+
+
+    try {
+
+      const response = await api.post(
+
+        "/api/resumes/upload",
+
+        formData,
+
+        {
+
+          headers: {
+
+            "Content-Type": "multipart/form-data",
+
+          },
+
+        }
+
+      );
+
+
+
+      console.log(
+
+        "Resume uploaded successfully:",
+
+        response.data
+
+      );
+
+
+
+      // -----------------------------------------------------
+      // SAVE RESUME ID
+      // -----------------------------------------------------
+
+
+
+      if (response.data.resume_id) {
+
+        localStorage.setItem(
+
+          "resume_id",
+
+          response.data.resume_id
+
+        );
+
+      }
+
+
+
+      // -----------------------------------------------------
+      // GO TO NEXT PAGE
+      // -----------------------------------------------------
+
+
+
+      navigate("/resume-parsing", {
+
+        state: {
+
+          resume: response.data,
+
+        },
+
+      });
+
+
+
+    } catch (error) {
+
+      console.error(
+
+        "Resume upload error:",
+
+        error
+
+      );
+
+
+
+      // -----------------------------------------------------
+      // DISPLAY BACKEND ERROR
+      // -----------------------------------------------------
+
+
+
+      setError(
+
+        error.response?.data?.detail ||
+
+        "Resume upload failed. Please try again."
+
+      );
+
+
+
+    } finally {
+
+      setIsUploading(false);
+
+    }
+
   };
 
+
+
+  // =========================================================
+  // UI
+  // =========================================================
+
+
+
   return (
-    <div className="page">
-      <div className="form-container resume-container">
 
-        <h1>Upload Your Resume</h1>
+    <div className="page resume-page">
 
-        <p className="form-subtitle">
-          Upload your latest resume to continue with SwipeX.
-        </p>
 
-        <div className="resume-info">
 
-          <p>
-            Your resume will be analyzed by SwipeX to extract
-            your skills and experience.
-          </p>
+      <div className="resume-card">
 
-          <p>
-            Accepted formats: <strong>PDF, DOC, DOCX</strong>
-          </p>
 
-          <p>
-            Maximum file size: <strong>5 MB</strong>
-          </p>
+
+        {/* ===================================================
+            PROGRESS
+        =================================================== */}
+
+
+
+        <div className="resume-progress">
+
+
+
+          <div className="progress-step completed">
+
+            <span>✓</span>
+
+            <p>Account</p>
+
+          </div>
+
+
+
+          <div className="progress-line completed-line"></div>
+
+
+
+          <div className="progress-step completed">
+
+            <span>✓</span>
+
+            <p>Profile</p>
+
+          </div>
+
+
+
+          <div className="progress-line"></div>
+
+
+
+          <div className="progress-step active">
+
+            <span>3</span>
+
+            <p>Resume</p>
+
+          </div>
+
+
+
+          <div className="progress-line"></div>
+
+
+
+          <div className="progress-step">
+
+            <span>4</span>
+
+            <p>Analysis</p>
+
+          </div>
+
+
 
         </div>
 
+
+
+        {/* ===================================================
+            HEADER
+        =================================================== */}
+
+
+
+        <div className="resume-header">
+
+
+
+          <div>
+
+            <h1>Upload Your Resume</h1>
+
+
+
+            <p>
+
+              Add your latest resume so SwipeX can
+
+              understand your skills and find better
+
+              job opportunities for you.
+
+            </p>
+
+          </div>
+
+
+
+        </div>
+
+
+
+        {/* ===================================================
+            ERROR
+        =================================================== */}
+
+
+
+        {error && (
+
+          <div className="resume-error">
+
+            <span>!</span>
+
+            <p>{error}</p>
+
+          </div>
+
+        )}
+
+
+
+        {/* ===================================================
+            UPLOAD AREA
+        =================================================== */}
+
+
+
         <form onSubmit={handleSubmit}>
 
-          <label htmlFor="resume">
-            Select Resume
-          </label>
 
-          <input
-            id="resume"
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileChange}
-          />
 
-          {selectedFile && (
-            <div className="selected-file">
+          <label
 
-              <div>
-                <strong>Selected Resume</strong>
+            htmlFor="resume"
 
-                <p>{selectedFile.name}</p>
+            className={`resume-upload-area ${
 
-                <small>
-                  {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-                </small>
-              </div>
+              selectedFile ? "has-file" : ""
 
-              <button
-                type="button"
-                className="remove-button"
-                onClick={handleRemoveFile}
-              >
-                Remove
-              </button>
+            }`}
+
+          >
+
+
+
+            <div className="upload-cloud-icon">
+
+              ↑
 
             </div>
+
+
+
+            <h2>
+
+              {selectedFile
+
+                ? "Resume selected"
+
+                : "Upload your resume"}
+
+            </h2>
+
+
+
+            <p>
+
+              {selectedFile
+
+                ? "Your file is ready to upload."
+
+                : "Click here to browse and select your resume"}
+
+            </p>
+
+
+
+            {!selectedFile && (
+
+              <span className="browse-button">
+
+                Choose File
+
+              </span>
+
+            )}
+
+
+
+            <input
+
+              id="resume"
+
+              type="file"
+
+              accept=".pdf,.doc,.docx"
+
+              onChange={handleFileChange}
+
+              disabled={isUploading}
+
+            />
+
+
+
+          </label>
+
+
+
+          {/* =================================================
+              FILE REQUIREMENTS
+          ================================================= */}
+
+
+
+          <div className="resume-requirements">
+
+
+
+            <div className="requirement-item">
+
+              <span>✓</span>
+
+              <div>
+
+                <strong>Supported formats</strong>
+
+                <p>PDF, DOC, DOCX</p>
+
+              </div>
+
+            </div>
+
+
+
+            <div className="requirement-item">
+
+              <span>✓</span>
+
+              <div>
+
+                <strong>Maximum size</strong>
+
+                <p>5 MB</p>
+
+              </div>
+
+            </div>
+
+
+
+          </div>
+
+
+
+          {/* =================================================
+              SELECTED FILE
+          ================================================= */}
+
+
+
+          {selectedFile && (
+
+            <div className="selected-resume-card">
+
+
+
+              <div className="selected-resume-icon">
+
+                📄
+
+              </div>
+
+
+
+              <div className="selected-resume-details">
+
+
+
+                <strong>
+
+                  {selectedFile.name}
+
+                </strong>
+
+
+
+                <p>
+
+                  {(
+
+                    selectedFile.size /
+
+                    (1024 * 1024)
+
+                  ).toFixed(2)}{" "}
+
+                  MB
+
+                </p>
+
+
+
+              </div>
+
+
+
+              <button
+
+                type="button"
+
+                className="remove-resume-button"
+
+                onClick={handleRemoveFile}
+
+                disabled={isUploading}
+
+              >
+
+                Remove
+
+              </button>
+
+
+
+            </div>
+
           )}
 
-          {error && (
-            <p className="error-message">
-              {error}
-            </p>
-          )}
+
+
+          {/* =================================================
+              INFORMATION
+          ================================================= */}
+
+
+
+          <div className="resume-analysis-info">
+
+
+
+            <div>
+
+              <strong>
+
+                What happens next?
+
+              </strong>
+
+
+
+              <p>
+
+                SwipeX will analyze your resume,
+
+                extract relevant information and
+
+                use it to personalize your job
+
+                recommendations.
+
+              </p>
+
+            </div>
+
+
+
+          </div>
+
+
+
+          {/* =================================================
+              SUBMIT
+          ================================================= */}
+
+
 
           <button
+
             type="submit"
-            className="primary-button"
+
+            className="resume-submit-button"
+
+            disabled={isUploading}
+
           >
-            Upload Resume
+
+            {isUploading
+
+              ? "Uploading Resume..."
+
+              : "Upload Resume & Continue"}
+
           </button>
+
+
 
         </form>
 
+
+
+        {/* ===================================================
+            FOOTER
+        =================================================== */}
+
+
+
+        <p className="resume-security-note">
+
+          Your resume is securely processed by SwipeX.
+
+        </p>
+
+
+
       </div>
+
+
+
     </div>
+
   );
+
 }
+
+
 
 export default UploadResume;
