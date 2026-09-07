@@ -1671,7 +1671,7 @@ def get_recommendations():
     # ----------------------------------------------------
 
     use_ml = (
-        swipe_count >= 5
+        swipe_count >= 11
         and ml_model is not None
     )
 

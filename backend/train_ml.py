@@ -1,7 +1,15 @@
 import json
 import joblib
 
-from app import app, db, SwipeHistory, Resume, CandidateProfile, Job
+from app import (
+    app,
+    db,
+    SwipeHistory,
+    Resume,
+    CandidateProfile,
+    Job,
+    User
+)
 
 from recommendation import (
     calculate_skill_match,
@@ -41,11 +49,21 @@ def create_training_data():
     X = []
     y = []
 
+    # Get users who have enough swipe history for ML
+    eligible_user_ids = [
+    user.user_id
+    for user in User.query.all()
+    if SwipeHistory.query.filter_by(
+        user_id=user.user_id
+    ).count() >= 11
+]
+
     swipes = SwipeHistory.query.filter(
-        SwipeHistory.swipe_action.in_(["LEFT", "RIGHT"])
-    ).order_by(
-        SwipeHistory.swiped_at
-    ).all()
+    SwipeHistory.swipe_action.in_(["LEFT", "RIGHT"]),
+    SwipeHistory.user_id.in_(eligible_user_ids)
+).order_by(
+    SwipeHistory.swiped_at
+).all()
 
     print(f"Total swipes: {len(swipes)}")
 
