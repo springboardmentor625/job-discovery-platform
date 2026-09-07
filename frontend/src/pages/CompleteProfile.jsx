@@ -1,89 +1,951 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-/*
- * Existing skills available in SwipeX.
- *
- * Later, these can come from the backend/database.
- */
+import api from "../api/api";
 
 const EXISTING_SKILLS = [
-  "C",
-  "C++",
-  "C#",
-  "Java",
-  "JavaScript",
-  "TypeScript",
-  "Python",
-  "React",
-  "React Native",
-  "Angular",
-  "Vue.js",
-  "Node.js",
-  "Express.js",
-  "Django",
-  "FastAPI",
-  "HTML",
-  "CSS",
-  "Tailwind CSS",
-  "Bootstrap",
-  "SQL",
-  "MySQL",
-  "PostgreSQL",
-  "MongoDB",
-  "Git",
-  "GitHub",
-  "Docker",
-  "AWS",
-  "Azure",
-  "Machine Learning",
-  "Deep Learning",
-  "Natural Language Processing",
-  "Data Science",
-  "Data Analysis",
-  "scikit-learn",
-  "TensorFlow",
-  "PyTorch",
-  "Figma",
-  "UI/UX Design",
-  "REST API",
-];
 
-/*
- * Existing job roles available in SwipeX.
- */
+"C", "C++", "C#", "Java", "JavaScript", "TypeScript",
+
+"Python", "React", "React Native", "Angular", "Vue.js",
+
+"Node.js", "Express.js", "Django", "FastAPI", "HTML",
+
+"CSS", "Tailwind CSS", "Bootstrap", "SQL", "MySQL",
+
+"PostgreSQL", "MongoDB", "Git", "GitHub", "Docker",
+
+"AWS", "Azure", "Machine Learning", "Deep Learning",
+
+"Natural Language Processing", "Data Science",
+
+"Data Analysis", "scikit-learn", "TensorFlow", "PyTorch",
+
+"Figma", "UI/UX Design", "REST API",
+
+"Big Data", "Hadoop", "Hive", "MapReduce", "Spark",
+
+"HDFS", "YARN", "Core Java", "Data Structures", "DBMS",
+
+"RDBMS", "Informatica", "Talend", "Amazon Redshift",
+
+"Azure Data Factory", "Azure Databricks", "AWS Lambda",
+
+"AWS Deployment", "Anaconda", "Bash", "Linux",
+
+"C Programming", "C/C++", "ASP", "ASP.NET",
+
+"ASP.NET 4.5", "Android", "AngularJS", "ANN", "API",
+
+"API Design", "Application Development",
+
+"Application Programming", "Application Support",
+
+"Applied Machine Learning", "Algorithm Design",
+
+"Algorithm Development", "Algorithm Optimization",
+
+"Algorithms", "Algorithms and Data Structures",
+
+"Analysis of Algorithms", "Artificial Intelligence",
+
+"Active Learning", "Automation", "Automated Testing",
+
+"Automated Test Scripts", "Agile", "Agile Methodologies",
+
+"Agile Methodology", "Agile Coach", "Adobe",
+
+"Adobe Acrobat", "Adobe Analytics", "Adobe Creative Suite",
+
+"Adobe Illustrator", "Adobe InDesign", "Adobe Photoshop",
+
+"AutoCAD", "AutoCAD Civil 3D", "CAD", "Arduino",
+
+"Arduino IDE", "Ansys", "ANSYS", "ArcView",
+
+"Audio Editing", "Backup", "BGP", "BERT",
+
+"Black Box Testing", "Big Data Analytics",
+
+"Business Analysis", "Business Analytics",
+
+"Business Intelligence", "Business Objects",
+
+"Business Development", "Business Management",
+
+"Business Process Improvement", "Business Process Management",
+
+"Business Requirements", "Business Strategy",
+
+"Business Systems", "Business Systems Analysis",
+
+"C Programming", "Cloud", "Cloud Computing",
+
+"Computer Vision", "Convolutional Neural Networks",
+
+"Data Analytics", "Data Visualization", "Data Mining",
+
+"Data Warehousing", "Database Administration",
+
+"Database Management", "Deep Learning", "DevOps",
+
+"ETL", "Excel", "Advanced Excel", "Financial Analysis",
+
+"Flask", "GitLab", "Google Cloud", "GCP",
+
+"GraphQL", "HBase", "J2EE", "Jenkins",
+
+"Jira", "JSON", "Jupyter", "Kubernetes",
+
+"Microsoft Azure", "Microsoft Office", "Microsoft Power BI",
+
+"NLP", "NumPy", "Pandas", "Power BI", "PowerBI",
+
+"Predictive Analytics", "PySpark", "Python Analysis",
+
+"Python Programming", "Python Statistics",
+
+"REST", "RESTful API", "R", "SAS", "Scala",
+
+"Scikit-Learn", "Shell Scripting", "Software Development",
+
+"Software Engineering", "SQL Server", "Tableau",
+
+"Testing", "Unit Testing", "UI Design", "UX Design",
+
+"Web Development", "Web Services", "Windows",
+
+"XML", "XGBoost", "Matplotlib", "Seaborn",
+
+"OpenCV", "spaCy", "NLTK", "Transformers",
+
+"Hugging Face", "LLM", "Generative AI", "Generative Artificial Intelligence",
+
+"Reinforcement Learning", "Supervised Learning",
+
+"Unsupervised Learning", "Neural Networks",
+
+"Natural Language Processing with Python",
+
+"Machine Learning with Python", "PyTorch Developer",
+
+"TensorFlow", "Keras", "CUDA", "Computer Networks",
+
+"Network Security", "Cybersecurity", "Information Security",
+
+"Active Directory", "Wireshark", "OpenSSH", "OpenVPN",
+
+"System Administration", "Systems Administration",
+
+"Systems Analysis", "Systems Engineering",
+
+"Technical Support", "Troubleshooting",
+
+"Software Testing", "Quality Assurance", "QA Testing",
+
+"Black Box", "Test Automation", "Selenium",
+
+"Postman", "Microservices", "Spring", "Spring Boot",
+
+"Hibernate", "Maven", "Gradle", "PHP", "Laravel",
+
+"Ruby", "Ruby on Rails", "Go", "Rust", "Swift",
+
+"Objective-C", "iOS Development",
+
+"Mobile Application Development", "React Native",
+
+"Next.js", "Nuxt.js", "Svelte", "Redux",
+
+"Redux Toolkit", "Context API", "Vite",
+
+"Webpack", "Babel", "Nginx", "Apache",
+
+"Docker Compose", "Terraform", "Ansible",
+
+"CI/CD", "GitHub Actions", "Jenkins CI",
+
+"AWS EC2", "AWS S3", "AWS EMR", "Amazon EC2",
+
+"Amazon S3", "Microsoft Power BI", "Tableau",
+
+"Alteryx", "SAP", "Oracle", "Oracle Database",
+
+"MySQL", "PostgreSQL", "MongoDB", "Redis",
+
+"Firebase", "Django REST Framework", "FastAPI",
+
+"Flask", "JWT", "OAuth", "OAuth2",
+
+"Authentication", "Authorization", "Role-Based Access Control",
+
+"API Development", "API Integration", "API Testing",
+
+"Data Structures", "Algorithms", "Object-Oriented Programming",
+
+"OOP", "Design Patterns", "Software Architecture",
+
+"System Design", "Database Design", "Database Queries",
+
+"Data Modeling", "Data Cleaning", "Data Preprocessing",
+
+"Feature Engineering", "Model Training", "Model Evaluation",
+
+"Model Deployment", "MLOps", "Statistical Analysis",
+
+"Statistics", "Probability", "Linear Regression",
+
+"Logistic Regression", "Decision Trees", "Random Forest",
+
+"KNN", "Naive Bayes", "Clustering", "K-Means",
+
+"PCA", "SVM", "Gradient Boosting", "XGBoost",
+
+"LightGBM", "CatBoost", "Time Series Analysis",
+
+"ANOVA", "Algebra", "Mathematics", "R Programming",
+
+"SAS", "SPSS", "Power Query", "Power Pivot",
+
+"Financial Modeling", "Accounting", "Auditing",
+
+"Budgeting", "Business Consulting", "Business Writing",
+
+"Communication", "Leadership", "Project Management",
+
+"Team Management", "Problem Solving", "Critical Thinking",
+
+"Analytical Skills", "Research", "Research Analysis",
+
+"Technical Writing", "Documentation", "Presentation",
+
+"Marketing", "Digital Marketing", "Advertising",
+
+"Branding", "Sales", "Customer Service",
+
+"Recruitment", "Human Resources", "Talent Acquisition",
+
+"Supply Chain", "Operations Management", "Risk Management",
+
+"Product Management", "Product Development", "Product Design",
+
+"UI/UX", "Interaction Design", "Wireframing", "Prototyping",
+
+"Figma", "Adobe XD", "Sketch", "Illustration",
+
+"3D Modeling", "3D Printing", "3ds Max",
+
+"SolidWorks", "CATIA", "Autodesk Inventor",
+
+"Mechanical Design", "Engineering Design", "Manufacturing",
+
+"Quality Control", "Process Improvement", "Automation Design",
+
+"Embedded Systems", "Embedded C", "Microcontrollers",
+
+"Electronics", "Analog and Digital Circuits", "PCB Design",
+
+"IoT", "Internet of Things", "Robotics",
+
+"Computer Graphics", "Game Development", "Unity",
+
+"Unreal Engine", "Blockchain", "Ethereum",
+
+"Smart Contracts", "Cryptography", "Linux Administration",
+
+"Windows Administration", "Server Administration",
+
+"Cloud Infrastructure", "Cloud Administration",
+
+"AWS", "Azure", "Google Cloud Platform",
+
+];
 
 const EXISTING_ROLES = [
-  "Software Developer",
-  "Software Engineer",
-  "Frontend Developer",
-  "Backend Developer",
-  "Full Stack Developer",
-  "React Developer",
-  "Java Developer",
-  "Python Developer",
-  "Node.js Developer",
-  "Web Developer",
-  "Mobile App Developer",
-  "Data Analyst",
-  "Data Scientist",
-  "Machine Learning Engineer",
-  "AI Engineer",
-  "DevOps Engineer",
-  "Cloud Engineer",
-  "Database Administrator",
-  "UI/UX Designer",
-  "Product Designer",
-  "QA Engineer",
-  "Software Tester",
-  "Cybersecurity Analyst",
-];
 
-/*
- * Minimum acceptable salary.
- *
- * 0 and 1 will therefore never be accepted.
- */
+"Software Developer",
+
+"Software Engineer",
+
+"Frontend Developer",
+
+"Backend Developer",
+
+"Full Stack Developer",
+
+"React Developer",
+
+"Java Developer",
+
+"Python Developer",
+
+"Node.js Developer",
+
+"Web Developer",
+
+"Mobile App Developer",
+
+"Data Analyst",
+
+"Data Scientist",
+
+"Machine Learning Engineer",
+
+"AI Engineer",
+
+"DevOps Engineer",
+
+"Cloud Engineer",
+
+"Database Administrator",
+
+"UI/UX Designer",
+
+"Product Designer",
+
+"QA Engineer",
+
+"Software Tester",
+
+"Cybersecurity Analyst",
+
+"Big Data Analyst",
+
+"Big Data Engineer",
+
+"Data Engineer",
+
+"Data Architect",
+
+"Data Scientist",
+
+"Business Analyst",
+
+"Business Intelligence Analyst",
+
+"Business Intelligence Developer",
+
+"Business Consultant",
+
+"Business Development Manager",
+
+"Business Development Executive",
+
+"Project Manager",
+
+"Project Coordinator",
+
+"Product Manager",
+
+"Product Owner",
+
+"Technical Product Manager",
+
+"Software Architect",
+
+"Solution Architect",
+
+"Solutions Engineer",
+
+"Systems Analyst",
+
+"Systems Engineer",
+
+"System Administrator",
+
+"Network Engineer",
+
+"Network Administrator",
+
+"Network Support Engineer",
+
+"Network Security Engineer",
+
+"Information Security Analyst",
+
+"Security Engineer",
+
+"Cybersecurity Engineer",
+
+"Security Analyst",
+
+"Technical Support Engineer",
+
+"Technical Support Specialist",
+
+"Application Support Engineer",
+
+"Support Engineer",
+
+"QA Tester",
+
+"QA Analyst",
+
+"QA Lead",
+
+"QA Manager",
+
+"Quality Assurance Engineer",
+
+"Quality Engineer",
+
+"Automation Engineer",
+
+"Test Automation Engineer",
+
+"Selenium Tester",
+
+"DevOps Engineer",
+
+"Site Reliability Engineer",
+
+"SRE",
+
+"Cloud Architect",
+
+"Cloud Administrator",
+
+"Cloud Developer",
+
+"AWS Engineer",
+
+"Azure Engineer",
+
+"Cloud Solutions Architect",
+
+"Machine Learning Scientist",
+
+"Machine Learning Scientist",
+
+"Machine Learning Developer",
+
+"Machine Learning Intern",
+
+"AI Developer",
+
+"AI Researcher",
+
+"AI Scientist",
+
+"NLP Engineer",
+
+"NLP Developer",
+
+"NLP Analyst",
+
+"Computer Vision Engineer",
+
+"Deep Learning Engineer",
+
+"Data Science Intern",
+
+"Data Analyst Intern",
+
+"Data Scientist Intern",
+
+"Python Developer Intern",
+
+"Software Developer Intern",
+
+"Software Engineer Intern",
+
+"Web Developer Intern",
+
+"Machine Learning Intern",
+
+"Research Assistant",
+
+"Research Analyst",
+
+"Research Scientist",
+
+"Research Engineer",
+
+"Research Intern",
+
+"Statistical Analyst",
+
+"Statistician",
+
+"Financial Analyst",
+
+"Financial Data Analyst",
+
+"Business Analyst",
+
+"Business Systems Analyst",
+
+"MIS Analyst",
+
+"Systems Analyst",
+
+"Database Developer",
+
+"Database Engineer",
+
+"SQL Developer",
+
+"Oracle Developer",
+
+"MySQL Developer",
+
+"PostgreSQL Developer",
+
+"MongoDB Developer",
+
+"ETL Developer",
+
+"Data Warehouse Developer",
+
+"Data Warehouse Engineer",
+
+"Data Integration Engineer",
+
+"BI Developer",
+
+"Power BI Developer",
+
+"Tableau Developer",
+
+"Reporting Analyst",
+
+"Product Analyst",
+
+"Marketing Analyst",
+
+"Digital Marketing Specialist",
+
+"Marketing Manager",
+
+"Marketing Director",
+
+"Sales Executive",
+
+"Sales Representative",
+
+"Sales Manager",
+
+"Sales Engineer",
+
+"Account Manager",
+
+"Account Executive",
+
+"Customer Success Manager",
+
+"Customer Support Specialist",
+
+"HR Analyst",
+
+"HR Manager",
+
+"Human Resources Manager",
+
+"Recruiter",
+
+"Technical Recruiter",
+
+"Talent Acquisition Specialist",
+
+"Talent Acquisition Consultant",
+
+"Operations Manager",
+
+"Operations Analyst",
+
+"Operations Specialist",
+
+"Supply Chain Analyst",
+
+"Supply Chain Manager",
+
+"Project Engineer",
+
+"Process Engineer",
+
+"Manufacturing Engineer",
+
+"Mechanical Engineer",
+
+"Electrical Engineer",
+
+"Electronics Engineer",
+
+"Embedded Systems Engineer",
+
+"Automation Engineer",
+
+"Robotics Engineer",
+
+"Civil Engineer",
+
+"Chemical Engineer",
+
+"Production Engineer",
+
+"Quality Engineer",
+
+"Maintenance Engineer",
+
+"Mechanical Designer",
+
+"Mechanical Design Engineer",
+
+"CAD Designer",
+
+"CAD Engineer",
+
+"UI Designer",
+
+"UX Designer",
+
+"UI/UX Designer",
+
+"Product Designer",
+
+"Interaction Designer",
+
+"Visual Designer",
+
+"Graphic Designer",
+
+"Web Designer",
+
+"Technical Writer",
+
+"Content Writer",
+
+"Technical Support",
+
+"System Developer",
+
+"Software Development Engineer",
+
+"SDE",
+
+"SDE Intern",
+
+"Principal Software Engineer",
+
+"Senior Software Engineer",
+
+"Senior Software Developer",
+
+"Senior Data Analyst",
+
+"Senior Data Scientist",
+
+"Senior Data Engineer",
+
+"Senior Machine Learning Engineer",
+
+"Senior DevOps Engineer",
+
+"Senior Cloud Engineer",
+
+"Senior QA Engineer",
+
+"Senior Network Engineer",
+
+"Senior Systems Engineer",
+
+"Senior Business Analyst",
+
+"Senior Project Manager",
+
+"Engineering Manager",
+
+"Software Engineering Manager",
+
+"QA Engineering Manager",
+
+"IT Manager",
+
+"Technology Manager",
+
+"Technical Manager",
+
+"Team Lead",
+
+"Technical Lead",
+
+"Engineering Lead",
+
+"Software Engineering Team Lead",
+
+"Development Team Lead",
+
+"DevOps Lead",
+
+"Data Engineering Lead",
+
+"Machine Learning Lead",
+
+"AI Lead",
+
+"Product Lead",
+
+"Engineering Director",
+
+"Director of Engineering",
+
+"Director of Software Development",
+
+"VP of Engineering",
+
+"Software Development Manager",
+
+"Application Developer",
+
+"Application Engineer",
+
+"Application Programmer",
+
+"Systems Developer",
+
+"Web Application Developer",
+
+"Web Application Engineer",
+
+"Mobile Application Developer",
+
+"Android Developer",
+
+"iOS Developer",
+
+"React Native Developer",
+
+"Angular Developer",
+
+"Vue.js Developer",
+
+"JavaScript Developer",
+
+"TypeScript Developer",
+
+"C Developer",
+
+"C++ Developer",
+
+"C# Developer",
+
+".NET Developer",
+
+"ASP.NET Developer",
+
+"PHP Developer",
+
+"Laravel Developer",
+
+"Ruby Developer",
+
+"Ruby on Rails Developer",
+
+"Go Developer",
+
+"Rust Developer",
+
+"Kotlin Developer",
+
+"Swift Developer",
+
+"DevOps Intern",
+
+"Cloud Intern",
+
+"Data Engineering Intern",
+
+"AI Intern",
+
+"Research Scientist",
+
+"Researcher",
+
+"Postdoctoral Research Fellow",
+
+"Professor",
+
+"Teaching Assistant",
+
+"Instructor",
+
+"Technical Trainer",
+
+"Training Coordinator",
+
+"Accountant",
+
+"Senior Accountant",
+
+"Staff Accountant",
+
+"Payroll Accountant",
+
+"Project Accountant",
+
+"Tax Accountant",
+
+"Audit Analyst",
+
+"Auditor",
+
+"Internal Auditor",
+
+"Risk Analyst",
+
+"Risk Manager",
+
+"Compliance Analyst",
+
+"Compliance Manager",
+
+"Operations Analyst",
+
+"Operations Manager",
+
+"Administrative Assistant",
+
+"Office Manager",
+
+"Office Coordinator",
+
+"Project Administrator",
+
+"Program Manager",
+
+"Program Coordinator",
+
+"Service Manager",
+
+"Service Technician",
+
+"Maintenance Technician",
+
+"Production Technician",
+
+"Manufacturing Technician",
+
+"Quality Assurance Technician",
+
+"Quality Assurance Manager",
+
+"Quality Manager",
+
+"Production Manager",
+
+"Production Supervisor",
+
+"Manufacturing Manager",
+
+"Engineering Technician",
+
+"Mechanical Technician",
+
+"Electrical Technician",
+
+"Field Engineer",
+
+"Site Engineer",
+
+"Test Engineer",
+
+"Test Technician",
+
+"Validation Engineer",
+
+"Reliability Engineer",
+
+"Process Improvement Engineer",
+
+"Product Development Engineer",
+
+"R&D Engineer",
+
+"Research and Development Associate",
+
+"Technical Project Manager",
+
+"Scrum Master",
+
+"Agile Coach",
+
+"Product Marketing Specialist",
+
+"Content Specialist",
+
+"Content Manager",
+
+"Technical Content Writer",
+
+"Social Media Manager",
+
+"SEO Specialist",
+
+"Digital Marketing Manager",
+
+"Brand Manager",
+
+"Advertising Manager",
+
+"Customer Service Representative",
+
+"Customer Support Representative",
+
+"Customer Success Specialist",
+
+"Business Development Executive",
+
+"Business Development Manager",
+
+"Regional Sales Manager",
+
+"Sales Director",
+
+"Marketing Officer",
+
+"Marketing Director",
+
+"Strategy Analyst",
+
+"Strategic Planning Analyst",
+
+"Management Consultant",
+
+"Management Trainee",
+
+"Operations Specialist",
+
+"Operations Technician",
+
+"Technical Operations Engineer",
+
+"IT Support Specialist",
+
+"IT Support Engineer",
+
+"IT Administrator",
+
+"IT Consultant",
+
+"Technology Consultant",
+
+"Solutions Consultant",
+
+"Solutions Analyst",
+
+"Implementation Specialist",
+
+"Software Implementation Engineer",
+
+"Application Support Specialist",
+
+"Technical Account Manager",
+
+"Technical Support Coordinator",
+
+"Support Manager",
+
+];
 
 const MIN_SALARY = 10000;
 
@@ -105,16 +967,14 @@ function CompleteProfile() {
   });
 
   const [skills, setSkills] = useState([]);
-
   const [skillInput, setSkillInput] = useState("");
 
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-  /*
-   * -----------------------------
-   * GENERAL INPUT
-   * -----------------------------
-   */
+  // =========================================================
+  // GENERAL INPUT
+  // =========================================================
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -127,75 +987,49 @@ function CompleteProfile() {
     setError("");
   };
 
-  /*
-   * -----------------------------
-   * SKILL SEARCH
-   * -----------------------------
-   */
+  // =========================================================
+  // SKILL SUGGESTIONS
+  // =========================================================
 
   const filteredSkills =
     skillInput.trim() === ""
       ? []
-      : EXISTING_SKILLS.filter((skill) =>
-          skill
-            .toLowerCase()
-            .includes(skillInput.toLowerCase())
-        ).filter(
-          (skill) => !skills.includes(skill)
-        );
+      : EXISTING_SKILLS
+          .filter((skill) =>
+            skill.toLowerCase().includes(skillInput.toLowerCase())
+          )
+          .filter((skill) => !skills.includes(skill));
 
-  /*
-   * -----------------------------
-   * ADD EXISTING SKILL
-   * -----------------------------
-   */
+  // =========================================================
+  // ADD EXISTING SKILL
+  // =========================================================
 
   const addExistingSkill = (skill) => {
     if (!skills.includes(skill)) {
-      setSkills((previousSkills) => [
-        ...previousSkills,
-        skill,
-      ]);
+      setSkills((previousSkills) => [...previousSkills, skill]);
     }
 
     setSkillInput("");
   };
 
-  /*
-   * -----------------------------
-   * ADD CUSTOM SKILL
-   * -----------------------------
-   */
+  // =========================================================
+  // ADD CUSTOM SKILL
+  // =========================================================
 
   const addCustomSkill = () => {
     const newSkill = skillInput.trim();
 
-    if (newSkill === "") {
-      return;
-    }
+    if (!newSkill) return;
 
-    /*
-     * Check whether the typed skill already exists.
-     *
-     * If it exists, use the existing version.
-     */
-
-    const existingSkill =
-      EXISTING_SKILLS.find(
-        (skill) =>
-          skill.toLowerCase() ===
-          newSkill.toLowerCase()
-      );
+    const existingSkill = EXISTING_SKILLS.find(
+      (skill) =>
+        skill.toLowerCase() === newSkill.toLowerCase()
+    );
 
     if (existingSkill) {
       addExistingSkill(existingSkill);
       return;
     }
-
-    /*
-     * Otherwise allow the candidate
-     * to add their own skill.
-     */
 
     if (!skills.includes(newSkill)) {
       setSkills((previousSkills) => [
@@ -207,11 +1041,9 @@ function CompleteProfile() {
     setSkillInput("");
   };
 
-  /*
-   * -----------------------------
-   * REMOVE SKILL
-   * -----------------------------
-   */
+  // =========================================================
+  // REMOVE SKILL
+  // =========================================================
 
   const removeSkill = (skillToRemove) => {
     setSkills((previousSkills) =>
@@ -221,11 +1053,9 @@ function CompleteProfile() {
     );
   };
 
-  /*
-   * -----------------------------
-   * SKILL ENTER KEY
-   * -----------------------------
-   */
+  // =========================================================
+  // ENTER KEY
+  // =========================================================
 
   const handleSkillKeyDown = (event) => {
     if (event.key === "Enter") {
@@ -239,17 +1069,12 @@ function CompleteProfile() {
     }
   };
 
-  /*
-   * -----------------------------
-   * SALARY INPUT
-   * -----------------------------
-   *
-   * Only numbers are accepted.
-   */
+  // =========================================================
+  // SALARY
+  // =========================================================
 
   const handleSalaryChange = (event) => {
-    const value =
-      event.target.value.replace(/\D/g, "");
+    const value = event.target.value.replace(/\D/g, "");
 
     setFormData((previousData) => ({
       ...previousData,
@@ -259,11 +1084,9 @@ function CompleteProfile() {
     setError("");
   };
 
-  /*
-   * -----------------------------
-   * VALIDATION
-   * -----------------------------
-   */
+  // =========================================================
+  // VALIDATION
+  // =========================================================
 
   const validateForm = () => {
     if (!formData.headline.trim()) {
@@ -278,7 +1101,7 @@ function CompleteProfile() {
       return "Please enter your current location.";
     }
 
-    if (!formData.experience) {
+    if (formData.experience === "") {
       return "Please select your experience.";
     }
 
@@ -290,505 +1113,873 @@ function CompleteProfile() {
       return "Please add at least one skill.";
     }
 
-    /*
-     * Preferred role is optional,
-     * but if selected it MUST come from
-     * the predefined list.
-     */
-
     if (
       formData.preferredRole &&
-      !EXISTING_ROLES.includes(
-        formData.preferredRole
-      )
+      !EXISTING_ROLES.includes(formData.preferredRole)
     ) {
       return "Please select a valid preferred job role.";
     }
 
-    /*
-     * Preferred location remains optional.
-     */
-
-    /*
-     * Salary is optional.
-     *
-     * If entered, it must be at least
-     * MIN_SALARY.
-     */
-
     if (formData.expectedSalary) {
-      const salary =
-        Number(formData.expectedSalary);
+      const salary = Number(formData.expectedSalary);
 
       if (salary < MIN_SALARY) {
-        return `Expected salary must be at least ₹${MIN_SALARY.toLocaleString("en-IN")}.`;
+        return `Expected salary must be at least ₹${MIN_SALARY.toLocaleString(
+          "en-IN"
+        )}.`;
       }
     }
 
     return "";
   };
 
-  /*
-   * -----------------------------
-   * SUBMIT
-   * -----------------------------
-   */
+  // =========================================================
+  // SUBMIT PROFILE
+  // =========================================================
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
-    const validationError =
-      validateForm();
+    const validationError = validateForm();
 
     if (validationError) {
       setError(validationError);
       return;
     }
 
-    /*
-     * Profile completed.
-     *
-     * Next step:
-     * Upload Resume
-     */
+    setIsLoading(true);
+    setError("");
 
-    navigate("/upload-resume");
+    try {
+      const payload = {
+        headline: formData.headline,
+        summary: formData.summary,
+        location: formData.location,
+        experience_years: Number(formData.experience),
+
+        // Keep existing backend format
+        education: {
+          details: formData.education,
+        },
+
+        projects: [formData.projects],
+        certifications: [formData.certifications],
+
+        preferred_job_type:
+          formData.preferredJobType,
+
+        preferred_location:
+          formData.preferredLocation,
+      };
+
+      try {
+        // 1. CREATE PROFILE
+        const response = await api.post(
+          "/api/profile/",
+          payload
+        );
+
+        console.log(
+          "Profile created:",
+          response.data
+        );
+
+        // Keep existing workflow
+        navigate("/upload-resume");
+
+      } catch (postError) {
+        const errDetail =
+          postError.response?.data?.detail;
+
+        // 2. UPDATE IF PROFILE ALREADY EXISTS
+        if (
+          typeof errDetail === "string" &&
+          errDetail.includes("already exists")
+        ) {
+          const putResponse = await api.put(
+            "/api/profile/",
+            payload
+          );
+
+          console.log(
+            "Profile updated:",
+            putResponse.data
+          );
+
+          // Keep existing workflow
+          navigate("/upload-resume");
+        } else {
+          throw postError;
+        }
+      }
+
+    } catch (error) {
+      console.error(
+        "Profile error:",
+        error
+      );
+
+      const errDetail =
+        error.response?.data?.detail;
+
+      if (Array.isArray(errDetail)) {
+        setError(
+          `Validation error: ${errDetail[0].loc[1]} - ${errDetail[0].msg}`
+        );
+      } else {
+        setError(
+          errDetail ||
+          "Failed to save profile."
+        );
+      }
+
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="page">
+    <div className="profile-page">
 
-      <div className="form-container profile-container">
+      {/* =====================================================
+          TOP NAVIGATION
+      ===================================================== */}
 
-        <h1>
-          Complete Your Profile
-        </h1>
+      <header className="profile-header">
 
-        <p className="form-subtitle">
-          Tell us about yourself so SwipeX can
-          find suitable opportunities.
-        </p>
+        <div className="profile-brand">
 
-        {error && (
-          <div className="error-message">
-            {error}
+          <div className="profile-brand-icon">
+            SX
           </div>
-        )}
 
-        <form onSubmit={handleSubmit}>
+          <div>
 
-          {/* HEADLINE */}
+            <div className="profile-brand-name">
+              SwipeX
+            </div>
 
-          <div className="form-group">
-
-            <label htmlFor="headline">
-              Professional Headline
-            </label>
-
-            <input
-              id="headline"
-              name="headline"
-              type="text"
-              value={formData.headline}
-              onChange={handleChange}
-              placeholder="e.g. Computer Science Student"
-              required
-            />
+            <div className="profile-brand-subtitle">
+              Career Discovery Platform
+            </div>
 
           </div>
 
-          {/* SUMMARY */}
+        </div>
 
-          <div className="form-group">
+        <div className="profile-step">
 
-            <label htmlFor="summary">
-              Professional Summary
-            </label>
+          <span className="step-dot active"></span>
 
-            <textarea
-              id="summary"
-              name="summary"
-              value={formData.summary}
-              onChange={handleChange}
-              placeholder="Tell us briefly about yourself"
-              rows="4"
-              required
-            />
+          <span>
+            Profile Setup
+          </span>
 
-          </div>
+          <span className="step-line"></span>
 
-          {/* CURRENT LOCATION */}
+          <span className="step-dot"></span>
 
-          <div className="form-group">
+          <span>
+            Resume
+          </span>
 
-            <label htmlFor="location">
-              Current Location
-            </label>
+        </div>
 
-            <input
-              id="location"
-              name="location"
-              type="text"
-              value={formData.location}
-              onChange={handleChange}
-              placeholder="e.g. Bangalore"
-              required
-            />
+      </header>
 
-          </div>
 
-          {/* EXPERIENCE */}
+      {/* =====================================================
+          MAIN CONTENT
+      ===================================================== */}
 
-          <div className="form-group">
+      <main className="profile-main">
 
-            <label htmlFor="experience">
-              Experience
-            </label>
+        <div className="profile-wrapper">
 
-            <select
-              id="experience"
-              name="experience"
-              value={formData.experience}
-              onChange={handleChange}
-              required
-            >
+          {/* PAGE INTRO */}
 
-              <option value="">
-                Select experience
-              </option>
+          <div className="profile-intro">
 
-              <option value="Fresher">
-                Fresher
-              </option>
+            <div className="profile-intro-icon">
+              ✦
+            </div>
 
-              <option value="0-1">
-                0-1 Years
-              </option>
+            <div>
 
-              <option value="1-2">
-                1-2 Years
-              </option>
+              <p className="profile-eyebrow">
+                PROFILE SETUP
+              </p>
 
-              <option value="2-5">
-                2-5 Years
-              </option>
+              <h1>
+                Complete Your Profile
+              </h1>
 
-              <option value="5-10">
-                5-10 Years
-              </option>
-
-              <option value="10+">
-                10+ Years
-              </option>
-
-            </select>
-
-          </div>
-
-          {/* EDUCATION */}
-
-          <div className="form-group">
-
-            <label htmlFor="education">
-              Education
-            </label>
-
-            <input
-              id="education"
-              name="education"
-              type="text"
-              value={formData.education}
-              onChange={handleChange}
-              placeholder="e.g. B.Tech Computer Science"
-              required
-            />
-
-          </div>
-
-          {/* SKILLS */}
-
-          <div className="form-group">
-
-            <label htmlFor="skills">
-              Skills
-            </label>
-
-            <div className="skill-input-container">
-
-              <input
-                id="skills"
-                type="text"
-                value={skillInput}
-                onChange={(event) =>
-                  setSkillInput(
-                    event.target.value
-                  )
-                }
-                onKeyDown={handleSkillKeyDown}
-                placeholder="Type a skill, e.g. React"
-              />
+              <p className="profile-description">
+                Tell us about your background, skills and
+                career preferences. SwipeX will use this
+                information to help find suitable
+                opportunities for you.
+              </p>
 
             </div>
 
-            {/* SUGGESTIONS */}
+          </div>
 
-            {filteredSkills.length > 0 && (
-              <div className="skill-suggestions">
 
-                {filteredSkills
-                  .slice(0, 8)
-                  .map((skill) => (
+          {/* ERROR */}
 
-                    <button
-                      type="button"
-                      key={skill}
-                      className="skill-suggestion"
-                      onClick={() =>
-                        addExistingSkill(skill)
-                      }
-                    >
-                      {skill}
-                    </button>
+          {error && (
 
-                  ))}
+            <div className="profile-error">
+
+              <span className="profile-error-icon">
+                !
+              </span>
+
+              <div>
+
+                <strong>
+                  Please check your information
+                </strong>
+
+                <p>
+                  {error}
+                </p>
 
               </div>
-            )}
 
-            {/* CUSTOM SKILL */}
+            </div>
 
-            {skillInput.trim() !== "" &&
-              filteredSkills.length === 0 && (
-                <button
-                  type="button"
-                  className="add-custom-skill"
-                  onClick={addCustomSkill}
-                >
-                  + Add "{skillInput.trim()}"
-                </button>
-              )}
+          )}
 
-            {/* SELECTED SKILLS */}
 
-            {skills.length > 0 && (
-              <div className="selected-skills">
+          {/* FORM */}
 
-                {skills.map((skill) => (
+          <form
+            onSubmit={handleSubmit}
+            className="profile-form"
+          >
 
-                  <span
-                    className="selected-skill"
-                    key={skill}
+            {/* =================================================
+                SECTION 1 — PROFESSIONAL INFORMATION
+            ================================================= */}
+
+            <section className="profile-section">
+
+              <div className="section-heading">
+
+                <div className="section-number">
+                  01
+                </div>
+
+                <div>
+
+                  <h2>
+                    Professional Information
+                  </h2>
+
+                  <p>
+                    Tell us about your professional background.
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div className="profile-grid">
+
+                {/* HEADLINE */}
+
+                <div className="profile-field full-width">
+
+                  <label htmlFor="headline">
+
+                    Professional Headline
+
+                    <span className="required-mark">
+                      *
+                    </span>
+
+                  </label>
+
+                  <input
+                    id="headline"
+                    name="headline"
+                    type="text"
+                    value={formData.headline}
+                    onChange={handleChange}
+                    placeholder="e.g. Computer Science Student"
+                    required
+                  />
+
+                  <p className="field-hint">
+                    A short title that describes your professional
+                    identity.
+                  </p>
+
+                </div>
+
+
+                {/* SUMMARY */}
+
+                <div className="profile-field full-width">
+
+                  <label htmlFor="summary">
+
+                    Professional Summary
+
+                    <span className="required-mark">
+                      *
+                    </span>
+
+                  </label>
+
+                  <textarea
+                    id="summary"
+                    name="summary"
+                    value={formData.summary}
+                    onChange={handleChange}
+                    placeholder="Briefly describe your background, interests and career goals..."
+                    rows="5"
+                    required
+                  />
+
+                </div>
+
+
+                {/* LOCATION */}
+
+                <div className="profile-field">
+
+                  <label htmlFor="location">
+
+                    Current Location
+
+                    <span className="required-mark">
+                      *
+                    </span>
+
+                  </label>
+
+                  <input
+                    id="location"
+                    name="location"
+                    type="text"
+                    value={formData.location}
+                    onChange={handleChange}
+                    placeholder="e.g. Bangalore"
+                    required
+                  />
+
+                </div>
+
+
+                {/* EXPERIENCE */}
+
+                <div className="profile-field">
+
+                  <label htmlFor="experience">
+
+                    Experience
+
+                    <span className="required-mark">
+                      *
+                    </span>
+
+                  </label>
+
+                  <select
+                    id="experience"
+                    name="experience"
+                    value={formData.experience}
+                    onChange={handleChange}
+                    required
                   >
 
-                    {skill}
+                    <option value="">
+                      Select experience
+                    </option>
+
+                    <option value="0">
+                      Fresher
+                    </option>
+
+                    <option value="0.5">
+                      0-1 Years
+                    </option>
+
+                    <option value="1.5">
+                      1-2 Years
+                    </option>
+
+                    <option value="3.5">
+                      2-5 Years
+                    </option>
+
+                    <option value="7.5">
+                      5-10 Years
+                    </option>
+
+                    <option value="10">
+                      10+ Years
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                {/* EDUCATION */}
+
+                <div className="profile-field full-width">
+
+                  <label htmlFor="education">
+
+                    Education
+
+                    <span className="required-mark">
+                      *
+                    </span>
+
+                  </label>
+
+                  <input
+                    id="education"
+                    name="education"
+                    type="text"
+                    value={formData.education}
+                    onChange={handleChange}
+                    placeholder="e.g. B.Tech Computer Science"
+                    required
+                  />
+
+                </div>
+
+              </div>
+
+            </section>
+
+
+            {/* =================================================
+                SECTION 2 — SKILLS
+            ================================================= */}
+
+            <section className="profile-section">
+
+              <div className="section-heading">
+
+                <div className="section-number">
+                  02
+                </div>
+
+                <div>
+
+                  <h2>
+                    Skills & Expertise
+                  </h2>
+
+                  <p>
+                    Add the technologies and skills you are
+                    comfortable working with.
+                  </p>
+
+                </div>
+
+              </div>
+
+
+              <div className="profile-field">
+
+                <label htmlFor="skills">
+
+                  Skills
+
+                  <span className="required-mark">
+                    *
+                  </span>
+
+                </label>
+
+
+                <div className="skill-input-container-new">
+
+                  <span className="skill-search-icon">
+                    ⌕
+                  </span>
+
+                  <input
+                    id="skills"
+                    type="text"
+                    value={skillInput}
+                    onChange={(event) =>
+                      setSkillInput(event.target.value)
+                    }
+                    onKeyDown={handleSkillKeyDown}
+                    placeholder="Search or type a skill..."
+                  />
+
+                </div>
+
+
+                {/* SUGGESTIONS */}
+
+                {filteredSkills.length > 0 && (
+
+                  <div className="skill-suggestions-new">
+
+                    <div className="suggestion-title">
+                      Suggested skills
+                    </div>
+
+                    {filteredSkills
+                      .slice(0, 8)
+                      .map((skill) => (
+
+                        <button
+                          type="button"
+                          key={skill}
+                          className="skill-suggestion-new"
+                          onClick={() =>
+                            addExistingSkill(skill)
+                          }
+                        >
+
+                          <span>
+                            +
+                          </span>
+
+                          {skill}
+
+                        </button>
+
+                      ))}
+
+                  </div>
+
+                )}
+
+
+                {/* CUSTOM SKILL */}
+
+                {skillInput.trim() !== "" &&
+                  filteredSkills.length === 0 && (
 
                     <button
                       type="button"
-                      onClick={() =>
-                        removeSkill(skill)
-                      }
-                      aria-label={`Remove ${skill}`}
+                      className="add-custom-skill-new"
+                      onClick={addCustomSkill}
                     >
-                      ×
+                      + Add "{skillInput.trim()}"
                     </button>
 
-                  </span>
+                  )}
 
-                ))}
+
+                {/* SELECTED SKILLS */}
+
+                {skills.length > 0 && (
+
+                  <div className="selected-skills-new">
+
+                    <div className="selected-skills-label">
+                      Your skills
+                    </div>
+
+                    <div className="skill-tags">
+
+                      {skills.map((skill) => (
+
+                        <span
+                          className="selected-skill-new"
+                          key={skill}
+                        >
+
+                          {skill}
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              removeSkill(skill)
+                            }
+                            aria-label={`Remove ${skill}`}
+                          >
+                            ×
+                          </button>
+
+                        </span>
+
+                      ))}
+
+                    </div>
+
+                  </div>
+
+                )}
+
+                <p className="field-hint">
+                  Start typing to find an existing skill.
+                  If it is not available, you can add your own.
+                  Press Enter to add a skill.
+                </p>
 
               </div>
-            )}
 
-            <p className="field-hint">
-              Start typing to find an existing skill.
-              If it is not available, you can add your
-              own skill.
-            </p>
+            </section>
 
-          </div>
 
-          {/* PROJECTS */}
+            {/* =================================================
+                SECTION 4 — JOB PREFERENCES
+            ================================================= */}
 
-          <div className="form-group">
+            <section className="profile-section">
 
-            <label htmlFor="projects">
-              Projects
-            </label>
+              <div className="section-heading">
 
-            <textarea
-              id="projects"
-              name="projects"
-              value={formData.projects}
-              onChange={handleChange}
-              placeholder="Mention your projects"
-              rows="3"
-            />
+                <div className="section-number">
+                  03
+                </div>
 
-          </div>
+                <div>
 
-          {/* CERTIFICATIONS */}
+                  <h2>
+                    Job Preferences
+                  </h2>
 
-          <div className="form-group">
+                  <p>
+                    Tell us what kind of opportunities you are
+                    looking for.
+                  </p>
 
-            <label htmlFor="certifications">
-              Certifications
-            </label>
+                </div>
 
-            <textarea
-              id="certifications"
-              name="certifications"
-              value={formData.certifications}
-              onChange={handleChange}
-              placeholder="Mention your certifications"
-              rows="3"
-            />
+              </div>
 
-          </div>
 
-          {/* PREFERRED JOB TYPE */}
+              <div className="profile-grid">
 
-          <div className="form-group">
+                {/* JOB TYPE */}
 
-            <label htmlFor="preferredJobType">
-              Preferred Job Type
-            </label>
+                <div className="profile-field">
 
-            <select
-              id="preferredJobType"
-              name="preferredJobType"
-              value={formData.preferredJobType}
-              onChange={handleChange}
-            >
+                  <label htmlFor="preferredJobType">
+                    Preferred Job Type
+                  </label>
 
-              <option value="">
-                Select job type
-              </option>
+                  <select
+                    id="preferredJobType"
+                    name="preferredJobType"
+                    value={formData.preferredJobType}
+                    onChange={handleChange}
+                  >
 
-              <option value="Full Time">
-                Full Time
-              </option>
+                    <option value="">
+                      Select job type
+                    </option>
 
-              <option value="Part Time">
-                Part Time
-              </option>
+                    <option value="Full Time">
+                      Full Time
+                    </option>
 
-              <option value="Internship">
-                Internship
-              </option>
+                    <option value="Part Time">
+                      Part Time
+                    </option>
 
-              <option value="Contract">
-                Contract
-              </option>
+                    <option value="Internship">
+                      Internship
+                    </option>
 
-            </select>
+                    <option value="Contract">
+                      Contract
+                    </option>
 
-          </div>
+                  </select>
 
-          {/* PREFERRED LOCATION */}
+                </div>
 
-          <div className="form-group">
 
-            <label htmlFor="preferredLocation">
-              Preferred Location
-              <span className="optional-label">
-                {" "} (Optional)
-              </span>
-            </label>
+                {/* PREFERRED LOCATION */}
 
-            <input
-              id="preferredLocation"
-              name="preferredLocation"
-              type="text"
-              value={formData.preferredLocation}
-              onChange={handleChange}
-              placeholder="e.g. Bangalore"
-            />
+                <div className="profile-field">
 
-          </div>
+                  <label htmlFor="preferredLocation">
 
-          {/* PREFERRED ROLE */}
+                    Preferred Location
 
-          <div className="form-group">
+                    <span className="optional-label-new">
+                      Optional
+                    </span>
 
-            <label htmlFor="preferredRole">
-              Preferred Job Role
-              <span className="optional-label">
-                {" "} (Optional)
-              </span>
-            </label>
+                  </label>
 
-            <select
-              id="preferredRole"
-              name="preferredRole"
-              value={formData.preferredRole}
-              onChange={handleChange}
-            >
+                  <input
+                    id="preferredLocation"
+                    name="preferredLocation"
+                    type="text"
+                    value={formData.preferredLocation}
+                    onChange={handleChange}
+                    placeholder="e.g. Bangalore"
+                  />
 
-              <option value="">
-                Select preferred role
-              </option>
+                </div>
 
-              {EXISTING_ROLES.map((role) => (
 
-                <option
-                  value={role}
-                  key={role}
-                >
-                  {role}
-                </option>
+                {/* PREFERRED ROLE */}
 
-              ))}
+                <div className="profile-field">
 
-            </select>
+                  <label htmlFor="preferredRole">
 
-            <p className="field-hint">
-              Select a role from the available job
-              roles.
-            </p>
+                    Preferred Job Role
 
-          </div>
+                    <span className="optional-label-new">
+                      Optional
+                    </span>
 
-          {/* EXPECTED SALARY */}
+                  </label>
 
-          <div className="form-group">
+                  <select
+                    id="preferredRole"
+                    name="preferredRole"
+                    value={formData.preferredRole}
+                    onChange={handleChange}
+                  >
 
-            <label htmlFor="expectedSalary">
-              Expected Salary
-              <span className="optional-label">
-                {" "} (Optional)
-              </span>
-            </label>
+                    <option value="">
+                      Select preferred role
+                    </option>
 
-            <input
-              id="expectedSalary"
-              name="expectedSalary"
-              type="text"
-              inputMode="numeric"
-              value={formData.expectedSalary}
-              onChange={handleSalaryChange}
-              placeholder={`Minimum ₹${MIN_SALARY.toLocaleString("en-IN")}`}
-            />
+                    {EXISTING_ROLES.map((role) => (
 
-            <p className="field-hint">
-              Enter salary as a number only.
-              Minimum accepted value is ₹
-              {MIN_SALARY.toLocaleString("en-IN")}.
-            </p>
+                      <option
+                        value={role}
+                        key={role}
+                      >
+                        {role}
+                      </option>
 
-          </div>
+                    ))}
 
-          {/* SUBMIT */}
+                  </select>
 
-          <button
-            type="submit"
-            className="primary-button"
-          >
-            Save Profile & Continue
-          </button>
+                  <p className="field-hint">
+                    Select a role from the available job roles.
+                  </p>
 
-        </form>
+                </div>
 
-      </div>
+
+                {/* EXPECTED SALARY */}
+
+                <div className="profile-field">
+
+                  <label htmlFor="expectedSalary">
+
+                    Expected Salary
+
+                    <span className="optional-label-new">
+                      Optional
+                    </span>
+
+                  </label>
+
+                  <div className="salary-input">
+
+                    <span className="currency-symbol">
+                      ₹
+                    </span>
+
+                    <input
+                      id="expectedSalary"
+                      name="expectedSalary"
+                      type="text"
+                      inputMode="numeric"
+                      value={formData.expectedSalary}
+                      onChange={handleSalaryChange}
+                      placeholder="10,000"
+                    />
+
+                  </div>
+
+                  <p className="field-hint">
+                    Enter salary as a number only.
+                    Minimum accepted value is ₹
+                    {MIN_SALARY.toLocaleString("en-IN")}.
+                  </p>
+
+                </div>
+
+              </div>
+
+            </section>
+
+
+            {/* =================================================
+                SUBMIT AREA
+            ================================================= */}
+
+            <div className="profile-submit-area">
+
+              <div className="submit-info">
+
+                <div className="submit-check">
+                  ✓
+                </div>
+
+                <div>
+
+                  <strong>
+                    Almost there!
+                  </strong>
+
+                  <span>
+                    Save your profile to continue to resume upload.
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              <button
+                type="submit"
+                className="profile-submit-button"
+                disabled={isLoading}
+              >
+
+                {isLoading ? (
+
+                  <>
+
+                    <span className="button-spinner"></span>
+
+                    Saving Profile...
+
+                  </>
+
+                ) : (
+
+                  <>
+
+                    Save Profile & Continue
+
+                    <span className="button-arrow">
+                      →
+                    </span>
+
+                  </>
+
+                )}
+
+              </button>
+
+            </div>
+
+          </form>
+
+        </div>
+
+      </main>
 
     </div>
   );
