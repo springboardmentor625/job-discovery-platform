@@ -1,5 +1,4 @@
 from datetime import datetime
-from decimal import Decimal
 
 from sqlalchemy import (
     Column,
@@ -24,19 +23,58 @@ from .database import Base
 class User(Base):
     __tablename__ = "users"
 
-    user_id = Column(Integer, primary_key=True)
-    full_name = Column(String(100), nullable=False)
-    email = Column(String(255), unique=True, nullable=False, index=True)
-    password_hash = Column(Text, nullable=False)
-    role = Column(String(30), nullable=False)
-    phone = Column(String(10), nullable=True)
-    profile_picture = Column(Text, nullable=True)
-    is_verified = Column(Boolean, nullable=False, default=False)
+    user_id = Column(
+        Integer,
+        primary_key=True
+    )
+
+    full_name = Column(
+        String(100),
+        nullable=False
+    )
+
+    email = Column(
+        String(255),
+        unique=True,
+        nullable=False,
+        index=True
+    )
+
+    password_hash = Column(
+        Text,
+        nullable=False
+    )
+
+    role = Column(
+        String(30),
+        nullable=False
+    )
+
+    phone = Column(
+        String(10),
+        nullable=True
+    )
+
+    profile_picture = Column(
+        Text,
+        nullable=True
+    )
+
+    is_verified = Column(
+        Boolean,
+        nullable=False,
+        default=False
+    )
+
     created_at = Column(
         DateTime,
         nullable=False,
         default=datetime.utcnow
     )
+
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
 
     candidate_profile = relationship(
         "CandidateProfile",
@@ -83,23 +121,70 @@ class User(Base):
 class CandidateProfile(Base):
     __tablename__ = "candidate_profiles"
 
-    profile_id = Column(Integer, primary_key=True)
+    profile_id = Column(
+        Integer,
+        primary_key=True
+    )
+
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.user_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         unique=True,
         index=True
     )
-    headline = Column(String(255), nullable=True)
-    summary = Column(Text, nullable=True)
-    location = Column(String(150), nullable=True)
-    experience_years = Column(Numeric(4, 1), nullable=True)
-    education = Column(JSON, nullable=True)
-    projects = Column(JSON, nullable=True)
-    certifications = Column(JSON, nullable=True)
-    preferred_job_type = Column(String(50), nullable=True)
-    preferred_location = Column(String(150), nullable=True)
+
+    headline = Column(
+        String(255),
+        nullable=True
+    )
+
+    summary = Column(
+        Text,
+        nullable=True
+    )
+
+    location = Column(
+        String(150),
+        nullable=True
+    )
+
+    experience_years = Column(
+        Numeric(4, 1),
+        nullable=True
+    )
+
+    education = Column(
+        JSON,
+        nullable=True
+    )
+
+    projects = Column(
+        JSON,
+        nullable=True
+    )
+
+    certifications = Column(
+        JSON,
+        nullable=True
+    )
+
+    preferred_job_type = Column(
+        String(50),
+        nullable=True
+    )
+
+    preferred_location = Column(
+        String(150),
+        nullable=True
+    )
+
+    # -----------------------------------------------------
+    # RELATIONSHIP
+    # -----------------------------------------------------
 
     user = relationship(
         "User",
@@ -114,12 +199,39 @@ class CandidateProfile(Base):
 class Company(Base):
     __tablename__ = "companies"
 
-    company_id = Column(Integer, primary_key=True)
-    company_name = Column(String(200), nullable=False)
-    company_type = Column(String(100), nullable=True)
-    industry = Column(String(100), nullable=True)
-    website = Column(Text, nullable=True)
-    headquarters = Column(String(200), nullable=True)
+    company_id = Column(
+        Integer,
+        primary_key=True
+    )
+
+    company_name = Column(
+        String(200),
+        nullable=False
+    )
+
+    company_type = Column(
+        String(100),
+        nullable=True
+    )
+
+    industry = Column(
+        String(100),
+        nullable=True
+    )
+
+    website = Column(
+        Text,
+        nullable=True
+    )
+
+    headquarters = Column(
+        String(200),
+        nullable=True
+    )
+
+    # -----------------------------------------------------
+    # RELATIONSHIP
+    # -----------------------------------------------------
 
     jobs = relationship(
         "Job",
@@ -135,33 +247,76 @@ class Company(Base):
 class Job(Base):
     __tablename__ = "jobs"
 
-    job_id = Column(Integer, primary_key=True)
+    job_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     company_id = Column(
         Integer,
-        ForeignKey("companies.company_id", ondelete="CASCADE"),
+        ForeignKey(
+            "companies.company_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
-    title = Column(String(200), nullable=False)
-    description = Column(Text, nullable=False)
-    location = Column(String(150), nullable=True)
-    employment_type = Column(String(50), nullable=True)
-    salary_min = Column(Numeric(12, 2), nullable=True)
-    salary_max = Column(Numeric(12, 2), nullable=True)
-    experience_required = Column(Numeric(4, 1), nullable=True)
-    required_skills = Column(JSON, nullable=True)
+    title = Column(
+        String(200),
+        nullable=False
+    )
+
+    description = Column(
+        Text,
+        nullable=False
+    )
+
+    location = Column(
+        String(150),
+        nullable=True
+    )
+
+    employment_type = Column(
+        String(50),
+        nullable=True
+    )
+
+    salary_min = Column(
+        Numeric(12, 2),
+        nullable=True
+    )
+
+    salary_max = Column(
+        Numeric(12, 2),
+        nullable=True
+    )
+
+    experience_required = Column(
+        Numeric(4, 1),
+        nullable=True
+    )
+
+    required_skills = Column(
+        JSON,
+        nullable=True
+    )
+
     posted_date = Column(
         DateTime,
         nullable=False,
         default=datetime.utcnow
     )
+
     status = Column(
         String(30),
         nullable=False,
         default="ACTIVE"
     )
+
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
 
     company = relationship(
         "Company",
@@ -200,28 +355,102 @@ class Job(Base):
 class Resume(Base):
     __tablename__ = "resumes"
 
-    resume_id = Column(Integer, primary_key=True)
+    resume_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.user_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
-    resume_name = Column(String(255), nullable=False)
-    file_path = Column(Text, nullable=False)
-    extracted_skills = Column(JSON, nullable=True)
+    resume_name = Column(
+        String(255),
+        nullable=False
+    )
+
+    file_path = Column(
+        Text,
+        nullable=False
+    )
+
+    # -----------------------------------------------------
+    # COMPLETE EXTRACTED RESUME TEXT
+    # -----------------------------------------------------
+
+    resume_text = Column(
+        Text,
+        nullable=True
+    )
+
+    # -----------------------------------------------------
+    # AUTOMATICALLY EXTRACTED SKILLS
+    # Example:
+    # ["Python", "React", "Django", "Docker"]
+    # -----------------------------------------------------
+
+    extracted_skills = Column(
+        JSON,
+        nullable=True
+    )
+
+    # -----------------------------------------------------
+    # AUTOMATICALLY EXTRACTED EXPERIENCE
+    # Example:
+    # [
+    #   {
+    #       "job_title": "Software Engineer",
+    #       "company": "ABC",
+    #       "date_range": "2023 - Present",
+    #       "description": "..."
+    #   }
+    # ]
+    # -----------------------------------------------------
+
+    extracted_experience = Column(
+        JSON,
+        nullable=True
+    )
+
+    # -----------------------------------------------------
+    # AUTOMATICALLY EXTRACTED EDUCATION
+    # Example:
+    # [
+    #   {
+    #       "degree": "B.Tech",
+    #       "field": "Computer Science",
+    #       "institution": "XYZ University",
+    #       "year": "2020-2024"
+    #   }
+    # ]
+    # -----------------------------------------------------
+
+    extracted_education = Column(
+        JSON,
+        nullable=True
+    )
+
     uploaded_at = Column(
         DateTime,
         nullable=False,
         default=datetime.utcnow
     )
+
     is_default = Column(
         Boolean,
         nullable=False,
         default=False
     )
+
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
 
     user = relationship(
         "User",
@@ -247,25 +476,37 @@ class Resume(Base):
 class Application(Base):
     __tablename__ = "applications"
 
-    application_id = Column(Integer, primary_key=True)
+    application_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.user_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
-        ForeignKey("jobs.job_id", ondelete="CASCADE"),
+        ForeignKey(
+            "jobs.job_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
     resume_id = Column(
         Integer,
-        ForeignKey("resumes.resume_id", ondelete="SET NULL"),
+        ForeignKey(
+            "resumes.resume_id",
+            ondelete="SET NULL"
+        ),
         nullable=True
     )
 
@@ -280,6 +521,10 @@ class Application(Base):
         nullable=False,
         default=datetime.utcnow
     )
+
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
 
     user = relationship(
         "User",
@@ -304,18 +549,27 @@ class Application(Base):
 class SwipeHistory(Base):
     __tablename__ = "swipe_history"
 
-    swipe_id = Column(Integer, primary_key=True)
+    swipe_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.user_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
-        ForeignKey("jobs.job_id", ondelete="CASCADE"),
+        ForeignKey(
+            "jobs.job_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
@@ -330,6 +584,10 @@ class SwipeHistory(Base):
         nullable=False,
         default=datetime.utcnow
     )
+
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
 
     user = relationship(
         "User",
@@ -349,18 +607,27 @@ class SwipeHistory(Base):
 class ATSReport(Base):
     __tablename__ = "ats_reports"
 
-    ats_report_id = Column(Integer, primary_key=True)
+    ats_report_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     resume_id = Column(
         Integer,
-        ForeignKey("resumes.resume_id", ondelete="CASCADE"),
+        ForeignKey(
+            "resumes.resume_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
-        ForeignKey("jobs.job_id", ondelete="CASCADE"),
+        ForeignKey(
+            "jobs.job_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
@@ -375,15 +642,30 @@ class ATSReport(Base):
         nullable=True
     )
 
-    missing_skills = Column(JSON, nullable=True)
-    missing_keywords = Column(JSON, nullable=True)
-    suggestions = Column(Text, nullable=True)
+    missing_skills = Column(
+        JSON,
+        nullable=True
+    )
+
+    missing_keywords = Column(
+        JSON,
+        nullable=True
+    )
+
+    suggestions = Column(
+        Text,
+        nullable=True
+    )
 
     analyzed_at = Column(
         DateTime,
         nullable=False,
         default=datetime.utcnow
     )
+
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
 
     resume = relationship(
         "Resume",
@@ -403,18 +685,27 @@ class ATSReport(Base):
 class Recommendation(Base):
     __tablename__ = "recommendations"
 
-    recommendation_id = Column(Integer, primary_key=True)
+    recommendation_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.user_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
     job_id = Column(
         Integer,
-        ForeignKey("jobs.job_id", ondelete="CASCADE"),
+        ForeignKey(
+            "jobs.job_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
@@ -435,6 +726,10 @@ class Recommendation(Base):
         default=datetime.utcnow
     )
 
+    # -----------------------------------------------------
+    # RELATIONSHIPS
+    # -----------------------------------------------------
+
     user = relationship(
         "User",
         back_populates="recommendations"
@@ -453,17 +748,30 @@ class Recommendation(Base):
 class Notification(Base):
     __tablename__ = "notifications"
 
-    notification_id = Column(Integer, primary_key=True)
+    notification_id = Column(
+        Integer,
+        primary_key=True
+    )
 
     user_id = Column(
         Integer,
-        ForeignKey("users.user_id", ondelete="CASCADE"),
+        ForeignKey(
+            "users.user_id",
+            ondelete="CASCADE"
+        ),
         nullable=False,
         index=True
     )
 
-    title = Column(String(255), nullable=False)
-    message = Column(Text, nullable=False)
+    title = Column(
+        String(255),
+        nullable=False
+    )
+
+    message = Column(
+        Text,
+        nullable=False
+    )
 
     is_read = Column(
         Boolean,
@@ -477,7 +785,13 @@ class Notification(Base):
         default=datetime.utcnow
     )
 
+    # -----------------------------------------------------
+    # RELATIONSHIP
+    # -----------------------------------------------------
+
     user = relationship(
         "User",
         back_populates="notifications"
     )
+
+    
