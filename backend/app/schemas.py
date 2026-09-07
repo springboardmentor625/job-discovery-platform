@@ -50,3 +50,44 @@ class UserResponse(BaseModel):
 class Token(BaseModel):
     access_token: str
     token_type: str
+
+# =========================================================
+# CANDIDATE PROFILE
+# =========================================================
+
+from pydantic import BaseModel, Field
+
+
+class CandidateProfileCreate(BaseModel):
+    headline: str = Field(..., min_length=1, max_length=255)
+    summary: str = Field(..., min_length=1)
+    location: str = Field(..., min_length=1, max_length=150)
+
+    experience_years: float | None = None
+
+    education: str | None = None
+    projects: str | None = None
+    certifications: str | None = None
+
+    preferred_job_type: str | None = None
+    preferred_location: str | None = None
+    preferred_role: str | None = None
+
+    expected_salary: float | None = None
+
+
+class CandidateProfileResponse(BaseModel):
+    profile_id: int
+    user_id: int
+    headline: str | None
+    summary: str | None
+    location: str | None
+    experience_years: float | None
+    education: object | None
+    projects: object | None
+    certifications: object | None
+    preferred_job_type: str | None
+    preferred_location: str | None
+
+    class Config:
+        from_attributes = True
