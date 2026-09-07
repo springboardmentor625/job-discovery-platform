@@ -1,17 +1,94 @@
-import { useNavigate } from "react-router-dom";
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
+import {
+  getSavedJobs,
+} from "../api/swipes";
 
 function SavedJobs() {
   const navigate = useNavigate();
 
-  const savedJobs = [
-    {
-      id: 1,
-      title: "Software Developer",
-      company: "ABC Technologies",
-      location: "Bangalore",
-      salary: "₹5 - ₹8 LPA",
-    },
-  ];
+  const [savedJobs, setSavedJobs] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const [error, setError] =
+    useState("");
+
+  // =========================================================
+  // LOAD SAVED JOBS
+  // =========================================================
+
+  useEffect(() => {
+    const loadSavedJobs =
+      async () => {
+        try {
+          setLoading(true);
+          setError("");
+
+          const response =
+            await getSavedJobs();
+
+          console.log(
+            "Saved jobs:",
+            response
+          );
+
+          setSavedJobs(
+            response.saved_jobs || []
+          );
+
+        } catch (error) {
+          console.error(
+            "Saved jobs error:",
+            error
+          );
+
+          setError(
+            error.response?.data?.detail ||
+            "Failed to load saved jobs."
+          );
+
+        } finally {
+          setLoading(false);
+        }
+      };
+
+    loadSavedJobs();
+
+  }, []);
+
+  // =========================================================
+  // LOADING
+  // =========================================================
+
+  if (loading) {
+    return (
+      <div className="page">
+
+        <div className="form-container">
+
+          <h1>
+            Saved Jobs
+          </h1>
+
+          <p className="form-subtitle">
+            Loading your saved jobs...
+          </p>
+
+        </div>
+
+      </div>
+    );
+  }
 
   return (
     <div className="page">
@@ -23,63 +100,81 @@ function SavedJobs() {
         </h1>
 
         <p className="form-subtitle">
-          Jobs saved through your SwipeX interactions.
+          Jobs saved through your
+          SwipeX interactions.
         </p>
+
+        {error && (
+          <p className="error-message">
+            {error}
+          </p>
+        )}
 
         {savedJobs.length === 0 ? (
 
           <p className="empty-message">
-            You haven't saved any jobs yet.
+            You haven't saved any
+            jobs yet.
           </p>
 
         ) : (
 
-          savedJobs.map((job) => (
+          savedJobs.map(
+            (job, index) => {
 
-            <div
-              className="saved-job-card"
-              key={job.id}
-            >
+              const jobId =
+                job.job_id ??
+                job.id ??
+                index;
 
-              <h2>
-                {job.title}
-              </h2>
+              const salaryText =
+                job.salary_min != null ||
+                job.salary_max != null
+                  ? `₹${job.salary_min ?? 0} - ₹${job.salary_max ?? 0}`
+                  : "Salary not specified";
 
-              <p>
-                {job.company}
-              </p>
+              return (
+                <div
+                  className="saved-job-card"
+                  key={jobId}
+                >
 
-              <div className="saved-job-details">
+                  <h2>
+                    {job.title}
+                  </h2>
 
-                <span>
-                  📍 {job.location}
-                </span>
+                  <p>
+                    {job.company_name ||
+                      job.company ||
+                      `Company #${job.company_id}`}
+                  </p>
 
-                <span>
-                  💰 {job.salary}
-                </span>
+                  <div className="saved-job-details">
 
-              </div>
+                    <span>
+                      📍{" "}
+                      {job.location ||
+                        "Location not specified"}
+                    </span>
 
-              <div className="saved-job-status">
+                    <span>
+                      💰 {salaryText}
+                    </span>
 
-                <span>
-                  ✓ Applied
-                </span>
+                  </div>
 
-                <span>
-                  ★ Saved
-                </span>
+                  <div className="saved-job-status">
 
-                <span>
-                  ♥ Favorite
-                </span>
+                    <span>
+                      ★ Saved
+                    </span>
 
-              </div>
+                  </div>
 
-            </div>
-
-          ))
+                </div>
+              );
+            }
+          )
 
         )}
 
@@ -87,7 +182,9 @@ function SavedJobs() {
           type="button"
           className="primary-button"
           onClick={() =>
-            navigate("/recommended-jobs")
+            navigate(
+              "/recommended-jobs"
+            )
           }
         >
           Continue Exploring Jobs
