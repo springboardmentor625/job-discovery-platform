@@ -4,6 +4,8 @@ from flask_cors import CORS
 import os
 import json
 import re
+import joblib
+
 
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -17,6 +19,20 @@ from flask_jwt_extended import (
     jwt_required,
     get_jwt_identity
 )
+
+# ============================================================
+# ML MODEL
+# ============================================================
+
+MODEL_PATH = "trained_model.pkl"
+
+ml_model = None
+
+if os.path.exists(MODEL_PATH):
+    ml_model = joblib.load(MODEL_PATH)
+    print("ML: Trained model loaded")
+else:
+    print("ML: No trained model found")
 
 
 # ============================================================
@@ -954,6 +970,10 @@ def upload_resume():
                 file_path
             )
         )
+        print(
+    "[DEBUG] API EXTRACTED SKILLS:",
+    extracted_skills
+)
 
     except Exception as e:
 
@@ -1548,7 +1568,6 @@ def analyze_ats(job_id):
 # ============================================================
 # JOB RECOMMENDATIONS
 # ============================================================
-
 @app.route(
     "/api/recommendations",
     methods=["GET"]
@@ -1558,7 +1577,10 @@ def get_recommendations():
 
     user_id = get_jwt_identity()
 
-    # Get candidate profile
+    # ----------------------------------------------------
+    # GET CANDIDATE PROFILE
+    # ----------------------------------------------------
+
     profile = CandidateProfile.query.filter_by(
         user_id=user_id
     ).first()
@@ -1568,7 +1590,10 @@ def get_recommendations():
             "message": "Please complete your profile first"
         }), 400
 
-    # Get candidate resume
+    # ----------------------------------------------------
+    # GET CANDIDATE RESUME
+    # ----------------------------------------------------
+
     resume = Resume.query.filter_by(
         user_id=user_id,
         is_default=True
@@ -1586,7 +1611,10 @@ def get_recommendations():
             "message": "Please upload a resume first"
         }), 400
 
-    # Get resume skills
+    # ----------------------------------------------------
+    # GET RESUME SKILLS
+    # ----------------------------------------------------
+
     try:
         resume_skills = json.loads(
             resume.extracted_skills
@@ -1597,9 +1625,13 @@ def get_recommendations():
     resume_skill_set = {
         skill.strip().lower()
         for skill in resume_skills
+        if skill
     }
 
-    # Candidate preferences
+    # ----------------------------------------------------
+    # CANDIDATE PREFERENCES
+    # ----------------------------------------------------
+
     preferred_location = (
         profile.preferred_location or ""
     ).strip().lower()
@@ -1608,16 +1640,80 @@ def get_recommendations():
         profile.preferred_job_type or ""
     ).strip().lower()
 
-    # Get active jobs
-    jobs = Job.query.filter_by(
-        status="ACTIVE"
-    ).all()
+    # ----------------------------------------------------
+    # GET JOBS
+    # ----------------------------------------------------
 
-    recommendations = []
+    jobs = Job.query.all()
+
+    # ----------------------------------------------------
+    # CHECK SWIPE HISTORY
+    # ----------------------------------------------------
+
+    swipe_count = SwipeHistory.query.filter_by(
+        user_id=user_id
+    ).count()
+
+    print(
+        "SWIPE HISTORY:",
+        swipe_count,
+        flush=True
+    )
+
+    # ----------------------------------------------------
+    # ML DECISION
+    #
+    # 0-4 swipes:
+    #     Rule based
+    #
+    # 5+ swipes:
+    #     ML model
+    # ----------------------------------------------------
+
+    use_ml = (
+        swipe_count >= 11
+        and ml_model is not None
+    )
+
+    if use_ml:
+        print(
+            "RECOMMENDATION MODE: ML",
+            flush=True
+        )
+    else:
+        print(
+            "RECOMMENDATION MODE: RULE-BASED",
+            flush=True
+        )
+
+    # ----------------------------------------------------
+    # CALCULATE SCORE FOR ALL JOBS
+    # ----------------------------------------------------
+    scored_jobs = []
+    ml_features = []
+    ml_items = []
+
+    # ----------------------------------------------------
+    # REMOVE ALREADY SWIPED JOBS
+    # ----------------------------------------------------
+
+    swiped_job_ids = {
+        swipe.job_id
+        for swipe in SwipeHistory.query.filter_by(
+            user_id=user_id
+        ).all()
+    }
 
     for job in jobs:
 
-        # Get required skills
+        if job.job_id in swiped_job_ids:
+            continue
+
+        # -----------------------------------------------
+        # REQUIRED SKILLS
+        # -----------------------------------------------
+
+
         try:
             required_skills = json.loads(
                 job.required_skills
@@ -1628,11 +1724,12 @@ def get_recommendations():
         required_skill_set = {
             skill.strip().lower()
             for skill in required_skills
+            if skill
         }
 
-        # ----------------------------------------------------
-        # SKILL MATCH = 70%
-        # ----------------------------------------------------
+        # -----------------------------------------------
+        # SKILL MATCH
+        # -----------------------------------------------
 
         matched_skills = (
             resume_skill_set
@@ -1641,19 +1738,20 @@ def get_recommendations():
 
         if required_skill_set:
 
-            skill_score = (
+            skill_match = (
                 len(matched_skills)
                 / len(required_skill_set)
-            ) * 70
+            ) * 100
 
         else:
-            skill_score = 0
 
-        # ----------------------------------------------------
-        # LOCATION MATCH = 15%
-        # ----------------------------------------------------
+            skill_match = 0
 
-        location_score = 0
+        # -----------------------------------------------
+        # LOCATION MATCH
+        # -----------------------------------------------
+
+        location_match = 0
 
         job_location = (
             job.location or ""
@@ -1665,13 +1763,13 @@ def get_recommendations():
                 preferred_location in job_location
                 or job_location in preferred_location
             ):
-                location_score = 15
+                location_match = 100
 
-        # ----------------------------------------------------
-        # JOB TYPE MATCH = 15%
-        # ----------------------------------------------------
+        # -----------------------------------------------
+        # JOB TYPE MATCH
+        # -----------------------------------------------
 
-        job_type_score = 0
+        job_type_match = 0
 
         employment_type = (
             job.employment_type or ""
@@ -1681,36 +1779,206 @@ def get_recommendations():
             preferred_job_type
             and preferred_job_type == employment_type
         ):
-            job_type_score = 15
+            job_type_match = 100
 
-        # ----------------------------------------------------
-        # FINAL SCORE
-        # ----------------------------------------------------
+        # -----------------------------------------------
+        # FINAL RECOMMENDATION SCORE
+        # -----------------------------------------------
 
-        recommendation_score = round(
-            skill_score
-            + location_score
-            + job_type_score,
-            2
+        if use_ml:
+
+            ml_features.append([
+                skill_match,
+                location_match,
+                job_type_match
+            ])
+
+            ml_items.append({
+                "job": job,
+                "required_skills": required_skills,
+                "matched_skills": matched_skills
+            })
+
+        else:
+
+            # -------------------------------------------
+            # RULE-BASED MODEL
+            #
+            # Skills      = 70%
+            # Location    = 15%
+            # Job Type    = 15%
+            # -------------------------------------------
+
+            skill_score = skill_match * 0.70
+
+            location_score = location_match * 0.15
+
+            job_type_score = job_type_match * 0.15
+
+            recommendation_score = float(
+                round(
+                    skill_score
+                    + location_score
+                    + job_type_score,
+                    2
+                )
+            )
+
+            scored_jobs.append({
+
+                "job": job,
+
+                "required_skills":
+                    required_skills,
+
+                "matched_skills":
+                    matched_skills,
+
+                "recommendation_score":
+                    recommendation_score
+            })
+    # ----------------------------------------------------
+    # BATCH ML PREDICTION
+    # ----------------------------------------------------
+
+    if use_ml:
+
+        ml_scores = (
+            ml_model.predict_proba(
+                ml_features
+            )[:, 1] * 100
         )
 
-        # ----------------------------------------------------
+        for item, score in zip(
+            ml_items,
+            ml_scores
+        ):
+
+            scored_jobs.append({
+
+                "job":
+                    item["job"],
+
+                "required_skills":
+                    item["required_skills"],
+
+                "matched_skills":
+                    item["matched_skills"],
+
+                "recommendation_score":
+                    float(
+                        round(
+                            score,
+                            2
+                        )
+                    )
+            })
+
+    print(
+        "JOBS SCORED:",
+        len(scored_jobs),
+        flush=True
+    )
+
+    # ----------------------------------------------------
+    # SORT HIGHEST SCORE FIRST
+    # ----------------------------------------------------
+
+    scored_jobs.sort(
+        key=lambda x: x["recommendation_score"],
+        reverse=True
+    )
+
+    # ----------------------------------------------------
+    # TAKE ONLY TOP 50 JOBS
+    # ----------------------------------------------------
+
+    top_jobs = scored_jobs[:50]
+
+    print(
+        "TOP JOBS SELECTED:",
+        len(top_jobs),
+        flush=True
+    )
+
+    # ----------------------------------------------------
+    # LOAD COMPANIES IN ONE QUERY
+    # ----------------------------------------------------
+
+    company_ids = {
+        item["job"].company_id
+        for item in top_jobs
+        if item["job"].company_id
+    }
+
+    companies = Company.query.filter(
+        Company.company_id.in_(company_ids)
+    ).all()
+
+    company_map = {
+        company.company_id: company
+        for company in companies
+    }
+
+    recommendations = []
+
+    # ----------------------------------------------------
+    # CREATE / UPDATE RECOMMENDATIONS
+    # ----------------------------------------------------
+
+    for item in top_jobs:
+
+        job = item["job"]
+
+        required_skills = item[
+            "required_skills"
+        ]
+
+        matched_skills = item[
+            "matched_skills"
+        ]
+
+        recommendation_score = item[
+            "recommendation_score"
+        ]
+
+        # -----------------------------------------------
         # RECOMMENDATION REASON
-        # ----------------------------------------------------
+        # -----------------------------------------------
 
         reasons = []
 
         if matched_skills:
+
             reasons.append(
                 f"{len(matched_skills)} matching skills"
             )
 
-        if location_score:
+        job_location = (
+            job.location or ""
+        ).strip().lower()
+
+        if (
+            preferred_location
+            and (
+                preferred_location in job_location
+                or job_location in preferred_location
+            )
+        ):
+
             reasons.append(
                 "preferred location matches"
             )
 
-        if job_type_score:
+        employment_type = (
+            job.employment_type or ""
+        ).strip().lower()
+
+        if (
+            preferred_job_type
+            and preferred_job_type == employment_type
+        ):
+
             reasons.append(
                 "preferred job type matches"
             )
@@ -1730,9 +1998,9 @@ def get_recommendations():
                 "with your profile."
             )
 
-        # ----------------------------------------------------
-        # SAVE / UPDATE RECOMMENDATION
-        # ----------------------------------------------------
+        # -----------------------------------------------
+        # FIND EXISTING RECOMMENDATION
+        # -----------------------------------------------
 
         recommendation = Recommendation.query.filter_by(
             user_id=user_id,
@@ -1773,10 +2041,13 @@ def get_recommendations():
         # Make sure ID is generated
         db.session.flush()
 
-        # Get company
-        company = Company.query.filter_by(
-            company_id=job.company_id
-        ).first()
+        # -----------------------------------------------
+        # GET COMPANY
+        # -----------------------------------------------
+
+        company = company_map.get(
+            job.company_id
+        )
 
         recommendations.append({
 
@@ -1822,9 +2093,22 @@ def get_recommendations():
                 recommendation_reason
         })
 
+    # ----------------------------------------------------
+    # SAVE
+    # ----------------------------------------------------
+
     db.session.commit()
 
-    # Highest score first
+    print(
+        "TOTAL RECOMMENDATIONS RETURNED:",
+        len(recommendations),
+        flush=True
+    )
+
+    # ----------------------------------------------------
+    # FINAL SORT
+    # ----------------------------------------------------
+
     recommendations.sort(
         key=lambda x: x["recommendation_score"],
         reverse=True
