@@ -2,6 +2,7 @@
 import re
 import json
 import os
+from google import genai
 
 
 # ============================================================
@@ -64,7 +65,13 @@ SKILL_CATEGORY_WORDS = {
     "web",
     "core concepts",
     "core concept",
+    "design tools",
+    "design process",
+    "research",
+    "other",
+    "ui/ux",
 }
+
 # Skills that may be split across multiple PDF lines
 MULTI_WORD_SKILLS = {
     "machine learning",
@@ -418,7 +425,7 @@ def split_skill_text(skill_text):
     text = normalize_text(skill_text)
 
     # Normalize separators
-    text = re.sub(r"[|;/]+", ",", text)
+    text = re.sub(r"[|;]+", ",", text)
 
     # Remove bullet characters
     text = re.sub(
@@ -466,7 +473,27 @@ def split_skill_text(skill_text):
         "",
         text
     )
-    
+
+    # --------------------------------------------------------
+    # Remove category labels without a colon
+    # --------------------------------------------------------
+
+    category_words = sorted(
+        SKILL_CATEGORY_WORDS,
+        key=len,
+        reverse=True
+    )
+
+    category_pattern = "|".join(
+        re.escape(word)
+        for word in category_words
+    )
+
+    text = re.sub(
+        rf"(?im)^(?:{category_pattern})\s+",
+        "",
+        text
+    )
 
     # --------------------------------------------------------
     # Handle PDF line wrapping
@@ -838,7 +865,71 @@ def match_skills_with_vocabulary(
     # inside a longer skill.
     return remove_nested_skills(unique_skills)
 
+def extract_skills_with_llm(section):
+    """
+    Extract actual skills from the Skills section using Gemini.
+    """
 
+    try:
+        client = genai.Client(
+            api_key=os.getenv("GEMINI_API_KEY")
+        )
+
+        prompt = f"""
+Extract ONLY the actual technical/professional skills
+explicitly listed in the following resume Skills section.
+
+Do NOT return:
+- category headings
+- descriptions
+- job titles
+- sentences
+- experience
+- education
+- projects
+
+Return ONLY a JSON array of skill names.
+
+Example:
+["Python", "Machine Learning", "SQL", "Docker"]
+
+Skills section:
+{section}
+"""
+
+        response = client.models.generate_content(
+            model="gemini-3.6-flash",
+            contents=prompt
+        )
+
+        result = response.text.strip()
+
+        # Remove markdown code fences if Gemini adds them
+        result = re.sub(
+            r"^```(?:json)?\s*|\s*```$",
+            "",
+            result
+        ).strip()
+
+        skills = json.loads(result)
+
+        if not isinstance(skills, list):
+            return []
+
+        return [
+            str(skill).strip()
+            for skill in skills
+            if str(skill).strip()
+        ]
+
+    except Exception as e:
+
+        print(
+            "[LLM SKILL EXTRACTION ERROR]:",
+            e
+        )
+
+        return []
 # ============================================================
 # MAIN EXTRACTION FUNCTION
 # ============================================================
@@ -897,12 +988,7 @@ def extract_skills_from_section(text):
             item
         )
 
-    extracted_skills = (
-        match_skills_with_vocabulary(
-            raw_skills,
-            section
-        )
-    )
+    extracted_skills = extract_skills_with_llm(section)
 
     return extracted_skills
 
@@ -970,4 +1056,3 @@ if __name__ == "__main__":
         "\nTotal:",
         len(skills)
     )
-
