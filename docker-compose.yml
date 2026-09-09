@@ -30,6 +30,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/SwipeX
       JWT_SECRET_KEY: change-this-for-production
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
 
     ports:
       - "5000:5000"
