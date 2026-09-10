@@ -1,8 +1,13 @@
 from django.core.management.base import BaseCommand
 
-from candidates.recommendation.train_recommendation import (
-    train_recommendation_model,
-)
+try:
+    from recommendation.train_recommendation import (
+        train_recommendation_model,
+    )
+except ImportError:
+    from candidates.recommendation.train_recommendation import (
+        train_recommendation_model,
+    )
 
 
 class Command(BaseCommand):

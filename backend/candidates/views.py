@@ -1,11 +1,15 @@
 import shutil
-
 from django.conf import settings
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+from django.db.models import Q
 
-from rest_framework import generics, viewsets, serializers
+from rest_framework import generics, viewsets, serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+User = get_user_model()
 
 from .models import (
     Candidate,
@@ -25,29 +29,12 @@ from .serializers import (
 )
 
 from .auth_serializers import RegisterSerializer
-
 from .services.preview_service import PreviewService
 from .services.resume_service import ResumeService
 from .services.recommendation_service import RecommendationService
 from .services.file_service import FileService
 from .services.application_service import ApplicationService
-from rest_framework.response import Response
-
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from .models import Job
-from .serializers import JobSerializer
-from .services.recommendation_service import RecommendationService
-# =====================================
-# LIBREOFFICE PATH
-# =====================================
-
-SOFFICE_PATH = getattr(
-    settings,
-    "SOFFICE_PATH",
-    shutil.which("soffice")
-)
-
+from rest_framework.pagination import PageNumberPagination
 
 # =====================================
 # REGISTER
@@ -59,7 +46,61 @@ class RegisterView(generics.CreateAPIView):
 
 
 # =====================================
-# CANDIDATE
+# CANDIDATE ME
+# =====================================
+
+class CandidateMeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def _get_candidate(self, user):
+        candidate, _ = Candidate.objects.get_or_create(
+            email__iexact=user.email,
+            defaults={
+                "full_name": user.get_full_name() or user.first_name or user.username.split("@")[0],
+                "email": user.email,
+                "phone": "",
+                "skills": "",
+                "experience": "",
+                "education": "",
+                "current_location": "",
+                "preferred_job_roles": "",
+                "preferred_locations": "",
+                "preferred_work_mode": "Any",
+                "career_interests": "",
+                "bio": "",
+            }
+        )
+        return candidate
+
+    def get(self, request):
+        candidate = self._get_candidate(request.user)
+        serializer = CandidateSerializer(candidate, context={"request": request})
+        return Response(serializer.data)
+
+    def patch(self, request):
+        candidate = self._get_candidate(request.user)
+        serializer = CandidateSerializer(
+            candidate,
+            data=request.data,
+            partial=True,
+            context={"request": request}
+        )
+        serializer.is_valid(raise_exception=True)
+        updated = serializer.save()
+
+        # Keep User first_name synchronized if full_name was updated
+        if "full_name" in request.data:
+            request.user.first_name = updated.full_name
+            request.user.save(update_fields=["first_name"])
+
+        return Response(CandidateSerializer(updated, context={"request": request}).data)
+
+    def put(self, request):
+        return self.patch(request)
+
+
+# =====================================
+# CANDIDATE VIEWSET
 # =====================================
 
 class CandidateViewSet(viewsets.ModelViewSet):
@@ -72,29 +113,14 @@ class CandidateViewSet(viewsets.ModelViewSet):
         )
 
     def perform_create(self, serializer):
-
-        existing_candidate = Candidate.objects.filter(
-            email__iexact=self.request.user.email
-        ).first()
-
-        if existing_candidate:
-            raise serializers.ValidationError({
-                "detail": "Candidate profile already exists."
-            })
-
-        serializer.save(
-            email=self.request.user.email
-        )
+        serializer.save(email=self.request.user.email)
 
     def perform_update(self, serializer):
-
-        serializer.save(
-            email=self.request.user.email
-        )
+        serializer.save(email=self.request.user.email)
 
 
 # =====================================
-# RESUME
+# RESUME VIEWSET
 # =====================================
 
 class ResumeViewSet(viewsets.ModelViewSet):
@@ -102,317 +128,205 @@ class ResumeViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-
         try:
             candidate = Candidate.objects.get(
                 email__iexact=self.request.user.email
             )
-
+            return Resume.objects.filter(candidate=candidate)
         except Candidate.DoesNotExist:
             return Resume.objects.none()
 
-        return Resume.objects.filter(
-            candidate=candidate
-        )
-
     def get_candidate(self):
-
-        try:
-            return Candidate.objects.get(
-                email__iexact=self.request.user.email
-            )
-
-        except Candidate.DoesNotExist:
-
-            raise serializers.ValidationError({
-                "detail": "Candidate profile not found."
-            })
+        candidate, _ = Candidate.objects.get_or_create(
+            email__iexact=self.request.user.email,
+            defaults={
+                "full_name": self.request.user.get_full_name() or self.request.user.username,
+                "email": self.request.user.email,
+            }
+        )
+        return candidate
 
     def perform_create(self, serializer):
-
         candidate = self.get_candidate()
-
-        new_file = serializer.validated_data.get(
-            "resume_file"
-        )
+        new_file = serializer.validated_data.get("resume_file")
 
         if not new_file:
+            raise serializers.ValidationError({"resume_file": "Please upload a resume file."})
 
-            raise serializers.ValidationError({
-                "resume_file":
-                "Please upload a resume file."
-            })
-
-        try:
-
-            resume = Resume.objects.get(
-                candidate=candidate
-            )
-
-            if resume.resume_file:
-
+        # Remove previous resume file if exists
+        existing = Resume.objects.filter(candidate=candidate).first()
+        if existing:
+            if existing.resume_file:
                 try:
-                    resume.resume_file.delete(
-                        save=False
-                    )
-                except Exception as e:
-                    print(
-                        "OLD FILE DELETE ERROR:",
-                        repr(e)
-                    )
+                    existing.resume_file.delete(save=False)
+                except Exception:
+                    pass
 
-            if resume.preview_pdf:
-
+            if existing.preview_pdf:
                 try:
-                    resume.preview_pdf.delete(
-                        save=False
-                    )
-                except Exception as e:
-                    print(
-                        "OLD PREVIEW DELETE ERROR:",
-                        repr(e)
-                    )
+                    existing.preview_pdf.delete(save=False)
+                except Exception:
+                    pass
 
-            resume.resume_file = new_file
+            existing.resume_file = new_file
+            existing.original_filename = new_file.name
+            existing.preview_pdf = None
 
-            resume.original_filename = (
-                new_file.name
-            )
+            ResumeService.reset_resume(existing)
 
-            ResumeService.reset_resume(
-                resume
-            )
+            resume = existing
 
-            resume.preview_pdf = None
+            # IMPORTANT:
+            # DRF must serialize the actual Resume model instance
+            # after replacement instead of the validated-data dict.
+            serializer.instance = resume
 
-            resume.save()
-
-        except Resume.DoesNotExist:
-
+        else:
             resume = serializer.save(
                 candidate=candidate,
                 original_filename=new_file.name,
             )
 
-        PreviewService.generate(
-            resume
-        )
+        try:
+            PreviewService.generate(resume)
+        except Exception as e:
+            print("Preview generate error:", repr(e))
 
-        ResumeService.process_resume(
-            resume,
-            candidate
-        )
+        ResumeService.process_resume(resume, candidate)
 
-    def perform_update(self, serializer):
-
-        candidate = self.get_candidate()
-
-        resume = self.get_object()
-
-        if resume.candidate_id != candidate.id:
-
-            raise serializers.ValidationError({
-                "detail":
-                "You cannot modify this resume."
-            })
-
-        new_file = serializer.validated_data.get(
-            "resume_file"
-        )
-
-        if new_file:
-
-            if resume.resume_file:
-
-                try:
-                    resume.resume_file.delete(
-                        save=False
-                    )
-                except Exception as e:
-                    print(
-                        "OLD FILE DELETE ERROR:",
-                        repr(e)
-                    )
-
-            if resume.preview_pdf:
-
-                try:
-                    resume.preview_pdf.delete(
-                        save=False
-                    )
-                except Exception as e:
-                    print(
-                        "OLD PREVIEW DELETE ERROR:",
-                        repr(e)
-                    )
-
-            resume.resume_file = new_file
-
-            resume.original_filename = (
-                new_file.name
-            )
-
-            ResumeService.reset_resume(
-                resume
-            )
-
-            resume.preview_pdf = None
-
-            resume.save()
-
-            PreviewService.generate(
-                resume
-            )
-
-            ResumeService.process_resume(
-                resume,
-                candidate
-            )
-
-        else:
-
-            serializer.save(
-                candidate=candidate
-            )
-
-    @action(
-        detail=True,
-        methods=["get"],
-        url_path="file"
-    )
+    @action(detail=True, methods=["get"], url_path="file")
     def file(self, request, pk=None):
-
         resume = self.get_object()
-
-        return FileService.serve_resume_file(
-            resume
-        )
+        download = request.query_params.get("download", "").lower() in ("true", "1", "yes")
+        return FileService.serve_resume_file(resume, download=download)
 
     def perform_destroy(self, instance):
-
         if instance.resume_file:
-
             try:
-                instance.resume_file.delete(
-                    save=False
-                )
-            except Exception as e:
-                print(
-                    "RESUME FILE DELETE ERROR:",
-                    repr(e)
-                )
-
+                instance.resume_file.delete(save=False)
+            except Exception:
+                pass
         if instance.preview_pdf:
-
             try:
-                instance.preview_pdf.delete(
-                    save=False
-                )
-            except Exception as e:
-                print(
-                    "PREVIEW PDF DELETE ERROR:",
-                    repr(e)
-                )
-
+                instance.preview_pdf.delete(save=False)
+            except Exception:
+                pass
         instance.delete()
 
+class JobPagination(PageNumberPagination):
+    page_size = 6
+    page_size_query_param = None
+    max_page_size = 6
 
-# =====================================
-# AI RECOMMENDATIONS
-# =====================================
 
-class RecommendationView(
-    generics.GenericAPIView
-):
-
-    serializer_class = RecommendationSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-
-        recommendations = (
-            RecommendationService
-            .get_recommendations(
-                request.user
-            )
-        )
-
-        serializer = self.get_serializer(
-            recommendations,
-            many=True
-        )
-
-        return Response(
-            serializer.data
-        )
-
-# =====================================
-# JOBS
-# =====================================
-
-class JobViewSet(viewsets.ReadOnlyModelViewSet):
-
+class JobViewSet(viewsets.ModelViewSet):
     serializer_class = JobSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = JobPagination
 
     def get_queryset(self):
+        queryset = Job.objects.all().order_by("-id")
+        params = self.request.query_params
 
-        # ---------------------------------
-        # SINGLE JOB
-        # ---------------------------------
-        if self.action == "retrieve":
-            return Job.objects.all()
+        # =========================
+        # SEARCH
+        # =========================
+        search = params.get("search")
 
-        # ---------------------------------
-        # JOB RECOMMENDATIONS
-        # ---------------------------------
-        try:
+        if search:
+            search = search.strip()
 
-            jobs = RecommendationService.get_recommended_jobs(
-                self.request.user
-            )
-
-            if isinstance(jobs, list):
-
-                ids = [
-                    job.id
-                    for job in jobs
-                    if getattr(job, "id", None)
-                ]
-
-                if not ids:
-                    return Job.objects.all()
-
-                queryset = Job.objects.filter(
-                    id__in=ids
+            if search:
+                queryset = queryset.filter(
+                    Q(title__icontains=search)
+                    | Q(company__icontains=search)
+                    | Q(location__icontains=search)
+                    | Q(required_skills__icontains=search)
+                    | Q(preferred_skills__icontains=search)
+                    | Q(description__icontains=search)
                 )
 
-                # Preserve recommendation order
-                jobs_by_id = {
-                    job.id: job
-                    for job in queryset
-                }
+        # =========================
+        # SKILLS
+        # =========================
+        skills = params.get("skills")
 
-                ordered_jobs = [
-                    jobs_by_id[job_id]
-                    for job_id in ids
-                    if job_id in jobs_by_id
-                ]
+        if skills:
+            skill_list = [
+                skill.strip()
+                for skill in skills.split(",")
+                if skill.strip()
+            ]
 
-                return ordered_jobs
+            for skill in skill_list:
+                queryset = queryset.filter(
+                    Q(required_skills__icontains=skill)
+                    | Q(preferred_skills__icontains=skill)
+                )
 
-            return jobs
+        # =========================
+        # LOCATION
+        # =========================
+        location = params.get("location")
 
-        except Exception as e:
-
-            print(
-                "RECOMMENDATION ERROR:",
-                repr(e)
+        if location:
+            queryset = queryset.filter(
+                location__icontains=location.strip()
             )
 
-            return Job.objects.all()
+        # =========================
+        # WORK MODE
+        # =========================
+        work_mode = params.get("work_mode")
 
-    
+        if work_mode and work_mode.lower() != "all":
+            queryset = queryset.filter(
+                work_mode__iexact=work_mode.strip()
+            )
+
+        # =========================
+        # EXPERIENCE
+        # =========================
+        experience = params.get("experience")
+
+        if experience and experience.lower() != "all":
+
+            experience = experience.lower().strip()
+
+            if experience == "entry":
+                queryset = queryset.filter(
+                    Q(experience__icontains="0")
+                    | Q(experience__icontains="1")
+                    | Q(experience__icontains="entry")
+                    | Q(experience__icontains="fresher")
+                )
+
+            elif experience == "mid":
+                queryset = queryset.filter(
+                    Q(experience__icontains="2")
+                    | Q(experience__icontains="3")
+                    | Q(experience__icontains="4")
+                    | Q(experience__icontains="5")
+                    | Q(experience__icontains="mid")
+                )
+
+            elif experience == "senior":
+                queryset = queryset.filter(
+                    Q(experience__icontains="senior")
+                    | Q(experience__icontains="5+")
+                    | Q(experience__icontains="6")
+                    | Q(experience__icontains="7")
+                    | Q(experience__icontains="8")
+                    | Q(experience__icontains="9")
+                    | Q(experience__icontains="10")
+                )
+
+        return queryset
+
+# =====================================
+# JOB SWIPES VIEWSET (SWIPE ACTIONS & HISTORY)
+# =====================================
+
 class JobSwipeViewSet(viewsets.ModelViewSet):
     serializer_class = JobSwipeSerializer
     permission_classes = [IsAuthenticated]
@@ -425,37 +339,37 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
         if not candidate:
             return JobSwipe.objects.none()
 
-        return JobSwipe.objects.filter(
-            candidate=candidate
-        ).select_related("job")
+        qs = JobSwipe.objects.filter(candidate=candidate).select_related("job").order_by("-created_at")
+
+        decision = self.request.query_params.get("decision")
+        if decision:
+            decision = decision.strip().lower()
+            if decision == "interested":
+                qs = qs.filter(decision__in=["interested", "right"])
+            elif decision == "skipped":
+                qs = qs.filter(decision__in=["skipped", "left"])
+            elif decision == "saved":
+                qs = qs.filter(decision="saved")
+
+        return qs
 
     def perform_create(self, serializer):
-
-        try:
-
-            candidate = Candidate.objects.get(
-                email__iexact=self.request.user.email
-            )
-
-        except Candidate.DoesNotExist:
-
-            raise serializers.ValidationError({
-                "detail":
-                "Candidate profile not found."
-            })
+        candidate, _ = Candidate.objects.get_or_create(
+            email__iexact=self.request.user.email,
+            defaults={
+                "full_name": self.request.user.get_full_name() or self.request.user.username,
+                "email": self.request.user.email,
+            }
+        )
 
         job = serializer.validated_data.get("job")
+        decision = serializer.validated_data.get("decision", "interested").lower()
 
-        if not job:
-
-            raise serializers.ValidationError({
-                "job_id":
-                "Job is required."
-            })
-
-        # =====================================
-        # UPDATE EXISTING SWIPE
-        # =====================================
+        # Map legacy swipes to standard
+        if decision == "right":
+            decision = "interested"
+        elif decision == "left":
+            decision = "skipped"
 
         existing_swipe = JobSwipe.objects.filter(
             candidate=candidate,
@@ -463,46 +377,29 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
         ).first()
 
         if existing_swipe:
-
-            existing_swipe.decision = (
-                serializer.validated_data.get(
-                    "decision"
-                )
-            )
-
-            existing_swipe.save(
-                update_fields=[
-                    "decision"
-                ]
-            )
-
+            existing_swipe.decision = decision
+            existing_swipe.save(update_fields=["decision"])
             serializer.instance = existing_swipe
+        else:
+            serializer.save(
+                candidate=candidate,
+                decision=decision
+            )
 
-            return
-
-        # =====================================
-        # CREATE NEW SWIPE
-        # =====================================
-
-        serializer.save(
-            candidate=candidate
-        )
-
-    def perform_update(self, serializer):
-
-        swipe = self.get_object()
-
-        serializer.save(
-            candidate=swipe.candidate
-        )
+        # Invalidate served jobs cache so the next recommendation reflects newest swipe behavior
+        try:
+            from django.core.cache import cache
+            from .services.recommendation_service import SERVED_JOBS_CACHE_PREFIX
+            cache.delete(f"{SERVED_JOBS_CACHE_PREFIX}{candidate.id}")
+        except Exception:
+            pass
 
 
 # =====================================
-# APPLICATION
+# APPLICATIONS VIEWSET
 # =====================================
 
 class ApplicationViewSet(viewsets.ModelViewSet):
-
     serializer_class = ApplicationSerializer
     permission_classes = [IsAuthenticated]
 
@@ -514,22 +411,57 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         if not candidate:
             return Application.objects.none()
 
-        return (
-            Application.objects.filter(candidate=candidate)
-            .select_related("job")
+        return Application.objects.filter(
+            candidate=candidate
+        ).select_related("job", "applied_resume").order_by("-applied_at")
+
+    def create(self, request, *args, **kwargs):
+        candidate, _ = Candidate.objects.get_or_create(
+            email__iexact=request.user.email,
+            defaults={
+                "full_name": request.user.get_full_name() or request.user.username,
+                "email": request.user.email,
+            }
         )
 
-    def perform_create(self, serializer):
+        job_id = request.data.get("job_id")
+        if not job_id:
+            return Response({"job_id": "This field is required."}, status=status.HTTP_400_BAD_REQUEST)
 
-        ApplicationService.create_application(
-            self.request.user,
-            serializer
+        try:
+            job = Job.objects.get(id=job_id)
+        except Job.DoesNotExist:
+            return Response({"detail": "Job not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        # Idempotent: If application already exists, return it with 200 OK
+        existing = Application.objects.filter(candidate=candidate, job=job).first()
+        if existing:
+            serializer = self.get_serializer(existing)
+            return Response(serializer.data, status=status.HTTP_200_OK)
+
+        resume = Resume.objects.filter(candidate=candidate).first()
+        application = Application.objects.create(
+            candidate=candidate,
+            job=job,
+            applied_resume=resume,
+            cover_letter=request.data.get("cover_letter", ""),
+            portfolio_url=request.data.get("portfolio_url", ""),
+            linkedin_url=request.data.get("linkedin_url", ""),
+            github_url=request.data.get("github_url", ""),
         )
 
-    def perform_update(self, serializer):
+        serializer = self.get_serializer(application)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
-        application = self.get_object()
 
-        serializer.save(
-            candidate=application.candidate
-        )
+# =====================================
+# AI RECOMMENDATIONS VIEW
+# =====================================
+
+class RecommendationView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        refresh = request.query_params.get("refresh", "").lower() in ("true", "1", "yes")
+        recommendations = RecommendationService.get_recommendations(request.user, force_refresh=refresh)
+        return Response(recommendations)

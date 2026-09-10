@@ -22,16 +22,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
+load_dotenv()
+
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-es3*g98j(aapmzg(lrkz-#0an7#cj$io9z*hf8c3x*%_6p%xo&'
+SECRET_KEY = os.getenv(
+    'SECRET_KEY',
+    'django-insecure-es3*g98j(aapmzg(lrkz-#0an7#cj$io9z*hf8c3x*%_6p%xo&'
+)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
 
-ALLOWED_HOSTS = []
-
-
-load_dotenv()
+ALLOWED_HOSTS = [
+    host.strip()
+    for host in os.getenv("ALLOWED_HOSTS", "*,localhost,127.0.0.1,0.0.0.0").split(",")
+    if host.strip()
+]
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 # Application definition
@@ -86,11 +92,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'SwipeX_db',
-        'USER': 'postgres',
-        'PASSWORD': 'Praveena$3',
-        'HOST': 'db',
-        'PORT': '5432',
+        'NAME': os.getenv('DB_NAME', 'SwipeX_db'),
+        'USER': os.getenv('DB_USER', 'postgres'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'Praveena$3'),
+        'HOST': os.getenv('DB_HOST', 'db'),
+        'PORT': os.getenv('DB_PORT', '5432'),
     }
 }
 
@@ -145,6 +151,10 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    "DEFAULT_PAGINATION_CLASS":
+        "rest_framework.pagination.LimitOffsetPagination",
+
+    "PAGE_SIZE": 50,
 }
 
 from datetime import timedelta
@@ -154,3 +164,5 @@ SIMPLE_JWT = {
 }
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
+
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")

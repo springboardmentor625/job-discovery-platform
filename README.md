@@ -1,349 +1,230 @@
-# SwipeX – Swipe-Based Intelligent Job Discovery and Career Assistance Platform
+# SwipeX – AI-Powered Swipe-Based Intelligent Job Discovery Platform
 
-> An AI-powered job discovery platform that enables candidates to discover, analyze, and apply for jobs through intelligent resume analysis, ATS scoring, and personalized recommendations.
+> **Infosys Springboard Virtual Internship 7.0 – Final Individual Project**  
+> An intelligent, candidate-centric job discovery platform combining automated resume parsing, multi-dimensional ATS scoring, machine learning-driven recommendations, and an intuitive swipe-based discovery interface.
 
 ---
 
 ## 📖 Project Overview
 
-SwipeX is a full-stack web application designed to modernize the job search experience by combining Artificial Intelligence, Machine Learning, and an intuitive job discovery platform.
+**SwipeX** modernizes the traditional job search process by transforming static job boards into an engaging, intelligent experience. Rather than sifting through hundreds of irrelevant postings, candidates receive personalized job cards evaluated against their extracted resume profile, ATS readiness index, and career interests.
 
-The application helps candidates discover relevant jobs through AI-powered resume analysis, ATS compatibility scoring, personalized job recommendations, and application tracking. Recruiters can efficiently post jobs, manage applicants, and streamline hiring workflows.
-
-SwipeX demonstrates the integration of modern web technologies, REST APIs, PostgreSQL, and Machine Learning to build an intelligent career assistance platform.
+By incorporating an active learning feedback loop, the platform records candidate swipe interactions (Left = Skip, Right = Save/Interested) to calibrate a Machine Learning recommendation model that progressively tailors opportunities to user preferences.
 
 ---
 
-# 🎯 Project Objective
+## 🎯 Key Objectives
 
-The objective of SwipeX is to build an intelligent job discovery platform that:
-
-- Simplifies job discovery through an intuitive interface.
-- Provides AI-powered resume analysis.
-- Calculates ATS compatibility scores.
-- Recommends personalized job opportunities.
-- Tracks applications efficiently.
-- Helps candidates improve resumes using AI-generated suggestions.
-- Assists recruiters in managing recruitment workflows.
+- **Frictionless Candidate Experience:** Fast registration, JWT authentication, and automated profile building.
+- **Deep Resume Analysis:** Automated extraction of skills, experience, education, projects, and certifications from PDF/DOCX resumes.
+- **Multi-Dimensional ATS Evaluation:** Objective 0–100 scoring based on section completeness, skill breadth, and action-verb keyword density.
+- **GenAI Career Suggestions:** Contextual resume enhancement feedback powered by Groq LLaMA 3.3 with offline fallback.
+- **Hybrid Recommendation Engine:** Multi-factor scoring incorporating resume skills, location preferences, role alignment, ATS index, and trained ML swipe behavior.
+- **Interactive Swipe Navigation:** Framer Motion drag-and-swipe cards with progress milestones and saved job tracking.
+- **End-to-End Application Tracking:** Comprehensive dashboard displaying applied jobs, real-time match scores, matched skills, and identified skill gaps.
 
 ---
 
-# ✨ Features
+## 🛠 Technology Stack
 
-## 🔐 Authentication
+### Frontend
+- **Framework:** React 18 + Vite
+- **Routing:** React Router v7
+- **Styling:** Tailwind CSS
+- **Animations:** Framer Motion (gesture drag & swipe physics)
+- **Icons & Notifications:** React Icons, React Hot Toast, SweetAlert2
+- **HTTP Client:** Axios (configured with JWT interceptors)
 
-- Secure User Registration
-- User Login & Logout
-- JWT Authentication
-- Protected Routes
-- Role-Based Access Control
+### Backend
+- **Framework:** Python 3.12+ / Django 6.1
+- **API Framework:** Django REST Framework (DRF) 3.18
+- **Authentication:** JSON Web Tokens (djangorestframework-simplejwt)
+- **Cross-Origin Handling:** django-cors-headers
 
----
+### Machine Learning & Data Processing
+- **Libraries:** Scikit-learn, Pandas, NumPy, Joblib
+- **Feature Extraction:** CountVectorizer (lowercase, n-gram tokenization)
+- **Algorithms:** Logistic Regression (swipe preference classifier), Multinomial Naive Bayes
+- **Dataset:** Curated LinkedIn job postings dataset with mapped skill taxonomies
 
-## 👤 Candidate Module
+### Resume Processing & Generative AI
+- **Document Parsing:** PyMuPDF (`fitz`), `python-docx`, `pypdf`
+- **Generative AI:** Groq SDK (`llama-3.3-70b-versatile`) with structured JSON schema outputs
 
-- Candidate Profile Creation
-- Edit Candidate Profile
-- Resume Upload
-- Resume Preview
-- Resume Version Management
-- Skill & Experience Management
-- ATS Resume Analysis
-- Resume Improvement Suggestions
-- Personalized Job Recommendations
-- Browse Jobs
-- Apply for Jobs
-- Saved Jobs
-- Application Tracking Dashboard
-
----
-
-## 🏢 Recruiter Module
-
-- Recruiter Dashboard
-- Create Job Posts
-- Manage Job Listings
-- View Applicants
-- Candidate Recommendation
+### Database & DevOps
+- **Database:** PostgreSQL 16
+- **Containerization:** Docker & Docker Compose
+- **Version Control:** Git & GitHub
 
 ---
 
-## 🤖 Artificial Intelligence Features
-
-- Resume Parsing
-- ATS Resume Scoring
-- Resume-Job Compatibility Analysis
-- Skill Extraction
-- Missing Skill Detection
-- AI-Based Job Recommendation Engine
-- TF-IDF Feature Extraction
-- Naive Bayes Machine Learning Model
-
----
-
-# 🛠 Technology Stack
-
-## Frontend
-
-- React.js
-- React Router
-- Axios
-- CSS
-
-## Backend
-
-- Python
-- Django
-- Django REST Framework
-
-## Database
-
-- PostgreSQL
-
-## Authentication
-
-- JWT Authentication
-
-## Machine Learning
-
-- Scikit-learn
-- Pandas
-- NumPy
-- TF-IDF Vectorizer
-- Naive Bayes Classifier
-
-## Resume Processing
-
-- PyMuPDF
-
-## DevOps
-
-- Docker
-- Docker Compose
-- Git
-- GitHub
-
----
-
-# 📂 Project Structure
+## 🔄 Candidate Workflow
 
 ```text
-SwipeX
-│
-├── backend
-│   ├── candidates
-│   ├── recommendation
-│   ├── services
-│   ├── config
-│   └── manage.py
-│
-├── frontend
-│   ├── src
-│   │   ├── components
-│   │   ├── pages
-│   │   ├── services
-│   │   └── assets
-│   └── public
-│
-├── docs
-│
-├── docker-compose.yml
-│
-├── requirements.txt
-│
-└── README.md
+Register (Email & Password)
+    ↓
+Login (JWT Access & Refresh Tokens)
+    ↓
+Candidate Profile Creation
+    ↓
+Resume Upload (PDF / DOCX)
+    ↓
+Automated Resume Parsing (Skills, Experience, Education)
+    ↓
+Multi-Dimensional ATS & Keyword Analysis
+    ↓
+AI Resume Suggestions (Groq LLaMA 3.3)
+    ↓
+Hybrid AI Job Recommendations
+    ↓
+Swipe Discovery (Left = Skip, Right = Save, Apply)
+    ↓
+Swipe History Learning Loop (50 Swipes Milestone)
+    ↓
+Application Tracking Dashboard (Status & Skill Breakdown)
 ```
 
 ---
 
-# ⚙️ Installation
+## 📂 Project Structure
 
-## Clone the Repository
-
-```bash
-git clone https://github.com/<your-github-username>/job-discovery-platform.git
-
-cd job-discovery-platform
+```text
+SwipeX final/
+├── backend/
+│   ├── candidates/                 # Core DRF Application
+│   │   ├── management/commands/    # CLI tools: import_jobs, train_recommendation_model
+│   │   ├── migrations/             # Database migrations
+│   │   ├── services/               # Service layer: resume, recommendation, application, file
+│   │   ├── utils/                  # Core engines: ats.py, matcher.py, groq_service.py
+│   │   ├── models.py               # Candidate, Resume, Job, JobSwipe, Application
+│   │   ├── serializers.py          # DRF Serializers with field validations
+│   │   ├── urls.py                 # Application API endpoints
+│   │   └── views.py                # ViewSets and APIViews
+│   ├── config/                     # Django Project Settings & Routing
+│   ├── dataset/                    # Preloaded job dataset (postings.csv)
+│   ├── ml/                         # Naive Bayes model and artifacts
+│   ├── recommendation/             # Trained ML models (recommendation_model.pkl)
+│   ├── Dockerfile                  # Backend container specification
+│   ├── requirements.txt            # Python dependencies
+│   └── manage.py                   # Django management entrypoint
+│
+├── frontend/
+│   ├── src/
+│   │   ├── components/             # Reusable UI: Sidebar, Layout
+│   │   ├── pages/                  # Views: Jobs, Applications, Recommendations, MyResume, Dashboard
+│   │   ├── services/               # Axios API client & token handling (api.js)
+│   │   ├── App.jsx                 # Route definitions & guards
+│   │   └── main.jsx                # React root entrypoint
+│   ├── Dockerfile                  # Frontend container specification
+│   └── package.json                # Node.js dependencies
+│
+├── docs/                           # Architecture, schema diagrams, and documentation
+├── docker-compose.yml              # Multi-container orchestration (db, backend, frontend)
+├── .env.example                    # Environment variable template
+└── README.md                       # Main project documentation
 ```
 
 ---
 
-## Backend Setup
+## 📡 API Endpoints Reference
 
+All endpoints are mounted under `/api/` and require JWT `Bearer <token>` authentication (except public auth routes):
+
+| Method | Endpoint | Description |
+| :--- | :--- | :--- |
+| `POST` | `/api/register/` | Register candidate account |
+| `POST` | `/api/login/` | Authenticate with email/password; returns JWT tokens |
+| `POST` | `/api/token/refresh/` | Refresh expired access token |
+| `GET/POST` | `/api/candidates/` | Retrieve or create candidate profile |
+| `GET/POST` | `/api/resumes/` | Upload, parse, and analyze candidate resume |
+| `GET` | `/api/resumes/{id}/file/` | Serve parsed resume or preview PDF |
+| `GET` | `/api/jobs/` | Paginated list of unswiped job postings |
+| `POST` | `/api/swipes/` | Record swipe action (`left` = skip, `right` = save) |
+| `GET/POST` | `/api/applications/` | List submitted applications with match analysis or apply |
+| `GET` | `/api/recommendations/` | AI hybrid recommended jobs with explainability reasons |
+
+---
+
+## ⚙️ Installation & Setup
+
+### Prerequisites
+- Python 3.12+
+- Node.js 18+ and npm
+- PostgreSQL 16 (or Docker Desktop)
+
+### Option 1: Running with Docker (Recommended)
+
+1. Clone repository:
+   ```bash
+   git clone https://github.com/springboardmentor625/job-discovery-platform.git
+   cd job-discovery-platform
+   ```
+2. Launch containers:
+   ```bash
+   docker-compose up --build
+   ```
+3. Access services:
+   - Frontend: `http://localhost:5173`
+   - Backend API: `http://localhost:8000/api/`
+   - Admin: `http://localhost:8000/admin/`
+
+---
+
+### Option 2: Local Development Setup
+
+#### 1. Backend Setup
 ```bash
 cd backend
-
 python -m venv venv
 
 # Windows
 venv\Scripts\activate
-
 # Linux/macOS
 source venv/bin/activate
 
 pip install -r requirements.txt
 
+# Configure environment
+cp .env.example .env
+
+# Run database migrations
 python manage.py migrate
 
+# (Optional) Preload curated LinkedIn jobs
+python manage.py import_jobs
+
+# Start Django development server
 python manage.py runserver
 ```
 
-Backend URL:
-
-```
-http://127.0.0.1:8000
-```
-
----
-
-## Frontend Setup
-
+#### 2. Frontend Setup
 ```bash
 cd frontend
-
 npm install
-
 npm run dev
 ```
 
-Frontend URL:
-
-```
-http://localhost:5173
-```
+Visit `http://localhost:5173` in your browser.
 
 ---
 
-# 🤖 Machine Learning Workflow
+## 🧠 Machine Learning & Recommendation Logic
 
-```text
-Resume Upload
-      ↓
-Resume Parsing
-      ↓
-Skill Extraction
-      ↓
-ATS Analysis
-      ↓
-Resume-Job Matching
-      ↓
-Recommendation Engine
-      ↓
-Personalized Job Recommendations
-```
+SwipeX combines supervised Machine Learning with heuristic domain modeling:
+
+$$\text{Final Recommendation Score} = 0.35 \times \text{Skill Match} + 0.25 \times \text{ATS Score} + 0.20 \times \text{Swipe ML Factor} + 0.10 \times \text{Location} + 0.10 \times \text{Role Alignment}$$
+
+1. **Skill Match (35%):** Dynamic intersection of candidate skills (extracted + profile) against job requirements.
+2. **Resume ATS Readiness (25%):** Section completeness, technical depth, and action-verb keyword density.
+3. **Swipe History & ML Factor (20%):** Trained `LogisticRegression` probability score calibrated from candidate's right and left swipes.
+4. **Location Preference (10%):** Proximity alignment with previous right-swipe locations and remote flexibility.
+5. **Role Alignment (10%):** Semantic matching with job titles previously liked by the candidate.
 
 ---
 
-# 🗄 Database
+## 👩‍💻 Author & Project Context
 
-The system consists of the following entities:
+- **Developer:** Praveena Durga
+- **Project:** Infosys Springboard Virtual Internship 7.0
+- **Domain:** Artificial Intelligence & Full-Stack Web Development
 
-- User
-- Candidate
-- Recruiter
-- Resume
-- Job
-- Application
-- Skills
-- Recommendations
-
----
-
-# 📊 Application Workflow
-
-```text
-User Registration
-        ↓
-Login
-        ↓
-Create Profile
-        ↓
-Upload Resume
-        ↓
-Resume Analysis
-        ↓
-ATS Score
-        ↓
-AI Job Recommendation
-        ↓
-Browse Jobs
-        ↓
-Apply for Jobs
-        ↓
-Track Applications
-```
-
----
-
-# 🚀 Future Enhancements
-
-- Swipe Gesture-Based Job Navigation
-- OAuth2 Authentication
-- Email Notifications
-- Interview Scheduling
-- Company Dashboard
-- AI Career Coach
-- Resume Builder
-- Salary Prediction
-- Skill Gap Analysis
-- GitHub Actions CI/CD
-- AWS / Azure Deployment
-- Mobile Application
-
----
-
-# 📚 Learning Outcomes
-
-This project demonstrates knowledge of:
-
-- Full Stack Web Development
-- React.js
-- Django REST Framework
-- PostgreSQL
-- JWT Authentication
-- REST API Development
-- Machine Learning
-- Resume Parsing
-- ATS Optimization
-- Recommendation Systems
-- Docker
-
----
-
-# 👩‍💻 Developer
-
-**Praveena Durga**
-
-**Role:** Full Stack Developer
-
-### Responsibilities
-
-- Designed and developed the complete frontend using React.js.
-- Developed REST APIs using Django REST Framework.
-- Designed the PostgreSQL database schema.
-- Implemented JWT authentication and authorization.
-- Built resume upload, parsing, and ATS scoring modules.
-- Developed AI-powered job recommendation features.
-- Integrated candidate profile and application management.
-- Containerized the application using Docker.
-
----
-
-# 📄 License
-
-This project was developed by **Praveena Durga** for academic learning and portfolio purposes.
-
----
-
-# 🙏 Acknowledgements
-
-- Django
-- Django REST Framework
-- React.js
-- PostgreSQL
-- Scikit-learn
-- PyMuPDF
-- Pandas
-- NumPy
-- Docker
-- GitHub

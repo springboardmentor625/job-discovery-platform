@@ -1,16 +1,14 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { FaEye, FaEyeSlash, FaUser, FaEnvelope, FaPhone, FaLock } from "react-icons/fa";
+import { useNavigate, Link } from "react-router-dom";
+import { FaEye, FaEyeSlash, FaEnvelope, FaLock } from "react-icons/fa";
 import { toast } from "react-hot-toast";
 import api from "../services/api";
 
-function Register() {
+function Login() {
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
-    full_name: "",
     email: "",
-    phone: "",
     password: "",
   });
 
@@ -18,57 +16,53 @@ function Register() {
   const [loading, setLoading] = useState(false);
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (loading) return;
 
-    const { full_name, email, phone, password } = formData;
+    const email = formData.email.trim().toLowerCase();
+    const password = formData.password;
 
-    if (!full_name.trim()) {
-      toast.error("Please enter your full name.");
-      return;
-    }
-
-    if (!email.trim()) {
-      toast.error("Please enter a valid email address.");
-      return;
-    }
-
-    if (password.length < 6) {
-      toast.error("Password must be at least 6 characters long.");
+    if (!email || !password) {
+      toast.error("Please enter your email and password.");
       return;
     }
 
     setLoading(true);
 
     try {
-      await api.post("register/", {
-        full_name: full_name.trim(),
-        email: email.trim().toLowerCase(),
-        phone: phone.trim(),
-        password: password,
+      const response = await api.post("login/", {
+        email,
+        password,
       });
 
-      toast.success("Account created successfully! Please sign in.");
-      navigate("/");
-    } catch (error) {
-      const data = error.response?.data;
-      if (typeof data === "string") {
-        toast.error(data);
-      } else if (data && typeof data === "object") {
-        const firstErrorKey = Object.keys(data)[0];
-        const val = data[firstErrorKey];
-        const msg = Array.isArray(val) ? val[0] : String(val);
-        toast.error(`${firstErrorKey}: ${msg}`);
-      } else {
-        toast.error("Registration failed. Please check your details.");
+      const { access, refresh } = response.data;
+
+      if (!access || !refresh) {
+        toast.error("Authentication failed. Please try again.");
+        return;
       }
+
+      localStorage.setItem("access", access);
+      localStorage.setItem("refresh", refresh);
+
+      toast.success("Welcome back to SwipeX!");
+      navigate("/recommendations");
+    } catch (error) {
+      const backendError =
+        error.response?.data?.non_field_errors?.[0] ||
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        "Invalid email or password.";
+
+      toast.error(backendError);
     } finally {
       setLoading(false);
     }
@@ -83,38 +77,19 @@ function Register() {
             S
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">
-            Create your account
+            Sign in to Swipe<span className="text-indigo-600">X</span>
           </h1>
           <p className="text-xs text-slate-500">
-            Join SwipeX to discover jobs with instant ATS matching
+            Intelligent job discovery & ATS matchmaking platform
           </p>
         </div>
 
-        {/* REGISTRATION FORM */}
+        {/* LOGIN FORM */}
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* FULL NAME */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Full Name <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <FaUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-              <input
-                type="text"
-                name="full_name"
-                value={formData.full_name}
-                onChange={handleChange}
-                required
-                placeholder="Alex Morgan"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 text-sm"
-              />
-            </div>
-          </div>
-
           {/* EMAIL */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Email Address <span className="text-red-500">*</span>
+              Email Address
             </label>
             <div className="relative">
               <FaEnvelope className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
@@ -125,25 +100,7 @@ function Register() {
                 onChange={handleChange}
                 required
                 autoComplete="email"
-                placeholder="alex@example.com"
-                className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 text-sm"
-              />
-            </div>
-          </div>
-
-          {/* PHONE */}
-          <div>
-            <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Phone Number
-            </label>
-            <div className="relative">
-              <FaPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
-              <input
-                type="text"
-                name="phone"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="+1 (555) 019-2834"
+                placeholder="you@example.com"
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 text-sm"
               />
             </div>
@@ -152,7 +109,7 @@ function Register() {
           {/* PASSWORD */}
           <div>
             <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-              Password <span className="text-red-500">*</span>
+              Password
             </label>
             <div className="relative">
               <FaLock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 text-sm" />
@@ -162,8 +119,8 @@ function Register() {
                 value={formData.password}
                 onChange={handleChange}
                 required
-                minLength={6}
-                placeholder="At least 6 characters"
+                autoComplete="current-password"
+                placeholder="••••••••"
                 className="w-full pl-10 pr-11 py-3 rounded-xl border border-slate-200 focus:outline-hidden focus:border-indigo-600 focus:ring-1 focus:ring-indigo-600 text-sm"
               />
               <button
@@ -182,19 +139,19 @@ function Register() {
             disabled={loading}
             className="w-full py-3.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-sm shadow-md transition disabled:opacity-50 mt-2"
           >
-            {loading ? "Creating Account..." : "Create Account"}
+            {loading ? "Signing in..." : "Sign In"}
           </button>
         </form>
 
-        {/* LOGIN FOOTER */}
+        {/* REGISTER FOOTER */}
         <div className="text-center pt-2 border-t border-slate-100">
           <p className="text-xs text-slate-500">
-            Already have an account?{" "}
+            Don't have an account?{" "}
             <Link
-              to="/"
+              to="/register"
               className="font-bold text-indigo-600 hover:text-indigo-800 transition"
             >
-              Sign in
+              Create an account
             </Link>
           </p>
         </div>
@@ -203,4 +160,4 @@ function Register() {
   );
 }
 
-export default Register;
+export default Login;

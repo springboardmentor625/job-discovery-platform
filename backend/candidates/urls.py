@@ -5,6 +5,7 @@ from rest_framework_simplejwt.views import TokenRefreshView
 from .views import (
     RegisterView,
     CandidateViewSet,
+    CandidateMeView,
     ResumeViewSet,
     JobViewSet,
     JobSwipeViewSet,
@@ -69,13 +70,20 @@ urlpatterns = [
     ),
 
     path(
+        "candidates/me/",
+        CandidateMeView.as_view(),
+        name="candidate-me"
+    ),
+
+    path(
         "",
         include(router.urls)
     ),
+
     path(
-    "recommendations/",
-    RecommendationView.as_view(),
-    name="recommendations"
-),
+        "recommendations/",
+        RecommendationView.as_view(),
+        name="recommendations"
+    ),
 
 ]

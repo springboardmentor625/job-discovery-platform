@@ -344,15 +344,19 @@ def normalize_text(text):
     """
     Normalize resume text for better matching.
     """
-
     if not text:
         return ""
 
+    # Replace unicode spaces and special dashes
     text = text.replace("\xa0", " ")
-
-    # Normalize common separators
+    text = text.replace("\u200b", "")
     text = text.replace("–", "-")
     text = text.replace("—", "-")
+    text = text.replace("•", " ")
+    text = text.replace("·", " ")
+
+    # Strip surrogate or unencodable symbols safely
+    text = text.encode("utf-8", "ignore").decode("utf-8")
 
     # Normalize multiple spaces
     text = re.sub(r"[ \t]+", " ", text)
@@ -365,38 +369,21 @@ def normalize_text(text):
 # =========================================================
 
 def extract_text(file_path):
-
     extension = file_path.split(".")[-1].lower()
 
     # -----------------------------------------------------
     # PDF
     # -----------------------------------------------------
-
     if extension == "pdf":
-
         text_parts = []
-
         try:
-
             with pdfplumber.open(file_path) as pdf:
-
                 for page in pdf.pages:
-
                     page_text = page.extract_text()
-
                     if page_text:
-
-                        text_parts.append(
-                            page_text
-                        )
-
+                        text_parts.append(page_text)
         except Exception as e:
-
-            print(
-                "PDF EXTRACTION ERROR:",
-                e
-            )
-
+            print("PDF EXTRACTION ERROR:", repr(e))
             return ""
 
         return "\n".join(text_parts)
@@ -404,46 +391,40 @@ def extract_text(file_path):
     # -----------------------------------------------------
     # DOCX
     # -----------------------------------------------------
-
     elif extension == "docx":
-
         try:
-
             doc = Document(file_path)
-
             paragraphs = []
+
+            # Extract from headers (often holds candidate name and contact info)
+            for section in doc.sections:
+                if section.header:
+                    for hp in section.header.paragraphs:
+                        htext = hp.text.strip()
+                        if htext and htext not in paragraphs:
+                            paragraphs.append(htext)
 
             # Normal paragraphs
             for paragraph in doc.paragraphs:
-
                 text = paragraph.text.strip()
-
                 if text:
-
                     paragraphs.append(text)
 
             # Tables
             for table in doc.tables:
-
                 for row in table.rows:
-
+                    row_cells = []
                     for cell in row.cells:
-
-                        text = cell.text.strip()
-
-                        if text:
-
-                            paragraphs.append(text)
+                        ctext = cell.text.strip()
+                        if ctext and ctext not in row_cells:
+                            row_cells.append(ctext)
+                    if row_cells:
+                        paragraphs.append(" | ".join(row_cells))
 
             return "\n".join(paragraphs)
 
         except Exception as e:
-
-            print(
-                "DOCX EXTRACTION ERROR:",
-                e
-            )
-
+            print("DOCX EXTRACTION ERROR:", repr(e))
             return ""
 
     return ""

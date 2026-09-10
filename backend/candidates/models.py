@@ -9,7 +9,7 @@ import os
 class Candidate(models.Model):
 
     full_name = models.CharField(
-        max_length=100
+        max_length=150
     )
 
     email = models.EmailField(
@@ -17,7 +17,9 @@ class Candidate(models.Model):
     )
 
     phone = models.CharField(
-        max_length=15
+        max_length=30,
+        blank=True,
+        default=""
     )
 
     profile_picture = models.ImageField(
@@ -26,14 +28,49 @@ class Candidate(models.Model):
         null=True
     )
 
+    current_location = models.CharField(
+        max_length=150,
+        blank=True,
+        default=""
+    )
+
+    education = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    experience = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    preferred_job_roles = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    preferred_locations = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    preferred_work_mode = models.CharField(
+        max_length=50,
+        blank=True,
+        default="Any"
+    )
+
+    career_interests = models.TextField(
+        blank=True,
+        default=""
+    )
+
     skills = models.TextField(
         blank=True,
         default=""
     )
 
-    experience = models.TextField()
-
-    education = models.TextField(
+    bio = models.TextField(
         blank=True,
         default=""
     )
@@ -53,7 +90,7 @@ class Candidate(models.Model):
     )
 
     def __str__(self):
-        return self.full_name
+        return f"{self.full_name} ({self.email})"
 
 
 # =====================================
@@ -61,12 +98,8 @@ class Candidate(models.Model):
 # =====================================
 
 def resume_upload_path(instance, filename):
-    """
-    Store the resume using its original filename.
-    The original filename is also preserved in original_filename.
-    """
-
     return f"resumes/{filename}"
+
 
 class Resume(models.Model):
     candidate = models.OneToOneField(
@@ -77,7 +110,6 @@ class Resume(models.Model):
 
     resume_file = models.FileField(upload_to=resume_upload_path)
 
-    # PDF generated from DOCX (used for viewing)
     preview_pdf = models.FileField(
         upload_to="resume_previews/",
         blank=True,
@@ -90,18 +122,10 @@ class Resume(models.Model):
         default=""
     )
 
-    # =====================================
-    # PARSED RESUME INFORMATION
-    # =====================================
-
     extracted_text = models.TextField(blank=True, default="")
     extracted_skills = models.TextField(blank=True, default="")
     extracted_experience = models.TextField(blank=True, default="")
     extracted_education = models.TextField(blank=True, default="")
-
-    # =====================================
-    # ATS RESULT
-    # =====================================
 
     ats_score = models.IntegerField(default=0)
     probability_score = models.DecimalField(
@@ -115,7 +139,9 @@ class Resume(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.candidate.full_name} - {self.resume_file.name}"
+        return f"{self.candidate.full_name} - {self.original_filename or self.resume_file.name}"
+
+
 # =====================================
 # JOB
 # =====================================
@@ -123,27 +149,68 @@ class Resume(models.Model):
 class Job(models.Model):
 
     title = models.CharField(
-        max_length=100
+        max_length=255
     )
 
     company = models.CharField(
-        max_length=100
+        max_length=255
     )
 
     location = models.CharField(
-        max_length=100
+        max_length=255
     )
+
+    work_mode = models.CharField(
+        max_length=50,
+        blank=True,
+        default="On-site"
+    )
+
+    salary = models.CharField(
+        max_length=100,
+        blank=True,
+        default="Competitive"
+    )
+
+    experience = models.CharField(
+        max_length=100,
+        blank=True,
+        default="Entry to Mid Level"
+    )
+
     description = models.TextField(
-        blank=True,default=""
+        blank=True,
+        default=""
     )
-    required_skills = models.TextField()
+
+    required_skills = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    preferred_skills = models.TextField(
+        blank=True,
+        default=""
+    )
+
+    application_url = models.URLField(
+        max_length=1000,
+        blank=True,
+        default=""
+    )
 
     min_ats = models.IntegerField(
         default=50
     )
 
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        null=True,
+        blank=True
+    )
+
     def __str__(self):
-        return self.title
+        return f"{self.title} at {self.company}"
 
 
 # =====================================
@@ -153,8 +220,11 @@ class Job(models.Model):
 class JobSwipe(models.Model):
 
     SWIPE_CHOICES = [
-        ("left", "Left"),
-        ("right", "Right"),
+        ("interested", "Interested"),
+        ("saved", "Saved"),
+        ("skipped", "Skipped"),
+        ("right", "Interested"),
+        ("left", "Skipped"),
     ]
 
     candidate = models.ForeignKey(
@@ -170,7 +240,7 @@ class JobSwipe(models.Model):
     )
 
     decision = models.CharField(
-        max_length=10,
+        max_length=20,
         choices=SWIPE_CHOICES
     )
 
@@ -187,11 +257,7 @@ class JobSwipe(models.Model):
         ]
 
     def __str__(self):
-        return (
-            f"{self.candidate.full_name} - "
-            f"{self.job.title} - "
-            f"{self.decision}"
-        )
+        return f"{self.candidate.full_name} - {self.job.title} - {self.decision}"
 
 
 # =====================================
@@ -202,40 +268,48 @@ class Application(models.Model):
 
     candidate = models.ForeignKey(
         Candidate,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        related_name="applications"
     )
 
     job = models.ForeignKey(
         Job,
-        on_delete=models.CASCADE
+        on_delete=models.CASCADE,
+        related_name="applications"
     )
 
     cover_letter = models.TextField(
-        blank=True
+        blank=True,
+        default=""
     )
 
     portfolio_url = models.URLField(
-        blank=True
+        blank=True,
+        default=""
     )
 
     linkedin_url = models.URLField(
-        blank=True
+        blank=True,
+        default=""
     )
 
     github_url = models.URLField(
-        blank=True
+        blank=True,
+        default=""
     )
 
-    expected_salary = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
+    expected_salary = models.CharField(
+        max_length=100,
         null=True,
-        blank=True
+        blank=True,
+        default=""
     )
 
-    available_from = models.DateField(
+    available_from = models.CharField(
+        max_length=100,
         null=True,
-        blank=True
+        blank=True,
+        default=""
     )
 
     applied_resume = models.ForeignKey(
@@ -248,3 +322,14 @@ class Application(models.Model):
     applied_at = models.DateTimeField(
         auto_now_add=True
     )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["candidate", "job"],
+                name="unique_candidate_job_application"
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.candidate.full_name} applied to {self.job.title} ({self.job.company})"

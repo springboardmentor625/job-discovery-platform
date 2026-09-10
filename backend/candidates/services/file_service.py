@@ -1,4 +1,4 @@
-import os
+﻿import os
 
 from django.http import FileResponse
 from rest_framework import status
@@ -7,13 +7,12 @@ from rest_framework.response import Response
 
 class FileService:
     """
-    Handles resume file serving.
+    Handles resume file serving for preview and download.
     """
 
     @staticmethod
-    def serve_resume_file(resume):
-
-        if not resume.resume_file:
+    def serve_resume_file(resume, download: bool = False):
+        if not resume or not resume.resume_file:
             return Response(
                 {"detail": "Resume file not found."},
                 status=status.HTTP_404_NOT_FOUND,
@@ -27,33 +26,43 @@ class FileService:
                 status=status.HTTP_404_NOT_FOUND,
             )
 
+        filename = resume.original_filename or os.path.basename(original_path)
         extension = os.path.splitext(original_path)[1].lower()
 
+        # If user explicitly clicked Download
+        if download:
+            content_type = "application/pdf" if extension == ".pdf" else "application/octet-stream"
+            response = FileResponse(
+                open(original_path, "rb"),
+                content_type=content_type,
+                as_attachment=True,
+                filename=filename,
+            )
+            return response
+
+        # View / Preview mode
         if extension == ".pdf":
             return FileResponse(
                 open(original_path, "rb"),
                 content_type="application/pdf",
                 as_attachment=False,
+                filename=filename,
             )
 
         if extension in [".doc", ".docx"]:
-
-            if not resume.preview_pdf:
-                return Response(
-                    {"detail": "Preview not available."},
-                    status=status.HTTP_404_NOT_FOUND,
+            if resume.preview_pdf and os.path.exists(resume.preview_pdf.path):
+                return FileResponse(
+                    open(resume.preview_pdf.path, "rb"),
+                    content_type="application/pdf",
+                    as_attachment=False,
+                    filename=f"{os.path.splitext(filename)[0]}.pdf",
                 )
-
-            if not os.path.exists(resume.preview_pdf.path):
-                return Response(
-                    {"detail": "Preview PDF does not exist."},
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
+            # Fallback to downloading original doc
             return FileResponse(
-                open(resume.preview_pdf.path, "rb"),
-                content_type="application/pdf",
-                as_attachment=False,
+                open(original_path, "rb"),
+                content_type="application/octet-stream",
+                as_attachment=True,
+                filename=filename,
             )
 
         return Response(

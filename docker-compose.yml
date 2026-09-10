@@ -1,39 +1,58 @@
 services:
   db:
     image: postgres:16
-    container_name: swipex_db
+    container_name: swipex_db_final
     restart: always
     environment:
       POSTGRES_DB: SwipeX_db
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: Praveena$3
+      POSTGRES_PASSWORD: Praveena$$3
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data_final:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d SwipeX_db"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   backend:
     build: ./backend
-    container_name: swipx_backend
+    container_name: swipex_backend_final
+    restart: always
     ports:
-      - "8000:8000"
+      - "8001:8000"
     volumes:
       - ./backend:/app
+      - ./backend/media:/app/media
+    env_file:
+      - .env
     environment:
-      - DJANGO_SETTINGS_MODULE=config.settings
+      DJANGO_SETTINGS_MODULE: config.settings
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: SwipeX_db
+      DB_USER: postgres
+      DB_PASSWORD: Praveena$$3
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build: ./frontend
-    container_name: swipx_frontend
+    container_name: swipex_frontend_final
+    restart: always
     ports:
-      - "5173:5173"
+      - "5176:5173"
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - VITE_API_BASE=http://127.0.0.1:8001/api/
     depends_on:
       - backend
 
 volumes:
-  postgres_data:
+  postgres_data_final:

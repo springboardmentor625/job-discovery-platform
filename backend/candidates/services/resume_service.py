@@ -1,10 +1,7 @@
 from django.db import transaction
 
 from ..utils.resume_parser import parse_resume
-from ..utils.ats import (
-    calculate_ats,
-    calculate_probability_report,
-)
+from ..utils.ats import calculate_ats
 from ..utils.predict import predict_resume_score
 from ..utils.groq_service import generate_resume_feedback
 
@@ -84,7 +81,9 @@ class ResumeService:
                 )
             )
 
-            resume.probability_score = ml_score
+            # Store keyword match percentage
+            keyword_score = ats.get("keyword_match_score")
+            resume.probability_score = keyword_score if keyword_score is not None else ml_score
 
             resume.ats_score = ats.get(
                 "score",
@@ -92,54 +91,28 @@ class ResumeService:
             )
 
             # -------------------------------
-            # Required Skills
+            # Missing Skills & Compatibility
             # -------------------------------
-
-            required_skills = [
-                "Python",
-                "Django",
-                "REST API",
-                "PostgreSQL",
-                "Docker",
-                "Git",
-            ]
-
-            probability = (
-                calculate_probability_report(
-                    result,
-                    required_skills,
-                )
-            )
-
-            resume.missing_skills = ", ".join(
-                probability.get(
-                    "missing_skills",
-                    []
-                )
-            )
+            missing_list = ats.get("missing_skills", [])
+            resume.missing_skills = ", ".join(missing_list[:6])
 
             # -------------------------------
-            # AI Feedback
+            # AI Feedback (with fallback)
             # -------------------------------
-
             ai_feedback = generate_resume_feedback(
                 result,
-                ats.get(
-                    "score",
-                    0
-                ),
-                probability.get(
-                    "missing_skills",
-                    []
-                ),
+                ats.get("score", 0),
+                missing_list,
             )
 
-            resume.ats_suggestions = "\n".join(
-                ai_feedback.get(
-                    "improvements",
-                    []
-                )
-            )
+            improvements = ai_feedback.get("improvements", [])
+            if not improvements:
+                improvements = ats.get("suggestions", [
+                    "Highlight quantifiable impact on your core projects.",
+                    "Include industry keywords relevant to your preferred positions."
+                ])
+
+            resume.ats_suggestions = "\n".join(improvements)
 
             resume.save()
 
@@ -180,18 +153,7 @@ class ResumeService:
             print("RESUME PROCESSED SUCCESSFULLY")
             print("ATS SCORE:", resume.ats_score)
             print("ML SCORE:", resume.probability_score)
-            print(
-                "MATCH PROBABILITY:",
-                probability.get("probability")
-            )
-            print(
-                "MATCHED SKILLS:",
-                probability.get("matched_skills")
-            )
-            print(
-                "MISSING SKILLS:",
-                probability.get("missing_skills")
-            )
+            print("EXTRACTED SKILLS:", resume.extracted_skills)
             print("=================================")
 
             return resume
