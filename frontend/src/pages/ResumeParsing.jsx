@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from "react";
 import {
   useLocation,
@@ -107,39 +108,6 @@ function ResumeParsing() {
 
         </div>
 
-
-        <div className="profile-step">
-
-          <span className="step-dot completed">
-            ✓
-          </span>
-
-          <span>
-            Profile
-          </span>
-
-          <span className="step-line completed-line"></span>
-
-          <span className="step-dot active">
-            3
-          </span>
-
-          <span>
-            Resume
-          </span>
-
-          <span className="step-line"></span>
-
-          <span className="step-dot">
-            4
-          </span>
-
-          <span>
-            Analysis
-          </span>
-
-        </div>
-
       </header>
 
 
@@ -158,7 +126,7 @@ function ResumeParsing() {
           <div className="parsing-intro">
 
             <div className="parsing-intro-icon">
-              {error ? "!" : "✦"}
+              {error ? "!" : ""}
             </div>
 
             <div>
@@ -172,8 +140,8 @@ function ResumeParsing() {
               </h1>
 
               <p className="profile-description">
-                SwipeX is processing your uploaded resume
-                and preparing your information for analysis.
+                SwipeX is securely processing your uploaded
+                resume and preparing your information for analysis.
               </p>
 
             </div>
@@ -217,9 +185,11 @@ function ResumeParsing() {
                   }
                 >
                   Upload Resume Again
+
                   <span className="button-arrow">
                     →
                   </span>
+
                 </button>
 
               </div>
@@ -233,12 +203,10 @@ function ResumeParsing() {
               <>
 
                 {/* ---------------------------------------------
-                    RESUME ICON
+                    RESUME FILE INDICATOR
                 --------------------------------------------- */}
 
-                <div className="parsing-file-icon">
-                  📄
-                </div>
+                
 
 
                 {/* ---------------------------------------------
@@ -326,7 +294,7 @@ function ResumeParsing() {
                       </strong>
 
                       <span>
-                        Your resume has been successfully
+                        : Your resume has been successfully
                         received by SwipeX.
                       </span>
 
@@ -360,7 +328,7 @@ function ResumeParsing() {
                       </strong>
 
                       <span>
-                        Resume content has been processed
+                        : Resume content has been processed
                         successfully.
                       </span>
 
@@ -394,7 +362,7 @@ function ResumeParsing() {
                       </strong>
 
                       <span>
-                        Extracted resume information is
+                        : Extracted resume information is
                         ready to review.
                       </span>
 
@@ -411,9 +379,7 @@ function ResumeParsing() {
 
                 <div className="parsing-note">
 
-                  <span className="parsing-note-icon">
-                    ✨
-                  </span>
+                  
 
                   <div>
 
