@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api/api";
@@ -1264,24 +1263,6 @@ function CompleteProfile() {
             </div>
 
           </div>
-
-        </div>
-
-        <div className="profile-step">
-
-          <span className="step-dot active"></span>
-
-          <span>
-            Profile Setup
-          </span>
-
-          <span className="step-line"></span>
-
-          <span className="step-dot"></span>
-
-          <span>
-            Resume
-          </span>
 
         </div>
 
