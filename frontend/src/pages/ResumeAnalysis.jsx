@@ -1,6 +1,189 @@
 
 import { useLocation, useNavigate } from "react-router-dom";
 
+
+// =========================================================
+// FORMAT EXTRACTED RESUME TEXT
+// ONLY USED FOR DISPLAY
+// =========================================================
+
+function formatResumeText(text) {
+  if (!text) {
+    return null;
+  }
+
+  const sectionHeadings = [
+    "professional summary",
+    "summary",
+    "profile",
+    "technical skills",
+    "skills",
+    "core skills",
+    "professional experience",
+    "work experience",
+    "experience",
+    "employment history",
+    "education",
+    "academic background",
+    "educational qualification",
+    "projects",
+    "certifications",
+    "achievements",
+    "awards",
+    "languages",
+    "interests",
+    "objective",
+    "career objective",
+    "professional objective"
+  ];
+
+  const lines = text.split("\n");
+
+  return lines.map((line, index) => {
+
+    const trimmedLine = line.trim();
+
+    // -------------------------------------------------------
+    // Preserve empty lines
+    // -------------------------------------------------------
+
+    if (!trimmedLine) {
+      return (
+        <div
+          key={index}
+          style={{
+            height: "8px"
+          }}
+        />
+      );
+    }
+
+    // -------------------------------------------------------
+    // Check for resume section headings
+    // -------------------------------------------------------
+
+    const normalizedLine = trimmedLine
+      .replace(/[:\-]+$/, "")
+      .trim()
+      .toLowerCase();
+
+    const isSectionHeading =
+      sectionHeadings.includes(normalizedLine);
+
+    if (isSectionHeading) {
+      return (
+        <div
+          key={index}
+          style={{
+            marginTop: index === 0 ? "0" : "20px",
+            marginBottom: "8px",
+            paddingBottom: "5px",
+            borderBottom: "1px solid #e5e7eb",
+            fontSize: "15px",
+            fontWeight: "700",
+            color: "#111827",
+            lineHeight: "1.5"
+          }}
+        >
+          {trimmedLine}
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------
+    // Detect bullet points
+    // -------------------------------------------------------
+
+    const bulletMatch = trimmedLine.match(
+      /^[•●▪◦*-]\s*(.*)$/
+    );
+
+    if (bulletMatch) {
+      return (
+        <div
+          key={index}
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "8px",
+            marginBottom: "6px",
+            paddingLeft: "4px",
+            lineHeight: "1.7",
+            color: "#374151"
+          }}
+        >
+          <span
+            style={{
+              fontWeight: "700",
+              color: "#4b5563",
+              flexShrink: 0
+            }}
+          >
+            •
+          </span>
+
+          <span>
+            {bulletMatch[1]}
+          </span>
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------
+    // Bold labels before colon
+    //
+    // Example:
+    // Languages: Python, Java, JavaScript
+    // Databases: PostgreSQL, MongoDB
+    // -------------------------------------------------------
+
+    const labelMatch = trimmedLine.match(
+      /^([^:]{1,40}):\s*(.*)$/
+    );
+
+    if (labelMatch) {
+      return (
+        <div
+          key={index}
+          style={{
+            marginBottom: "6px",
+            lineHeight: "1.7",
+            color: "#374151"
+          }}
+        >
+          <strong
+            style={{
+              color: "#111827",
+              fontWeight: "700"
+            }}
+          >
+            {labelMatch[1]}:
+          </strong>{" "}
+          {labelMatch[2]}
+        </div>
+      );
+    }
+
+    // -------------------------------------------------------
+    // Normal resume text
+    // -------------------------------------------------------
+
+    return (
+      <div
+        key={index}
+        style={{
+          marginBottom: "6px",
+          lineHeight: "1.7",
+          color: "#374151"
+        }}
+      >
+        {trimmedLine}
+      </div>
+    );
+  });
+}
+
+
 function ResumeAnalysis() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -60,20 +243,6 @@ function ResumeAnalysis() {
       ? resume.extracted_education
       : [];
 
-  const experienceYears =
-    resume.experience_years;
-
-  // -------------------------------------------------------
-  // FORMAT EXPERIENCE YEARS
-  // -------------------------------------------------------
-
-  const formattedExperienceYears =
-    experienceYears !== null &&
-    experienceYears !== undefined &&
-    experienceYears !== ""
-      ? `${experienceYears} years`
-      : "Not specified";
-
   // -------------------------------------------------------
   // RENDER
   // -------------------------------------------------------
@@ -83,9 +252,7 @@ function ResumeAnalysis() {
 
       <div className="form-container resume-analysis-container">
 
-        {/* =================================================
-            HEADER
-        ================================================= */}
+        {}
 
         <h1>
           Resume Analysis
@@ -97,9 +264,7 @@ function ResumeAnalysis() {
         </p>
 
 
-        {/* =================================================
-            RESUME INFORMATION
-        ================================================= */}
+        {}
 
         <div className="analysis-section">
 
@@ -119,19 +284,12 @@ function ResumeAnalysis() {
               {resumeId}
             </p>
 
-            <p>
-              <strong>Experience:</strong>{" "}
-              {formattedExperienceYears}
-            </p>
-
           </div>
 
         </div>
 
 
-        {/* =================================================
-            EXTRACTED SKILLS
-        ================================================= */}
+        {}
 
         <div className="analysis-section">
 
@@ -177,9 +335,7 @@ function ResumeAnalysis() {
         </div>
 
 
-        {/* =================================================
-            EDUCATION
-        ================================================= */}
+        {}
 
         <div className="analysis-section">
 
@@ -197,10 +353,22 @@ function ResumeAnalysis() {
                   <div
                     className="analysis-card education-card"
                     key={index}
+                    style={{
+                      padding: "18px",
+                      marginBottom: "12px",
+                      lineHeight: "1.6",
+                      textAlign: "left"
+                    }}
                   >
 
                     {item.degree && (
-                      <h3>
+                      <h3
+                        style={{
+                          margin: "0 0 12px 0",
+                          fontSize: "16px",
+                          lineHeight: "1.4"
+                        }}
+                      >
                         {item.degree}
 
                         {item.field
@@ -210,7 +378,12 @@ function ResumeAnalysis() {
                     )}
 
                     {item.institution && (
-                      <p>
+                      <p
+                        style={{
+                          margin: "8px 0",
+                          lineHeight: "1.6"
+                        }}
+                      >
                         <strong>
                           Institution:
                         </strong>{" "}
@@ -219,7 +392,12 @@ function ResumeAnalysis() {
                     )}
 
                     {item.year && (
-                      <p>
+                      <p
+                        style={{
+                          margin: "8px 0",
+                          lineHeight: "1.6"
+                        }}
+                      >
                         <strong>
                           Year:
                         </strong>{" "}
@@ -228,7 +406,14 @@ function ResumeAnalysis() {
                     )}
 
                     {item.details && (
-                      <p>
+                      <p
+                        style={{
+                          margin: "10px 0 0 0",
+                          lineHeight: "1.7",
+                          whiteSpace: "pre-wrap",
+                          overflowWrap: "break-word"
+                        }}
+                      >
                         {item.details}
                       </p>
                     )}
@@ -255,9 +440,7 @@ function ResumeAnalysis() {
         </div>
 
 
-        {/* =================================================
-            ACTION BUTTONS
-        ================================================= */}
+        {}
 
         <div className="analysis-actions">
 
@@ -292,34 +475,62 @@ function ResumeAnalysis() {
 
 
         {/* =================================================
-            DEVELOPMENT / DEBUG SECTION
+            FORMATTED EXTRACTED RESUME TEXT
+            ONLY DISPLAY FORMATTING CHANGED
         ================================================= */}
 
         {resumeText && (
 
           <details className="raw-resume-section">
 
-            <summary>
+            <summary
+              style={{
+                cursor: "pointer",
+                fontWeight: "600",
+                fontSize: "16px",
+                color: "#1f2937",
+                padding: "4px 0"
+              }}
+            >
               View Extracted Resume Text
             </summary>
 
             <div
               className="raw-resume-text"
               style={{
-                whiteSpace: "pre-wrap",
-                overflowWrap: "break-word",
-                wordBreak: "normal",
-                lineHeight: "1.6",
-                fontSize: "14px",
+                marginTop: "16px",
+                width: "100%",
                 maxHeight: "500px",
                 overflowY: "auto",
-                padding: "16px",
-                marginTop: "12px",
+                overflowX: "hidden",
                 boxSizing: "border-box",
-                width: "100%"
+
+                padding: "28px 30px",
+
+                backgroundColor: "#ffffff",
+
+                border: "1px solid #e2e8f0",
+                borderRadius: "12px",
+
+                boxShadow:
+                  "0 4px 14px rgba(15, 23, 42, 0.08)",
+
+                fontFamily:
+                  "Arial, Helvetica, sans-serif",
+
+                fontSize: "14px",
+
+                color: "#374151",
+
+                overflowWrap: "break-word",
+                wordBreak: "normal",
+
+                textAlign: "left",
+
+                scrollbarWidth: "thin"
               }}
             >
-              {resumeText}
+              {formatResumeText(resumeText)}
             </div>
 
           </details>
