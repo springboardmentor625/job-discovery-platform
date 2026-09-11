@@ -451,19 +451,44 @@ function ATSAnalysis() {
 
     return (
 
-      <div className="page">
+      <div
+        className="page"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "30px 20px",
+          boxSizing: "border-box",
+        }}
+      >
 
-        <div className="form-container ats-container">
+        <div
+          className="form-container ats-container"
+          style={{
+            width: "100%",
+            maxWidth: "620px",
+            padding: "40px",
+            borderRadius: "18px",
+            boxSizing: "border-box",
+            textAlign: "center",
+          }}
+        >
 
-          <div className="success-icon">
-            ...
-          </div>
-
-          <h1>
+          <h1
+            style={{
+              marginBottom: "12px",
+            }}
+          >
             ATS Analysis
           </h1>
 
-          <p className="form-subtitle">
+          <p
+            className="form-subtitle"
+            style={{
+              lineHeight: "1.6",
+            }}
+          >
             Analyzing your resume against
             the selected job...
           </p>
@@ -485,15 +510,44 @@ function ATSAnalysis() {
 
     return (
 
-      <div className="page">
+      <div
+        className="page"
+        style={{
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "30px 20px",
+          boxSizing: "border-box",
+        }}
+      >
 
-        <div className="form-container ats-container">
+        <div
+          className="form-container ats-container"
+          style={{
+            width: "100%",
+            maxWidth: "620px",
+            padding: "40px",
+            borderRadius: "18px",
+            boxSizing: "border-box",
+          }}
+        >
 
-          <h1>
+          <h1
+            style={{
+              marginBottom: "16px",
+            }}
+          >
             ATS Analysis
           </h1>
 
-          <p className="error-message">
+          <p
+            className="error-message"
+            style={{
+              lineHeight: "1.6",
+              marginBottom: "24px",
+            }}
+          >
             {error}
           </p>
 
@@ -511,6 +565,9 @@ function ATSAnalysis() {
                 }
               )
             }
+            style={{
+              width: "100%",
+            }}
           >
             View Recommended Jobs
           </button>
@@ -562,38 +619,83 @@ function ATSAnalysis() {
 
 
   // =========================================================
+  // ATS CIRCLE FILL
+  // =========================================================
+
+  const safeMatchPercentage =
+    Math.min(
+      100,
+      Math.max(
+        0,
+        matchPercentage
+      )
+    );
+
+
+  // =========================================================
   // UI
   // =========================================================
 
   return (
 
-    <div className="page">
+    <div
+      className="page"
+      style={{
+        minHeight: "100vh",
+        padding: "30px 20px 50px",
+        boxSizing: "border-box",
+      }}
+    >
 
-      <div className="form-container ats-container">
-
-
-        {/* ===================================================
-            SUCCESS ICON
-        =================================================== */}
-
-        <div className="success-icon">
-          ✓
-        </div>
+      <div
+        className="form-container ats-container"
+        style={{
+          width: "100%",
+          maxWidth: "720px",
+          margin: "0 auto",
+          padding: "34px",
+          borderRadius: "20px",
+          boxSizing: "border-box",
+          boxShadow:
+            "0 12px 35px rgba(0, 0, 0, 0.08)",
+        }}
+      >
 
 
         {/* ===================================================
             TITLE
         =================================================== */}
 
-        <h1>
-          ATS Analysis
-        </h1>
+        <div
+          style={{
+            marginBottom: "28px",
+          }}
+        >
+
+          <h1
+            style={{
+              margin: "0 0 8px",
+              fontSize: "32px",
+              fontWeight: "700",
+              letterSpacing: "-0.5px",
+            }}
+          >
+            ATS Analysis
+          </h1>
 
 
-        <p className="form-subtitle">
-          Your resume has been analyzed against
-          the selected job.
-        </p>
+          <p
+            className="form-subtitle"
+            style={{
+              margin: 0,
+              lineHeight: "1.6",
+            }}
+          >
+            Your resume has been analyzed against
+            the selected job.
+          </p>
+
+        </div>
 
 
         {/* ===================================================
@@ -602,30 +704,57 @@ function ATSAnalysis() {
 
         {job && (
 
-          <div className="analysis-value">
+          <div
+            style={{
+              background:
+                "linear-gradient(135deg, #f8fafc, #f1f5f9)",
+              border:
+                "1px solid #e2e8f0",
+              borderRadius: "14px",
+              padding: "18px 20px",
+              marginBottom: "22px",
+            }}
+          >
 
-            <strong>
+            <p
+              style={{
+                margin: "0 0 7px",
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#64748b",
+                textTransform: "uppercase",
+                letterSpacing: "0.5px",
+              }}
+            >
               Selected Job
-            </strong>
+            </p>
 
-            <br />
 
-            <strong>
+            <div
+              style={{
+                fontSize: "19px",
+                fontWeight: "700",
+                color: "#1e293b",
+                lineHeight: "1.4",
+              }}
+            >
               {job.title}
-            </strong>
+            </div>
 
 
             {(job.company_name ||
               job.company) && (
 
-              <>
-                {" "}at{" "}
-
-                <strong>
-                  {job.company_name ||
-                    job.company}
-                </strong>
-              </>
+              <div
+                style={{
+                  marginTop: "4px",
+                  fontSize: "14px",
+                  color: "#64748b",
+                }}
+              >
+                {job.company_name ||
+                  job.company}
+              </div>
 
             )}
 
@@ -638,36 +767,108 @@ function ATSAnalysis() {
             ATS SCORE
         =================================================== */}
 
-        <div className="ats-score-section">
+        <div
+          style={{
+            background:
+              "linear-gradient(135deg, #f8fafc, #ffffff)",
+            border:
+              "1px solid #e2e8f0",
+            borderRadius: "16px",
+            padding: "30px 20px",
+            marginBottom: "22px",
+            textAlign: "center",
+          }}
+        >
 
-          <div className="ats-score-circle">
+          {/* =================================================
+              CIRCULAR PROGRESS
+          ================================================= */}
 
-            <span className="ats-score">
-              {atsScore}
-            </span>
+          <div
+            style={{
+              width: "170px",
+              height: "170px",
+              margin: "0 auto 20px",
+              borderRadius: "50%",
+              background:
+                `conic-gradient(#2563eb ${safeMatchPercentage}%, #e2e8f0 ${safeMatchPercentage}% 100%)`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              position: "relative",
+            }}
+          >
 
-            <span className="ats-score-label">
-              / 100
-            </span>
+            <div
+              style={{
+                width: "140px",
+                height: "140px",
+                borderRadius: "50%",
+                background: "#ffffff",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                boxShadow:
+                  "inset 0 0 0 1px #f1f5f9",
+              }}
+            >
+
+              <span
+                style={{
+                  fontSize: "36px",
+                  fontWeight: "700",
+                  color: "#2563eb",
+                  lineHeight: "1",
+                }}
+              >
+                {atsScore}
+              </span>
+
+
+              <span
+                style={{
+                  marginTop: "5px",
+                  fontSize: "12px",
+                  color: "#64748b",
+                  fontWeight: "500",
+                }}
+              >
+                / 100
+              </span>
+
+            </div>
 
           </div>
 
 
-          <h2>
+          <h2
+            style={{
+              margin: "0 0 6px",
+              fontSize: "20px",
+              fontWeight: "700",
+              color: "#1e293b",
+            }}
+          >
             ATS Compatibility Score
           </h2>
 
 
-          <p>
-
-            Match Percentage:
-
-            {" "}
-
-            <strong>
+          <p
+            style={{
+              margin: 0,
+              fontSize: "14px",
+              color: "#64748b",
+            }}
+          >
+            Match Percentage:{" "}
+            <strong
+              style={{
+                color: "#2563eb",
+              }}
+            >
               {matchPercentage}%
             </strong>
-
           </p>
 
         </div>
@@ -677,16 +878,40 @@ function ATSAnalysis() {
             MATCHED SKILLS
         =================================================== */}
 
-        <div className="analysis-section">
+        <div
+          className="analysis-section"
+          style={{
+            marginBottom: "18px",
+            padding: "20px",
+            border:
+              "1px solid #e2e8f0",
+            borderRadius: "14px",
+            background: "#ffffff",
+          }}
+        >
 
-          <h2>
+          <h2
+            style={{
+              margin: "0 0 14px",
+              fontSize: "17px",
+              fontWeight: "700",
+              color: "#1e293b",
+            }}
+          >
             Matched Skills
           </h2>
 
 
           {matchedSkills.length > 0 ? (
 
-            <div className="skills-container">
+            <div
+              className="skills-container"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "8px",
+              }}
+            >
 
               {matchedSkills.map(
                 (skill, index) => (
@@ -694,6 +919,12 @@ function ATSAnalysis() {
                   <span
                     className="skill-tag"
                     key={`${skill}-${index}`}
+                    style={{
+                      padding: "7px 11px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                    }}
                   >
                     {skill}
                   </span>
@@ -705,7 +936,12 @@ function ATSAnalysis() {
 
           ) : (
 
-            <div className="analysis-value">
+            <div
+              className="analysis-value"
+              style={{
+                color: "#64748b",
+              }}
+            >
               No matched skills.
             </div>
 
@@ -718,16 +954,40 @@ function ATSAnalysis() {
             MISSING SKILLS
         =================================================== */}
 
-        <div className="analysis-section">
+        <div
+          className="analysis-section"
+          style={{
+            marginBottom: "18px",
+            padding: "20px",
+            border:
+              "1px solid #e2e8f0",
+            borderRadius: "14px",
+            background: "#ffffff",
+          }}
+        >
 
-          <h2>
+          <h2
+            style={{
+              margin: "0 0 14px",
+              fontSize: "17px",
+              fontWeight: "700",
+              color: "#1e293b",
+            }}
+          >
             Missing Skills
           </h2>
 
 
           {missingSkills.length > 0 ? (
 
-            <div className="skills-container">
+            <div
+              className="skills-container"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "8px",
+              }}
+            >
 
               {missingSkills.map(
                 (skill, index) => (
@@ -735,6 +995,12 @@ function ATSAnalysis() {
                   <span
                     className="skill-tag"
                     key={`${skill}-${index}`}
+                    style={{
+                      padding: "7px 11px",
+                      borderRadius: "20px",
+                      fontSize: "12px",
+                      fontWeight: "600",
+                    }}
                   >
                     {skill}
                   </span>
@@ -746,7 +1012,12 @@ function ATSAnalysis() {
 
           ) : (
 
-            <div className="analysis-value">
+            <div
+              className="analysis-value"
+              style={{
+                color: "#64748b",
+              }}
+            >
               No missing skills.
             </div>
 
@@ -759,13 +1030,39 @@ function ATSAnalysis() {
             SUGGESTIONS
         =================================================== */}
 
-        <div className="ats-info">
+        <div
+          className="ats-info"
+          style={{
+            marginBottom: "18px",
+            padding: "20px",
+            borderRadius: "14px",
+            background:
+              "#eff6ff",
+            border:
+              "1px solid #dbeafe",
+          }}
+        >
 
-          <h3>
+          <h3
+            style={{
+              margin: "0 0 8px",
+              fontSize: "16px",
+              fontWeight: "700",
+              color: "#1e3a8a",
+            }}
+          >
             Suggestions
           </h3>
 
-          <p>
+
+          <p
+            style={{
+              margin: 0,
+              lineHeight: "1.6",
+              fontSize: "14px",
+              color: "#475569",
+            }}
+          >
             {suggestions}
           </p>
 
@@ -778,15 +1075,35 @@ function ATSAnalysis() {
 
         {atsReport?.ats_report_id && (
 
-          <div className="analysis-info">
+          <div
+            className="analysis-info"
+            style={{
+              marginBottom: "20px",
+              padding: "14px 16px",
+              borderRadius: "10px",
+              background: "#f8fafc",
+              border:
+                "1px solid #e2e8f0",
+            }}
+          >
 
-            <p>
+            <p
+              style={{
+                margin: 0,
+                fontSize: "13px",
+                color: "#64748b",
+              }}
+            >
 
               ATS Report ID:
 
               {" "}
 
-              <strong>
+              <strong
+                style={{
+                  color: "#334155",
+                }}
+              >
                 {atsReport.ats_report_id}
               </strong>
 
@@ -808,7 +1125,12 @@ function ATSAnalysis() {
             handleContinue
           }
           style={{
-            marginTop: "25px",
+            width: "100%",
+            marginTop: "8px",
+            padding: "13px 20px",
+            fontSize: "15px",
+            fontWeight: "600",
+            borderRadius: "10px",
           }}
         >
           View Recommended Jobs
