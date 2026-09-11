@@ -1,5 +1,4 @@
 
-
 import {
   useEffect,
   useRef,
@@ -25,19 +24,6 @@ import api from "../api/api";
 // =========================================================
 // HELPER: CONVERT HTML JOB DESCRIPTION TO READABLE TEXT
 // =========================================================
-//
-// Job descriptions from the dataset can contain HTML such as:
-//
-// <p>Role purpose:</p>
-// <ul>
-//   <li>Knowledge of Database Administration</li>
-//   <li>Experience in MongoDB</li>
-// </ul>
-//
-// React displays these tags as text when the description is
-// rendered directly. This helper converts them into readable
-// plain text while preserving useful line breaks.
-// =========================================================
 
 function cleanJobDescription(html) {
 
@@ -46,11 +32,6 @@ function cleanJobDescription(html) {
   }
 
   try {
-
-    // -------------------------------------------------------
-    // Convert common HTML block/line-break tags into
-    // newline characters before parsing.
-    // -------------------------------------------------------
 
     const formattedHtml =
       String(html)
@@ -61,18 +42,6 @@ function cleanJobDescription(html) {
         .replace(/<\/h[1-6]>/gi, "\n\n")
         .replace(/<\/tr>/gi, "\n");
 
-
-    // -------------------------------------------------------
-    // Use browser HTML parser.
-    //
-    // This safely removes HTML tags and also decodes
-    // HTML entities such as:
-    //
-    // &amp;  -> &
-    // &nbsp; -> space
-    // &lt;   -> <
-    // &gt;   -> >
-    // -------------------------------------------------------
 
     const parser =
       new DOMParser();
@@ -88,10 +57,6 @@ function cleanJobDescription(html) {
     const text =
       document.body.textContent || "";
 
-
-    // -------------------------------------------------------
-    // Clean excessive whitespace and blank lines.
-    // -------------------------------------------------------
 
     return text
       .replace(/\r/g, "")
@@ -111,16 +76,39 @@ function cleanJobDescription(html) {
     );
 
 
-    // -------------------------------------------------------
-    // Fallback if DOMParser fails.
-    // -------------------------------------------------------
-
     return String(html)
       .replace(/<[^>]*>/g, "")
       .replace(/\s+/g, " ")
       .trim();
 
   }
+
+}
+
+
+// =========================================================
+// HELPER: FORMAT JOB DESCRIPTION
+// =========================================================
+
+function formatDescriptionText(text) {
+
+  if (!text) {
+    return [];
+  }
+
+
+  return text
+    .split(/\n+/)
+    .map(
+      (line) =>
+        line
+          .replace(/^[•●▪◦\-]\s*/, "")
+          .trim()
+    )
+    .filter(
+      (line) =>
+        line.length > 0
+    );
 
 }
 
@@ -378,11 +366,6 @@ function SwipeJobs() {
         );
 
 
-        // ---------------------------------------------------
-        // CURRENT JOB FINISHED
-        // SHOW NEXT JOB
-        // ---------------------------------------------------
-
         moveToNextJob();
 
       } catch (error) {
@@ -450,11 +433,6 @@ function SwipeJobs() {
         );
 
 
-        // ---------------------------------------------------
-        // CURRENT JOB FINISHED
-        // SHOW NEXT JOB
-        // ---------------------------------------------------
-
         moveToNextJob();
 
       } catch (error) {
@@ -481,16 +459,6 @@ function SwipeJobs() {
 
   // =========================================================
   // RIGHT SWIPE
-  // =========================================================
-  //
-  // RIGHT:
-  //
-  // 1. Get valid resume
-  // 2. Run ATS against CURRENT JOB
-  // 3. Record RIGHT swipe
-  // 4. Backend handles application
-  // 5. Continue existing application workflow
-  //
   // =========================================================
 
   const handleSwipeRight =
@@ -1155,14 +1123,40 @@ function SwipeJobs() {
     );
 
 
+  // =========================================================
+  // SALARY
+  // =========================================================
+
+  const minimumSalary =
+    Number(
+      currentJob.salary_min
+    );
+
+
+  const maximumSalary =
+    Number(
+      currentJob.salary_max
+    );
+
+
+  const hasValidSalary =
+    Number.isFinite(minimumSalary) &&
+    Number.isFinite(maximumSalary) &&
+    (
+      minimumSalary > 0 ||
+      maximumSalary > 0
+    );
+
+
   const salaryText =
-    currentJob.salary_min != null ||
-    currentJob.salary_max != null
+    hasValidSalary
+      ? `₹${minimumSalary} - ₹${maximumSalary}`
+      : "Salary not disclosed";
 
-      ? `₹${currentJob.salary_min ?? 0} - ₹${currentJob.salary_max ?? 0}`
 
-      : "Salary not specified";
-
+  // =========================================================
+  // COMPANY
+  // =========================================================
 
   const companyName =
     currentJob.company_name ||
@@ -1174,27 +1168,27 @@ function SwipeJobs() {
     );
 
 
-  const companyInitial =
-    companyName
-      .charAt(0)
-      .toUpperCase();
+  // =========================================================
+  // JOB RANK
+  // =========================================================
+
+  const jobRank =
+    currentIndex + 1;
 
 
   // =========================================================
   // CLEAN CURRENT JOB DESCRIPTION
   // =========================================================
-  //
-  // IMPORTANT:
-  // We clean the description only for DISPLAY.
-  //
-  // The original currentJob.description is still passed
-  // unchanged to ATS/application workflows.
-  //
-  // =========================================================
 
   const cleanDescription =
     cleanJobDescription(
       currentJob.description
+    );
+
+
+  const descriptionLines =
+    formatDescriptionText(
+      cleanDescription
     );
 
 
@@ -1220,25 +1214,14 @@ function SwipeJobs() {
 
     <div className="page">
 
-      <div className="swipe-container">
-
-
-        {/* =================================================
-            HEADER
-        ================================================= */}
-
-        <div className="swipe-header">
-
-          <h1>
-            SwipeX
-          </h1>
-
-
-          <p>
-            Swipe left to skip or right to apply.
-          </p>
-
-        </div>
+      <div
+        className="swipe-container"
+        style={{
+          maxWidth: "560px",
+          margin: "0 auto",
+          padding: "24px 20px 30px",
+        }}
+      >
 
 
         {/* =================================================
@@ -1280,6 +1263,24 @@ function SwipeJobs() {
 
             userSelect:
               "none",
+
+            background:
+              "#ffffff",
+
+            border:
+              "1px solid #e2e8f0",
+
+            borderRadius:
+              "18px",
+
+            boxShadow:
+              "0 10px 30px rgba(15, 23, 42, 0.10)",
+
+            padding:
+              "24px",
+
+            overflow:
+              "hidden",
 
           }}
 
@@ -1346,30 +1347,75 @@ function SwipeJobs() {
 
 
           {/* =================================================
-              COMPANY + TITLE
+              RANK + TITLE + COMPANY
           ================================================= */}
 
-          <div className="swipe-card-header">
+          <div
+            className="swipe-card-header"
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: "15px",
+              paddingBottom: "20px",
+              marginBottom: "20px",
+            }}
+          >
 
-            <div className="company-logo large-logo">
+            {/* JOB RANK */}
 
-              {companyInitial}
-
+            <div
+              style={{
+                minWidth: "46px",
+                width: "46px",
+                height: "46px",
+                borderRadius: "12px",
+                background: "#eff6ff",
+                color: "#2563eb",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "18px",
+                fontWeight: "700",
+                border: "1px solid #dbeafe",
+              }}
+            >
+              {jobRank}
             </div>
 
 
-            <div>
+            {/* JOB TITLE + COMPANY */}
 
-              <h2>
+            <div
+              style={{
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
+
+              <h2
+                style={{
+                  margin: "0 0 6px",
+                  fontSize: "21px",
+                  lineHeight: "1.3",
+                  fontWeight: "700",
+                  color: "#111827",
+                }}
+              >
                 {currentJob.title ||
                   "Job Title Not Available"}
               </h2>
 
 
-              <p className="company-name">
-
+              <p
+                className="company-name"
+                style={{
+                  margin: 0,
+                  fontSize: "14px",
+                  fontWeight: "500",
+                  color: "#64748b",
+                }}
+              >
                 {companyName}
-
               </p>
 
             </div>
@@ -1381,56 +1427,84 @@ function SwipeJobs() {
               JOB DETAILS
           ================================================= */}
 
-          <div className="job-details">
+          <div
+            className="job-details"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+              marginBottom: "20px",
+            }}
+          >
 
 
-            <div className="job-detail">
-
-              <span>
-                📍
-              </span>
-
+            <div
+              className="job-detail"
+              style={{
+                padding: "10px 12px",
+                background: "#f8fafc",
+                borderRadius: "9px",
+                border: "1px solid #e5e7eb",
+                fontSize: "13px",
+                color: "#334155",
+                lineHeight: "1.4",
+              }}
+            >
               {currentJob.location ||
                 "Location not specified"}
-
             </div>
 
 
-            <div className="job-detail">
-
-              <span>
-                💼
-              </span>
-
+            <div
+              className="job-detail"
+              style={{
+                padding: "10px 12px",
+                background: "#f8fafc",
+                borderRadius: "9px",
+                border: "1px solid #e5e7eb",
+                fontSize: "13px",
+                color: "#334155",
+                lineHeight: "1.4",
+              }}
+            >
               {currentJob.employment_type ||
                 "Not specified"}
-
             </div>
 
 
-            <div className="job-detail">
-
-              <span>
-                🎓
-              </span>
-
+            <div
+              className="job-detail"
+              style={{
+                padding: "10px 12px",
+                background: "#f8fafc",
+                borderRadius: "9px",
+                border: "1px solid #e5e7eb",
+                fontSize: "13px",
+                color: "#334155",
+                lineHeight: "1.4",
+              }}
+            >
               {currentJob.experience_required != null
 
                 ? `${currentJob.experience_required} years`
 
                 : "Not specified"}
-
             </div>
 
 
-            <div className="job-detail">
-
-              <span>
-                💰
-              </span>
-
+            <div
+              className="job-detail"
+              style={{
+                padding: "10px 12px",
+                background: "#f8fafc",
+                borderRadius: "9px",
+                border: "1px solid #e5e7eb",
+                fontSize: "13px",
+                color: "#334155",
+                lineHeight: "1.4",
+              }}
+            >
               {salaryText}
-
             </div>
 
           </div>
@@ -1440,23 +1514,53 @@ function SwipeJobs() {
               MATCH SCORE
           ================================================= */}
 
-          <div className="job-match">
+          <div
+            className="job-match"
+            style={{
+              marginBottom: "20px",
+              padding: "14px 0",
+            }}
+          >
 
-            <div className="match-header">
+            <div
+              className="match-header"
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "8px",
+                fontSize: "13px",
+                fontWeight: "600",
+                color: "#334155",
+              }}
+            >
 
               <span>
                 ML Job Match
               </span>
 
 
-              <strong>
+              <strong
+                style={{
+                  color: "#16a34a",
+                  fontSize: "14px",
+                }}
+              >
                 {matchPercentage.toFixed(2)}%
               </strong>
 
             </div>
 
 
-            <div className="match-bar">
+            <div
+              className="match-bar"
+              style={{
+                height: "7px",
+                background: "#e5e7eb",
+                borderRadius: "999px",
+                overflow: "hidden",
+              }}
+            >
 
               <div
                 className="match-progress"
@@ -1464,6 +1568,12 @@ function SwipeJobs() {
                 style={{
                   width:
                     `${safeMatchPercentage}%`,
+
+                  height:
+                    "100%",
+
+                  borderRadius:
+                    "999px",
                 }}
               ></div>
 
@@ -1476,14 +1586,33 @@ function SwipeJobs() {
               REQUIRED SKILLS
           ================================================= */}
 
-          <div className="job-skills">
+          <div
+            className="job-skills"
+            style={{
+              marginBottom: "20px",
+            }}
+          >
 
-            <h3>
+            <h3
+              style={{
+                margin: "0 0 10px",
+                fontSize: "15px",
+                fontWeight: "700",
+                color: "#1e293b",
+              }}
+            >
               Required Skills
             </h3>
 
 
-            <div className="job-skill-list">
+            <div
+              className="job-skill-list"
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                gap: "7px",
+              }}
+            >
 
               {skills.length > 0
 
@@ -1493,6 +1622,16 @@ function SwipeJobs() {
                       <span
                         className="job-skill"
                         key={`${skill}-${index}`}
+
+                        style={{
+                          padding: "6px 10px",
+                          borderRadius: "999px",
+                          background: "#f1f5f9",
+                          border: "1px solid #e2e8f0",
+                          color: "#334155",
+                          fontSize: "12px",
+                          fontWeight: "500",
+                        }}
                       >
                         {skill}
                       </span>
@@ -1502,7 +1641,17 @@ function SwipeJobs() {
 
                 : (
 
-                  <span className="job-skill">
+                  <span
+                    className="job-skill"
+                    style={{
+                      padding: "6px 10px",
+                      borderRadius: "999px",
+                      background: "#f1f5f9",
+                      border: "1px solid #e2e8f0",
+                      color: "#64748b",
+                      fontSize: "12px",
+                    }}
+                  >
                     No specific skills listed
                   </span>
 
@@ -1517,27 +1666,87 @@ function SwipeJobs() {
               JOB DESCRIPTION
           ================================================= */}
 
-          <div className="job-description">
+          <div
+            className="job-description"
 
-            <h3>
+            style={{
+              background: "#f8fafc",
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              padding: "16px",
+              marginBottom: "0",
+              borderBottom: "1px solid #e5e7eb",
+            }}
+          >
+
+            <h3
+              style={{
+                margin: "0 0 12px",
+                fontSize: "15px",
+                fontWeight: "700",
+                color: "#1e293b",
+              }}
+            >
               About this job
             </h3>
 
 
-            {cleanDescription ? (
+            {descriptionLines.length > 0 ? (
 
-              <p
+              <div
                 style={{
-                  whiteSpace: "pre-line",
-                  lineHeight: "1.7",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "9px",
                 }}
               >
-                {cleanDescription}
-              </p>
+
+                {descriptionLines.map(
+                  (line, index) => {
+
+                    const looksLikeHeading =
+                      line.length <= 55 &&
+                      !/[.!?]$/.test(line) &&
+                      !/^\d/.test(line);
+
+
+                    return (
+
+                      <p
+                        key={index}
+
+                        style={{
+                          margin: 0,
+                          fontSize: "13px",
+                          lineHeight: "1.65",
+                          color: looksLikeHeading
+                            ? "#334155"
+                            : "#475569",
+                          fontWeight: looksLikeHeading
+                            ? "600"
+                            : "400",
+                        }}
+                      >
+                        {line}
+                      </p>
+
+                    );
+
+                  }
+                )}
+
+              </div>
 
             ) : (
 
-              <p>
+              <p
+                style={{
+                  margin: 0,
+                  fontSize: "13px",
+                  lineHeight: "1.6",
+                  color: "#64748b",
+                }}
+              >
                 No job description available.
               </p>
 
@@ -1545,18 +1754,6 @@ function SwipeJobs() {
 
           </div>
 
-
-          {/* =================================================
-              SWIPE INSTRUCTION
-          ================================================= */}
-
-          <div className="swipe-card-instruction">
-
-            <p>
-              Swipe the job card left or right
-            </p>
-
-          </div>
 
         </div>
 
@@ -1576,6 +1773,11 @@ function SwipeJobs() {
           disabled={
             isProcessing
           }
+
+          style={{
+            width: "100%",
+            marginTop: "16px",
+          }}
         >
 
           {isProcessing
@@ -1586,30 +1788,18 @@ function SwipeJobs() {
 
 
         {/* =================================================
-            TOUCHPAD INSTRUCTION
-        ================================================= */}
-
-        <p className="swipe-instruction">
-
-          Use your laptop touchpad to swipe
-          horizontally on the job card.
-
-          <br />
-
-          Swipe left = Skip
-
-          {" | "}
-
-          Swipe right = Apply
-
-        </p>
-
-
-        {/* =================================================
             JOB COUNTER
         ================================================= */}
 
-        <p className="job-counter">
+        <p
+          className="job-counter"
+          style={{
+            marginTop: "12px",
+            textAlign: "center",
+            fontSize: "12px",
+            color: "#64748b",
+          }}
+        >
 
           Job {currentIndex + 1} of{" "}
           {jobs.length}
