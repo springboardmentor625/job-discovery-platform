@@ -1,6 +1,5 @@
 
 
-
 import {
   useEffect,
   useState,
@@ -30,13 +29,6 @@ function cleanJobDescription(html) {
 
     // -------------------------------------------------------
     // STEP 1: Decode HTML entities.
-    //
-    // Example:
-    // &lt;p&gt;       -> <p>
-    // &lt;br /&gt;   -> <br />
-    //
-    // Some dataset records can contain more than one level
-    // of HTML encoding, so decode a few times if necessary.
     // -------------------------------------------------------
 
     const textarea =
@@ -59,8 +51,7 @@ function cleanJobDescription(html) {
 
 
     // -------------------------------------------------------
-    // STEP 2: Convert common HTML formatting tags into
-    // readable line breaks / bullets.
+    // STEP 2: Convert common HTML formatting tags.
     // -------------------------------------------------------
 
     text =
@@ -84,9 +75,6 @@ function cleanJobDescription(html) {
 
     // -------------------------------------------------------
     // STEP 4: Decode entities one more time.
-    //
-    // This handles cases where entities appear after the
-    // first HTML cleanup.
     // -------------------------------------------------------
 
     textarea.innerHTML = text;
@@ -148,6 +136,14 @@ function RecommendedJobs() {
 
   const [error, setError] =
     useState("");
+
+  // ---------------------------------------------------------
+  // Tracks which job cards have their description dropdown
+  // opened.
+  // ---------------------------------------------------------
+
+  const [expandedJobs, setExpandedJobs] =
+    useState({});
 
 
   // =========================================================
@@ -223,6 +219,23 @@ function RecommendedJobs() {
     loadRecommendations();
 
   }, []);
+
+
+  // =========================================================
+  // TOGGLE ABOUT THIS JOB DROPDOWN
+  // =========================================================
+
+  const toggleJobDescription = (jobId) => {
+
+    setExpandedJobs(
+      (previous) => ({
+        ...previous,
+        [jobId]:
+          !previous[jobId],
+      })
+    );
+
+  };
 
 
   // =========================================================
@@ -407,7 +420,8 @@ function RecommendedJobs() {
           width: "100%",
           maxWidth: "1400px",
           margin: "0 auto",
-          padding: "30px 20px",
+          padding: "18px 20px",
+          boxSizing: "border-box",
         }}
       >
 
@@ -415,7 +429,12 @@ function RecommendedJobs() {
             HEADER
         ================================================= */}
 
-        <div className="jobs-header">
+        <div
+          className="jobs-header"
+          style={{
+            marginBottom: "16px",
+          }}
+        >
 
           <div>
 
@@ -447,49 +466,14 @@ function RecommendedJobs() {
             display: "grid",
             gridTemplateColumns:
               "repeat(4, minmax(0, 1fr))",
-            gap: "20px",
+            gap: "16px",
             width: "100%",
+            alignItems: "stretch",
           }}
         >
 
           {jobs.map(
             (job, index) => {
-
-              // =================================================
-              // REQUIRED SKILLS
-              // =================================================
-
-              const skills =
-                Array.isArray(
-                  job.required_skills
-                )
-                  ? job.required_skills
-                  : [];
-
-
-              // =================================================
-              // MATCHED SKILLS
-              // =================================================
-
-              const matchedSkills =
-                Array.isArray(
-                  job.matched_skills
-                )
-                  ? job.matched_skills
-                  : [];
-
-
-              // =================================================
-              // MISSING SKILLS
-              // =================================================
-
-              const missingSkills =
-                Array.isArray(
-                  job.missing_skills
-                )
-                  ? job.missing_skills
-                  : [];
-
 
               // =================================================
               // ML SCORE
@@ -513,7 +497,7 @@ function RecommendedJobs() {
 
 
               // =================================================
-              // MATCH BREAKDOWN
+              // MATCH VALUES
               // =================================================
 
               const skillMatch =
@@ -541,16 +525,6 @@ function RecommendedJobs() {
 
 
               // =================================================
-              // SWIPE PERSONALIZATION
-              // =================================================
-
-              const swipeAdjustment =
-                Number(
-                  job.swipe_adjustment ?? 0
-                );
-
-
-              // =================================================
               // SALARY
               // =================================================
 
@@ -565,10 +539,6 @@ function RecommendedJobs() {
                   job.salary_max ?? 0
                 );
 
-
-              // -------------------------------------------------
-              // Do not display ₹0 - ₹0.
-              // -------------------------------------------------
 
               const hasValidSalary =
                 salaryMin > 0 ||
@@ -595,12 +565,6 @@ function RecommendedJobs() {
                 );
 
 
-              const companyInitial =
-                companyName
-                  .charAt(0)
-                  .toUpperCase();
-
-
               // =================================================
               // CLEAN JOB DESCRIPTION
               // =================================================
@@ -608,30 +572,6 @@ function RecommendedJobs() {
               const cleanDescription =
                 cleanJobDescription(
                   job.description
-                );
-
-
-              // =================================================
-              // SAFE SCORES
-              // =================================================
-
-              const safeMlScore =
-                Math.min(
-                  Math.max(
-                    mlMatchScore,
-                    0
-                  ),
-                  100
-                );
-
-
-              const safeRecommendationScore =
-                Math.min(
-                  Math.max(
-                    recommendationScore,
-                    0
-                  ),
-                  100
                 );
 
 
@@ -650,29 +590,27 @@ function RecommendedJobs() {
                   style={{
                     width: "100%",
                     boxSizing: "border-box",
-                    minHeight: "620px",
+                    minHeight: "0",
+                    height: "100%",
                     display: "flex",
                     flexDirection: "column",
+                    padding: "16px",
                   }}
                 >
-
-                  {/* =================================================
-                      RANK
-                  ================================================= */}
-
-                  <div className="job-rank">
-                    Recommendation #{index + 1}
-                  </div>
-
 
                   {/* =================================================
                       COMPANY + TITLE
                   ================================================= */}
 
-                  <div className="job-card-header">
+                  <div
+                    className="job-card-header"
+                    style={{
+                      marginBottom: "12px",
+                    }}
+                  >
 
                     <div className="company-logo">
-                      {companyInitial}
+                      {index + 1}
                     </div>
 
                     <div
@@ -685,6 +623,7 @@ function RecommendedJobs() {
                         style={{
                           overflowWrap:
                             "anywhere",
+                          marginBottom: "3px",
                         }}
                       >
                         {job.title ||
@@ -704,44 +643,96 @@ function RecommendedJobs() {
                       JOB DETAILS
                   ================================================= */}
 
-                  <div className="job-details">
+                  <div
+                    className="job-details"
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "1fr 1fr",
+                      gap: "8px 12px",
+                      marginBottom: "12px",
+                    }}
+                  >
 
-                    <div className="job-detail">
+                    <div
+                      className="job-detail"
+                      style={{
+                        minWidth: 0,
+                      }}
+                    >
 
                       <span>📍</span>
 
-                      {job.location ||
-                        "Location not specified"}
+                      <span
+                        style={{
+                          overflowWrap:
+                            "anywhere",
+                        }}
+                      >
+                        {job.location ||
+                          "Location not specified"}
+                      </span>
 
                     </div>
 
 
-                    <div className="job-detail">
+                    <div
+                      className="job-detail"
+                      style={{
+                        minWidth: 0,
+                      }}
+                    >
 
                       <span>💼</span>
 
-                      {job.employment_type ||
-                        "Not specified"}
+                      <span
+                        style={{
+                          overflowWrap:
+                            "anywhere",
+                        }}
+                      >
+                        {job.employment_type ||
+                          "Not specified"}
+                      </span>
 
                     </div>
 
 
-                    <div className="job-detail">
+                    <div
+                      className="job-detail"
+                      style={{
+                        minWidth: 0,
+                      }}
+                    >
 
                       <span>🎓</span>
 
-                      {job.experience_required != null
-                        ? `${job.experience_required} years`
-                        : "Not specified"}
+                      <span>
+                        {job.experience_required != null
+                          ? `${job.experience_required} years`
+                          : "Not specified"}
+                      </span>
 
                     </div>
 
 
-                    <div className="job-detail">
+                    <div
+                      className="job-detail"
+                      style={{
+                        minWidth: 0,
+                      }}
+                    >
 
                       <span>💰</span>
 
-                      {salaryText}
+                      <span
+                        style={{
+                          overflowWrap:
+                            "anywhere",
+                        }}
+                      >
+                        {salaryText}
+                      </span>
 
                     </div>
 
@@ -749,10 +740,24 @@ function RecommendedJobs() {
 
 
                   {/* =================================================
-                      ML SCORE
+                      SCORES
                   ================================================= */}
 
-                  <div className="job-match">
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns:
+                        "1fr",
+                      gap: "6px",
+                      padding:
+                        "10px 0",
+                      borderTop:
+                        "1px solid #e5e7eb",
+                      borderBottom:
+                        "1px solid #e5e7eb",
+                      marginBottom: "12px",
+                    }}
+                  >
 
                     <div className="match-header">
 
@@ -767,27 +772,6 @@ function RecommendedJobs() {
                     </div>
 
 
-                    <div className="match-bar">
-
-                      <div
-                        className="match-progress"
-                        style={{
-                          width:
-                            `${safeMlScore}%`,
-                        }}
-                      />
-
-                    </div>
-
-                  </div>
-
-
-                  {/* =================================================
-                      FINAL SCORE
-                  ================================================= */}
-
-                  <div className="job-match">
-
                     <div className="match-header">
 
                       <span>
@@ -800,254 +784,168 @@ function RecommendedJobs() {
 
                     </div>
 
+                  </div>
 
-                    <div className="match-bar">
 
-                      <div
-                        className="match-progress"
-                        style={{
-                          width:
-                            `${safeRecommendationScore}%`,
-                        }}
-                      />
+                  {/* =================================================
+                      MATCH VALUES
+                  ================================================= */}
 
-                    </div>
+                  <div
+                    className="analysis-card"
+                    style={{
+                      padding: "8px 10px",
+                      marginBottom: "12px",
+                      display: "grid",
+                      gridTemplateColumns:
+                        "1fr 1fr",
+                      columnGap: "12px",
+                      rowGap: "4px",
+                      fontSize: "13px",
+                      lineHeight: "1.35",
+                    }}
+                  >
+
+                    <p
+                      style={{
+                        margin: 0,
+                      }}
+                    >
+                      <strong>
+                        Skills:
+                      </strong>{" "}
+                      {skillMatch.toFixed(2)}%
+                    </p>
+
+
+                    <p
+                      style={{
+                        margin: 0,
+                      }}
+                    >
+                      <strong>
+                        Experience:
+                      </strong>{" "}
+                      {experienceMatch.toFixed(2)}%
+                    </p>
+
+
+                    <p
+                      style={{
+                        margin: 0,
+                      }}
+                    >
+                      <strong>
+                        Location:
+                      </strong>{" "}
+                      {locationMatch.toFixed(2)}%
+                    </p>
+
+
+                    <p
+                      style={{
+                        margin: 0,
+                      }}
+                    >
+                      <strong>
+                        Job Type:
+                      </strong>{" "}
+                      {jobTypeMatch.toFixed(2)}%
+                    </p>
 
                   </div>
 
 
                   {/* =================================================
-                      MATCH BREAKDOWN
+                      JOB DESCRIPTION DROPDOWN
                   ================================================= */}
 
-                  <div className="analysis-section">
+                  <div
+                    className="job-description"
+                    style={{
+                      marginBottom: "12px",
+                    }}
+                  >
 
-                    <h3>
-                      Match Breakdown
-                    </h3>
-
-                    <div className="analysis-card">
-
-                      <p>
-                        <strong>
-                          Skills Match:
-                        </strong>{" "}
-                        {skillMatch.toFixed(2)}%
-                      </p>
-
-                      <p>
-                        <strong>
-                          Experience Match:
-                        </strong>{" "}
-                        {experienceMatch.toFixed(2)}%
-                      </p>
-
-                      <p>
-                        <strong>
-                          Location Match:
-                        </strong>{" "}
-                        {locationMatch.toFixed(2)}%
-                      </p>
-
-                      <p>
-                        <strong>
-                          Job Type Match:
-                        </strong>{" "}
-                        {jobTypeMatch.toFixed(2)}%
-                      </p>
-
-                      <p>
-                        <strong>
-                          ML Job Match:
-                        </strong>{" "}
-                        {mlMatchScore.toFixed(2)}%
-                      </p>
-
-
-                      {swipeAdjustment !== 0 && (
-
-                        <p>
-
-                          <strong>
-                            Swipe Personalization:
-                          </strong>{" "}
-
-                          {swipeAdjustment > 0
-                            ? `+${swipeAdjustment}`
-                            : swipeAdjustment}
-
-                        </p>
-
-                      )}
-
-                    </div>
-
-                  </div>
-
-
-                  {/* =================================================
-                      MATCHED SKILLS
-                  ================================================= */}
-
-                  {matchedSkills.length > 0 && (
-
-                    <div className="job-skills">
-
-                      <h3>
-                        Your Matching Skills
-                      </h3>
-
-                      <div className="job-skill-list">
-
-                        {matchedSkills.map(
-                          (skill, skillIndex) => (
-
-                            <span
-                              className="job-skill"
-                              key={
-                                `matched-${skill}-${skillIndex}`
-                              }
-                            >
-                              ✓ {skill}
-                            </span>
-
-                          )
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  )}
-
-
-                  {/* =================================================
-                      MISSING SKILLS
-                  ================================================= */}
-
-                  {missingSkills.length > 0 && (
-
-                    <div className="job-skills">
-
-                      <h3>
-                        Skills You May Need
-                      </h3>
-
-                      <div className="job-skill-list">
-
-                        {missingSkills.map(
-                          (skill, skillIndex) => (
-
-                            <span
-                              className="job-skill"
-                              key={
-                                `missing-${skill}-${skillIndex}`
-                              }
-                            >
-                              {skill}
-                            </span>
-
-                          )
-                        )}
-
-                      </div>
-
-                    </div>
-
-                  )}
-
-
-                  {/* =================================================
-                      REQUIRED SKILLS
-                  ================================================= */}
-
-                  <div className="job-skills">
-
-                    <h3>
-                      Required Skills
-                    </h3>
-
-                    <div className="job-skill-list">
-
-                      {skills.length > 0
-                        ? (
-
-                          skills.map(
-                            (skill, skillIndex) => (
-
-                              <span
-                                className="job-skill"
-                                key={
-                                  `required-${skill}-${skillIndex}`
-                                }
-                              >
-                                {skill}
-                              </span>
-
-                            )
-                          )
-
+                    <button
+                      type="button"
+                      onClick={() =>
+                        toggleJobDescription(
+                          job.job_id ??
+                          `recommendation-${index}`
                         )
-                        : (
+                      }
+                      style={{
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent:
+                          "space-between",
+                        background: "none",
+                        border: "none",
+                        padding: "0",
+                        cursor: "pointer",
+                        textAlign: "left",
+                      }}
+                    >
 
-                          <span className="job-skill">
-                            No skills specified
-                          </span>
-
-                        )}
-
-                    </div>
-
-                  </div>
-
-
-                  {/* =================================================
-                      RECOMMENDATION REASON
-                  ================================================= */}
-
-                  {job.recommendation_reason && (
-
-                    <div className="job-description">
-
-                      <h3>
-                        Why this job is recommended
-                      </h3>
-
-                      <p>
-                        {job.recommendation_reason}
-                      </p>
-
-                    </div>
-
-                  )}
-
-
-                  {/* =================================================
-                      JOB DESCRIPTION
-                  ================================================= */}
-
-                  <div className="job-description">
-
-                    <h3>
-                      About this Job
-                    </h3>
-
-                    {cleanDescription ? (
-
-                      <p
+                      <h3
                         style={{
-                          whiteSpace: "pre-line",
-                          lineHeight: "1.7",
+                          margin: 0,
                         }}
                       >
-                        {cleanDescription}
-                      </p>
+                        About this Job
+                      </h3>
 
-                    ) : (
+                      <span
+                        style={{
+                          fontSize: "18px",
+                          fontWeight: "600",
+                        }}
+                      >
+                        {expandedJobs[
+                          job.job_id ??
+                          `recommendation-${index}`
+                        ]
+                          ? "−"
+                          : "+"}
+                      </span>
 
-                      <p>
-                        No job description available.
-                      </p>
+                    </button>
+
+
+                    {expandedJobs[
+                      job.job_id ??
+                      `recommendation-${index}`
+                    ] && (
+
+                      <div
+                        style={{
+                          marginTop: "10px",
+                        }}
+                      >
+
+                        {cleanDescription ? (
+
+                          <p
+                            style={{
+                              whiteSpace: "pre-line",
+                              lineHeight: "1.6",
+                              margin: 0,
+                            }}
+                          >
+                            {cleanDescription}
+                          </p>
+
+                        ) : (
+
+                          <p>
+                            No job description available.
+                          </p>
+
+                        )}
+
+                      </div>
 
                     )}
 
@@ -1061,10 +959,6 @@ function RecommendedJobs() {
                   <div
                     style={{
                       marginTop: "auto",
-                      paddingTop: "20px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "10px",
                     }}
                   >
 
@@ -1074,6 +968,9 @@ function RecommendedJobs() {
                       onClick={() =>
                         handleATSAnalysis(job)
                       }
+                      style={{
+                        width: "100%",
+                      }}
                     >
                       Analyze ATS
                     </button>
@@ -1098,8 +995,8 @@ function RecommendedJobs() {
           style={{
             display: "flex",
             justifyContent: "center",
-            marginTop: "40px",
-            marginBottom: "30px",
+            marginTop: "24px",
+            marginBottom: "20px",
           }}
         >
 
@@ -1124,7 +1021,7 @@ function RecommendedJobs() {
           className="job-navigation"
           style={{
             textAlign: "center",
-            paddingBottom: "30px",
+            paddingBottom: "20px",
           }}
         >
 
@@ -1140,6 +1037,7 @@ function RecommendedJobs() {
     </div>
 
   );
+
 }
 
 export default RecommendedJobs;
