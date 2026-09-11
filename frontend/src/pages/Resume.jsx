@@ -62,22 +62,29 @@ function Resume() {
   ========================================================= */
 
   const handleFileSelect = (file) => {
-    if (!file) return;
+  if (!file) return;
 
-    const ext = file.name.split(".").pop().toLowerCase();
+  const extension = file.name
+    .split(".")
+    .pop()
+    .toLowerCase();
 
-    if (!["pdf", "docx", "doc"].includes(ext)) {
-      toast.error("Please upload a PDF or DOCX file.");
-      return;
-    }
+  if (!["pdf", "docx"].includes(extension)) {
+    toast.error(
+      "Only PDF and DOCX resume files are allowed."
+    );
+    return;
+  }
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("File size must be under 10MB.");
-      return;
-    }
+  if (file.size > 5 * 1024 * 1024) {
+    toast.error(
+      "Resume file must be 5 MB or smaller."
+    );
+    return;
+  }
 
-    uploadFile(file);
-  };
+  uploadFile(file);
+};
 
   /* =========================================================
      UPLOAD / REPLACE FILE
@@ -116,10 +123,16 @@ function Resume() {
         toast.dismiss(loadingToast);
       }
 
-      toast.error(
-        error.response?.data?.resume_file ||
-          "Failed to upload resume."
-      );
+      const serverError =
+  error.response?.data?.resume_file;
+
+const errorMessage = Array.isArray(serverError)
+  ? serverError[0]
+  : serverError ||
+    error.response?.data?.detail ||
+    "Failed to upload resume.";
+
+toast.error(errorMessage);
     } finally {
       setUploading(false);
 
@@ -276,7 +289,7 @@ function Resume() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".pdf,.docx,.doc"
+        accept=".pdf,.docx"
         className="hidden"
         onChange={(e) => {
           if (e.target.files?.[0]) {
@@ -607,7 +620,7 @@ function Resume() {
 
               <p className="text-xs text-slate-400 mt-2">
 
-                PDF or DOCX • Maximum file size 10MB
+                PDF or DOCX • Maximum file size 5MB
 
               </p>
 

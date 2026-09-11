@@ -30,7 +30,10 @@ from .serializers import (
 
 from .auth_serializers import RegisterSerializer
 from .services.preview_service import PreviewService
-from .services.resume_service import ResumeService
+from .services.resume_service import (
+    ResumeService,
+    ResumeValidationError,
+)
 from .services.recommendation_service import RecommendationService
 from .services.file_service import FileService
 from .services.application_service import ApplicationService
@@ -122,6 +125,9 @@ class CandidateViewSet(viewsets.ModelViewSet):
 # =====================================
 # RESUME VIEWSET
 # =====================================
+# =====================================
+# RESUME VIEWSET
+# =====================================
 
 class ResumeViewSet(viewsets.ModelViewSet):
     serializer_class = ResumeSerializer
@@ -132,7 +138,11 @@ class ResumeViewSet(viewsets.ModelViewSet):
             candidate = Candidate.objects.get(
                 email__iexact=self.request.user.email
             )
-            return Resume.objects.filter(candidate=candidate)
+
+            return Resume.objects.filter(
+                candidate=candidate
+            )
+
         except Candidate.DoesNotExist:
             return Resume.objects.none()
 
@@ -140,77 +150,390 @@ class ResumeViewSet(viewsets.ModelViewSet):
         candidate, _ = Candidate.objects.get_or_create(
             email__iexact=self.request.user.email,
             defaults={
-                "full_name": self.request.user.get_full_name() or self.request.user.username,
+                "full_name": (
+                    self.request.user.get_full_name()
+                    or self.request.user.username
+                ),
                 "email": self.request.user.email,
-            }
+                "phone": "",
+                "skills": "",
+                "experience": "",
+                "education": "",
+                "preferred_job_roles": "",
+                "preferred_locations": "",
+                "preferred_work_mode": "Any",
+                "career_interests": "",
+                "bio": "",
+            },
         )
+
         return candidate
 
     def perform_create(self, serializer):
         candidate = self.get_candidate()
-        new_file = serializer.validated_data.get("resume_file")
+
+        new_file = serializer.validated_data.get(
+            "resume_file"
+        )
 
         if not new_file:
-            raise serializers.ValidationError({"resume_file": "Please upload a resume file."})
+            raise serializers.ValidationError(
+                {
+                    "resume_file": (
+                        "Please upload a resume file."
+                    )
+                }
+            )
 
-        # Remove previous resume file if exists
-        existing = Resume.objects.filter(candidate=candidate).first()
+        # ------------------------------------------------
+        # IMPORTANT:
+        # Validate the uploaded resume BEFORE changing
+        # the existing database resume.
+        # ------------------------------------------------
+
+        try:
+            parsed_result = (
+                ResumeService.validate_uploaded_file(
+                    new_file,
+                    candidate,
+                )
+            )
+
+        except ResumeValidationError as exc:
+            raise serializers.ValidationError(
+                {
+                    "resume_file": str(exc)
+                }
+            )
+
+        existing = (
+            Resume.objects
+            .filter(candidate=candidate)
+            .first()
+        )
+
+        # =================================================
+        # REPLACE EXISTING RESUME
+        # =================================================
+
         if existing:
-            if existing.resume_file:
-                try:
-                    existing.resume_file.delete(save=False)
-                except Exception:
-                    pass
 
-            if existing.preview_pdf:
-                try:
-                    existing.preview_pdf.delete(save=False)
-                except Exception:
-                    pass
+            old_resume_name = (
+                existing.resume_file.name
+                if existing.resume_file
+                else None
+            )
 
+            old_preview_name = (
+                existing.preview_pdf.name
+                if existing.preview_pdf
+                else None
+            )
+
+            old_original_filename = (
+                existing.original_filename
+            )
+
+            # Assign the new file.
+            # The old physical file is NOT deleted yet.
             existing.resume_file = new_file
             existing.original_filename = new_file.name
             existing.preview_pdf = None
 
-            ResumeService.reset_resume(existing)
-
-            resume = existing
-
-            # IMPORTANT:
-            # DRF must serialize the actual Resume model instance
-            # after replacement instead of the validated-data dict.
-            serializer.instance = resume
-
-        else:
-            resume = serializer.save(
-                candidate=candidate,
-                original_filename=new_file.name,
+            existing.save(
+                update_fields=[
+                    "resume_file",
+                    "original_filename",
+                    "preview_pdf",
+                ]
             )
 
+            new_resume_name = existing.resume_file.name
+
+            try:
+                try:
+                    PreviewService.generate(
+                        existing
+                    )
+                except Exception as preview_error:
+                    print(
+                        "Preview generate error:",
+                        repr(preview_error)
+                    )
+
+                ResumeService.process_resume(
+                    existing,
+                    candidate,
+                    parsed_result=parsed_result,
+                )
+
+            except ResumeValidationError as exc:
+
+                # Remove newly uploaded files.
+                current_resume_name = (
+                    existing.resume_file.name
+                )
+
+                current_preview_name = (
+                    existing.preview_pdf.name
+                    if existing.preview_pdf
+                    else None
+                )
+
+                storage = (
+                    existing.resume_file.storage
+                )
+
+                if (
+                    current_resume_name
+                    and current_resume_name
+                    != old_resume_name
+                ):
+                    storage.delete(
+                        current_resume_name
+                    )
+
+                if (
+                    current_preview_name
+                    and current_preview_name
+                    != old_preview_name
+                ):
+                    existing.preview_pdf.storage.delete(
+                        current_preview_name
+                    )
+
+                # Restore old valid resume.
+                existing.resume_file.name = (
+                    old_resume_name
+                    or ""
+                )
+
+                existing.preview_pdf.name = (
+                    old_preview_name
+                    if old_preview_name
+                    else ""
+                )
+
+                existing.original_filename = (
+                    old_original_filename
+                )
+
+                existing.save()
+
+                raise serializers.ValidationError(
+                    {
+                        "resume_file": str(exc)
+                    }
+                )
+
+            except Exception:
+
+                # Restore old resume if processing fails.
+                current_resume_name = (
+                    existing.resume_file.name
+                )
+
+                current_preview_name = (
+                    existing.preview_pdf.name
+                    if existing.preview_pdf
+                    else None
+                )
+
+                storage = (
+                    existing.resume_file.storage
+                )
+
+                if (
+                    current_resume_name
+                    and current_resume_name
+                    != old_resume_name
+                ):
+                    storage.delete(
+                        current_resume_name
+                    )
+
+                if (
+                    current_preview_name
+                    and current_preview_name
+                    != old_preview_name
+                ):
+                    existing.preview_pdf.storage.delete(
+                        current_preview_name
+                    )
+
+                existing.resume_file.name = (
+                    old_resume_name
+                    or ""
+                )
+
+                existing.preview_pdf.name = (
+                    old_preview_name
+                    if old_preview_name
+                    else ""
+                )
+
+                existing.original_filename = (
+                    old_original_filename
+                )
+
+                existing.save()
+
+                raise
+
+            # ------------------------------------------------
+            # New resume succeeded.
+            # Now it is safe to delete the old files.
+            # ------------------------------------------------
+
+            if (
+                old_resume_name
+                and old_resume_name
+                != existing.resume_file.name
+            ):
+                existing.resume_file.storage.delete(
+                    old_resume_name
+                )
+
+            if (
+                old_preview_name
+                and (
+                    not existing.preview_pdf
+                    or old_preview_name
+                    != existing.preview_pdf.name
+                )
+            ):
+                storage = (
+                    existing.preview_pdf.storage
+                    if existing.preview_pdf
+                    else Resume.objects.model._meta
+                    .get_field("preview_pdf")
+                    .storage
+                )
+
+                storage.delete(
+                    old_preview_name
+                )
+
+            serializer.instance = existing
+            return
+
+        # =================================================
+        # FIRST RESUME
+        # =================================================
+
+        resume = serializer.save(
+            candidate=candidate,
+            original_filename=new_file.name,
+        )
+
         try:
-            PreviewService.generate(resume)
-        except Exception as e:
-            print("Preview generate error:", repr(e))
 
-        ResumeService.process_resume(resume, candidate)
+            try:
+                PreviewService.generate(
+                    resume
+                )
 
-    @action(detail=True, methods=["get"], url_path="file")
+            except Exception as preview_error:
+                print(
+                    "Preview generate error:",
+                    repr(preview_error)
+                )
+
+            ResumeService.process_resume(
+                resume,
+                candidate,
+                parsed_result=parsed_result,
+            )
+
+            serializer.instance = resume
+
+        except ResumeValidationError as exc:
+
+            # Remove rejected resume.
+            if resume.resume_file:
+                try:
+                    resume.resume_file.delete(
+                        save=False
+                    )
+                except Exception:
+                    pass
+
+            if resume.preview_pdf:
+                try:
+                    resume.preview_pdf.delete(
+                        save=False
+                    )
+                except Exception:
+                    pass
+
+            resume.delete()
+
+            raise serializers.ValidationError(
+                {
+                    "resume_file": str(exc)
+                }
+            )
+
+        except Exception:
+
+            if resume.resume_file:
+                try:
+                    resume.resume_file.delete(
+                        save=False
+                    )
+                except Exception:
+                    pass
+
+            if resume.preview_pdf:
+                try:
+                    resume.preview_pdf.delete(
+                        save=False
+                    )
+                except Exception:
+                    pass
+
+            resume.delete()
+
+            raise
+
+    @action(
+        detail=True,
+        methods=["get"],
+        url_path="file",
+    )
     def file(self, request, pk=None):
         resume = self.get_object()
-        download = request.query_params.get("download", "").lower() in ("true", "1", "yes")
-        return FileService.serve_resume_file(resume, download=download)
+
+        download = (
+            request.query_params
+            .get("download", "")
+            .lower()
+            in ("true", "1", "yes")
+        )
+
+        return FileService.serve_resume_file(
+            resume,
+            download=download,
+        )
 
     def perform_destroy(self, instance):
+
         if instance.resume_file:
             try:
-                instance.resume_file.delete(save=False)
+                instance.resume_file.delete(
+                    save=False
+                )
             except Exception:
                 pass
+
         if instance.preview_pdf:
             try:
-                instance.preview_pdf.delete(save=False)
+                instance.preview_pdf.delete(
+                    save=False
+                )
             except Exception:
                 pass
+
         instance.delete()
 
 class JobPagination(PageNumberPagination):
