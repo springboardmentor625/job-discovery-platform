@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { registerUser } from "../api/auth";
@@ -124,26 +125,10 @@ function Register() {
       console.log("Registration successful:", response);
 
       // =====================================================
-      // STORE JWT IF BACKEND RETURNS ONE
+      // CONTINUE TO LOGIN
       // =====================================================
 
-      if (response.access_token) {
-        localStorage.setItem(
-          "access_token",
-          response.access_token
-        );
-
-        localStorage.setItem(
-          "token_type",
-          response.token_type || "Bearer"
-        );
-      }
-
-      // =====================================================
-      // CONTINUE TO PROFILE
-      // =====================================================
-
-      navigate("/complete-profile");
+      navigate("/login");
 
     } catch (error) {
       console.error("Registration error:", error);
