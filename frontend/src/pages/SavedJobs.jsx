@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -93,7 +94,14 @@ function SavedJobs() {
   return (
     <div className="page">
 
-      <div className="form-container saved-jobs-container">
+      <div
+        className="form-container saved-jobs-container"
+        style={{
+          width: "90%",
+          maxWidth: "900px",
+          boxSizing: "border-box",
+        }}
+      >
 
         <h1>
           Saved Jobs
@@ -127,11 +135,22 @@ function SavedJobs() {
                 job.id ??
                 index;
 
+              const salaryMin =
+                Number(job.salary_min);
+
+              const salaryMax =
+                Number(job.salary_max);
+
+              const hasSalary =
+                (Number.isFinite(salaryMin) &&
+                  salaryMin > 0) ||
+                (Number.isFinite(salaryMax) &&
+                  salaryMax > 0);
+
               const salaryText =
-                job.salary_min != null ||
-                job.salary_max != null
-                  ? `₹${job.salary_min ?? 0} - ₹${job.salary_max ?? 0}`
-                  : "Salary not specified";
+                hasSalary
+                  ? `₹${salaryMin || 0} - ₹${salaryMax || 0}`
+                  : "Salary not disclosed";
 
               return (
                 <div
