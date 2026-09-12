@@ -1,5 +1,4 @@
 
-
 import { useState } from "react";
 
 import { useNavigate } from "react-router-dom";
@@ -324,77 +323,53 @@ function UploadResume() {
 
   return (
 
-    <div className="page resume-page">
+    <div
+
+      className="page resume-page"
+
+      style={{
+
+        width: "100vw",
+
+        minHeight: "100vh",
+
+        margin: 0,
+
+        padding: 0,
+
+        display: "flex",
+
+        alignItems: "stretch",
+
+        justifyContent: "stretch",
+
+      }}
+
+    >
 
 
 
-      <div className="resume-card">
+      <div
 
+        className="resume-card"
 
+        style={{
 
-        {/* ===================================================
-            PROGRESS
-        =================================================== */}
+          width: "100%",
 
+          minHeight: "100vh",
 
+          maxWidth: "none",
 
-        <div className="resume-progress">
+          margin: 0,
 
+          borderRadius: 0,
 
+          boxSizing: "border-box",
 
-          <div className="progress-step completed">
+        }}
 
-            <span>✓</span>
-
-            <p>Account</p>
-
-          </div>
-
-
-
-          <div className="progress-line completed-line"></div>
-
-
-
-          <div className="progress-step completed">
-
-            <span>✓</span>
-
-            <p>Profile</p>
-
-          </div>
-
-
-
-          <div className="progress-line"></div>
-
-
-
-          <div className="progress-step active">
-
-            <span>3</span>
-
-            <p>Resume</p>
-
-          </div>
-
-
-
-          <div className="progress-line"></div>
-
-
-
-          <div className="progress-step">
-
-            <span>4</span>
-
-            <p>Analysis</p>
-
-          </div>
-
-
-
-        </div>
+      >
 
 
 
