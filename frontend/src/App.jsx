@@ -1971,12 +1971,11 @@ console.log(
                     </div>
 
                     <div className="sx-match">
-
-                      {Math.round(
-                        recommendations[0]
-                          .recommendation_score
-                      )}
-                      %
+{Number(
+  recommendations[0]
+    .recommendation_score
+).toFixed(1)}
+%
 
                       <small>
                         MATCH
@@ -2197,11 +2196,11 @@ console.log(
                         </div>
 
                         <b>
-                          {Math.round(
-                            job.recommendation_score
-                          )}
-                          %
-                        </b>
+  {Number(
+    job.recommendation_score
+  ).toFixed(1)}
+  %
+</b>
 
                       </div>
                     ))}

@@ -24,7 +24,7 @@ from flask_jwt_extended import (
 # ML MODEL
 # ============================================================
 
-MODEL_PATH = "trained_model.pkl"
+MODEL_PATH = "/app/model/trained_model.pkl"
 
 ml_model = None
 
@@ -1746,6 +1746,17 @@ def get_recommendations():
         else:
 
             skill_match = 0
+        print(
+    "[DEBUG] JOB SKILLS:",
+    required_skills,
+    "| REQUIRED SET:",
+    required_skill_set,
+    "| MATCHED:",
+    matched_skills,
+    "| SKILL MATCH:",
+    skill_match,
+    flush=True
+)    
 
         # -----------------------------------------------
         # LOCATION MATCH
@@ -1790,7 +1801,6 @@ def get_recommendations():
             ml_features.append([
                 skill_match,
                 location_match,
-                job_type_match
             ])
 
             ml_items.append({
@@ -1842,11 +1852,17 @@ def get_recommendations():
     # ----------------------------------------------------
 
     if use_ml:
+        print("[DEBUG] ML FEATURES SAMPLE:", ml_features[:10])
 
         ml_scores = (
             ml_model.predict_proba(
                 ml_features
             )[:, 1] * 100
+        )
+        print(
+        "[DEBUG] ML SCORES SAMPLE:",
+        ml_scores[:20].round(2).tolist(),
+        flush=True
         )
 
         for item, score in zip(
@@ -1888,6 +1904,18 @@ def get_recommendations():
         key=lambda x: x["recommendation_score"],
         reverse=True
     )
+    print(
+    "[DEBUG] TOP 10 JOBS:",
+    [
+        {
+            "title": item["job"].title,
+            "score": item["recommendation_score"],
+            "matched_skills": item["matched_skills"]
+        }
+        for item in scored_jobs[:10]
+    ],
+    flush=True
+)
 
     # ----------------------------------------------------
     # TAKE ONLY TOP 50 JOBS

@@ -14,7 +14,7 @@ COPY build_skill_vocabulary.py .
 COPY migrate_required_skills.py .
 COPY ml_model.py .
 COPY train_ml.py .
-COPY trained_model.pkl .
+
 
 
 RUN mkdir -p uploads
