@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { loginUser } from "../api/auth";
@@ -92,10 +93,10 @@ function Login() {
       );
 
       // =======================================================
-      // CONTINUE TO PROFILE
+      // CONTINUE TO DASHBOARD
       // =======================================================
 
-      navigate("/complete-profile");
+      navigate("/dashboard");
 
     } catch (error) {
       console.error(
