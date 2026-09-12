@@ -49,6 +49,9 @@ function App() {
   // Authentication
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [candidateName, setCandidateName] = useState(
+  localStorage.getItem("candidate_name") || ""
+);
 
   // Registration
   const [fullName, setFullName] = useState("");
@@ -69,7 +72,7 @@ function App() {
   // Resume
   const [resumeFile, setResumeFile] = useState(null);
   const [extractedSkills, setExtractedSkills] = useState([]);
-
+  const [skillsLoading, setSkillsLoading] = useState(false);
   // Jobs
   // Jobs
 const [jobs, setJobs] = useState([]);
@@ -274,13 +277,19 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
       if (response.ok) {
         localStorage.setItem(
-          "access_token",
-          data.access_token
-        );
+  "access_token",
+  data.access_token
+);
+
+localStorage.setItem(
+  "candidate_name",
+  data.full_name
+);
 
         setMessage(
           `Welcome, ${data.full_name}! Login successful.`
         );
+        setCandidateName(data.full_name);
 
         const profileResponse = await fetch(
           `${API}/api/profile`,
@@ -409,6 +418,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
     setMessage("");
     setExtractedSkills([]);
+    setSkillsLoading(true);
 
     const authToken = token();
 
@@ -424,7 +434,8 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       );
 
       setPage("login");
-
+      
+setSkillsLoading(false);
       return;
     }
 
@@ -432,6 +443,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       setMessage(
         "Please select a PDF resume."
       );
+      setSkillsLoading(false);
       return;
     }
 
@@ -442,6 +454,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       setMessage(
         "Only PDF resumes are allowed."
       );
+      setSkillsLoading(false);
       return;
     }
 
@@ -449,6 +462,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       setMessage(
         "Resume must be smaller than 5 MB."
       );
+      setSkillsLoading(false);
       return;
     }
 
@@ -491,6 +505,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
             "Resume upload failed."
         );
       }
+      setSkillsLoading(false);
     } catch {
       setMessage(
         "Could not connect to the backend."
@@ -1590,19 +1605,19 @@ console.log(
 
               <div className="sx-stat-card">
 
-                <span>
-                  PROFILE STATUS
-                </span>
+  <span>
+    WELCOME BACK
+  </span>
 
-                <strong>
-                  ACTIVE
-                </strong>
+  <strong>
+    {candidateName} 
+  </strong>
 
-                <small>
-                  Ready for job discovery
-                </small>
+  <small>
+    Ready to discover your next opportunity.
+  </small>
 
-              </div>
+</div>
 
             </div>
 
@@ -1700,22 +1715,27 @@ console.log(
                     )}
 
                   </div>
-                ) : (
-                  <div className="sx-empty-state">
+                
+                
+                ) : skillsLoading ? (
+  <div className="sx-empty-state">
+    <span className="sx-skill-loader"></span>
+    <p>
+      Extracting skills...
+    </p>
+  </div>
+) : (
+  <div className="sx-empty-state">
+    <span>+</span>
+    <p>
+      Upload a resume to see
+      your detected skills.
+    </p>
+  </div>
+)}
 
-                    <span>+</span>
 
-                    <p>
-                      Upload a resume to see
-                      your detected skills.
-                    </p>
-
-                  </div>
-                )}
-
-              </div>
-
-            </div>
+    </div>
 
             {message && (
               <div className="sx-message">
@@ -1755,6 +1775,8 @@ console.log(
 
               </div>
             )}
+
+            </div>
 
           </section>
         )}

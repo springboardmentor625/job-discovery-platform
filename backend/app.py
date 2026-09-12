@@ -7,6 +7,7 @@ import re
 import joblib
 
 
+from tfidf_model import load_tfidf
 from dotenv import load_dotenv
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -33,6 +34,31 @@ if os.path.exists(MODEL_PATH):
     print("ML: Trained model loaded")
 else:
     print("ML: No trained model found")
+
+# ============================================================
+# TF-IDF MODEL
+# ============================================================
+
+tfidf_data = load_tfidf()
+
+if tfidf_data:
+    tfidf_vectorizer, tfidf_job_vectors, tfidf_job_ids = tfidf_data
+    tfidf_job_index = {
+        job_id: index
+        for index, job_id in enumerate(tfidf_job_ids)
+    }
+
+    print(
+        f"TF-IDF: Loaded {len(tfidf_job_ids)} job vectors"
+    )
+
+else:
+    tfidf_vectorizer = None
+    tfidf_job_vectors = None
+    tfidf_job_ids = None
+    tfidf_job_index = {}
+
+    print("TF-IDF: No trained model found")
 
 
 # ============================================================
@@ -1627,6 +1653,29 @@ def get_recommendations():
         for skill in resume_skills
         if skill
     }
+    # ----------------------------------------------------
+    # TF-IDF CANDIDATE VECTOR
+    # ----------------------------------------------------
+
+    candidate_tfidf_vector = None
+
+    if tfidf_vectorizer is not None:
+
+     candidate_text = " ".join(
+        str(skill)
+        for skill in resume_skills
+    )
+
+    candidate_tfidf_vector = (
+        tfidf_vectorizer.transform(
+            [candidate_text]
+        )
+    )
+
+    print(
+        "[TF-IDF] Candidate vector created",
+        flush=True
+    )
 
     # ----------------------------------------------------
     # CANDIDATE PREFERENCES
@@ -1685,14 +1734,61 @@ def get_recommendations():
             "RECOMMENDATION MODE: RULE-BASED",
             flush=True
         )
+        # ----------------------------------------------------
+    # TF-IDF SCORES
+    # ----------------------------------------------------
 
-    # ----------------------------------------------------
-    # CALCULATE SCORE FOR ALL JOBS
-    # ----------------------------------------------------
+    tfidf_scores = {}
+
+    if (
+        use_ml
+        and candidate_tfidf_vector is not None
+        and tfidf_job_vectors is not None
+    ):
+
+        all_tfidf_scores = (
+            candidate_tfidf_vector
+            @ tfidf_job_vectors.T
+        ).toarray()[0] * 100
+
+        tfidf_scores = {
+            job_id: float(score)
+            for job_id, score
+            in zip(
+                tfidf_job_ids,
+                all_tfidf_scores
+            )
+        }
+                # Show only top 10 TF-IDF jobs for debugging
+        top_tfidf = sorted(
+            tfidf_scores.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:10]
+
+        print(
+            "[TF-IDF TOP 10]",
+            flush=True
+        )
+
+        for job_id, score in top_tfidf:
+
+            print(
+                job_id,
+                "|",
+                round(score, 2),
+                flush=True
+            )
+        print(
+            "[TF-IDF] Calculated scores for",
+            len(tfidf_scores),
+            "jobs",
+            flush=True
+        )
+
     scored_jobs = []
     ml_features = []
     ml_items = []
-
     # ----------------------------------------------------
     # REMOVE ALREADY SWIPED JOBS
     # ----------------------------------------------------
@@ -1709,15 +1805,14 @@ def get_recommendations():
         if job.job_id in swiped_job_ids:
             continue
 
-        # -----------------------------------------------
         # REQUIRED SKILLS
         # -----------------------------------------------
-
 
         try:
             required_skills = json.loads(
                 job.required_skills
             ) if job.required_skills else []
+
         except Exception:
             required_skills = []
 
@@ -1746,19 +1841,22 @@ def get_recommendations():
         else:
 
             skill_match = 0
-        print(
-    "[DEBUG] JOB SKILLS:",
-    required_skills,
-    "| REQUIRED SET:",
-    required_skill_set,
-    "| MATCHED:",
-    matched_skills,
-    "| SKILL MATCH:",
-    skill_match,
-    flush=True
-)    
+        
 
         # -----------------------------------------------
+        # TF-IDF SCORE
+        # -----------------------------------------------
+
+        tfidf_score = tfidf_scores.get(
+            job.job_id,
+            0.0
+        )
+
+                
+
+    
+
+       # -----------------------------------------------
         # LOCATION MATCH
         # -----------------------------------------------
 
@@ -1848,47 +1946,63 @@ def get_recommendations():
                     recommendation_score
             })
     # ----------------------------------------------------
-    # BATCH ML PREDICTION
+    # BATCH ML PREDICTION + HYBRID SCORE
     # ----------------------------------------------------
 
     if use_ml:
-        print("[DEBUG] ML FEATURES SAMPLE:", ml_features[:10])
+     print("[DEBUG] ML FEATURES SAMPLE:", ml_features[:10])
 
-        ml_scores = (
-            ml_model.predict_proba(
-                ml_features
-            )[:, 1] * 100
-        )
-        print(
+    ml_scores = (
+        ml_model.predict_proba(
+            ml_features
+        )[:, 1] * 100
+    )
+
+    print(
         "[DEBUG] ML SCORES SAMPLE:",
         ml_scores[:20].round(2).tolist(),
         flush=True
+    )
+
+    for item, ml_score in zip(
+        ml_items,
+        ml_scores
+    ):
+
+        tfidf_score = tfidf_scores.get(
+            item["job"].job_id,
+            0.0
         )
 
-        for item, score in zip(
-            ml_items,
-            ml_scores
-        ):
+        # ------------------------------------------------
+        # HYBRID SCORE
+        # 50% ML + 50% TF-IDF
+        # ------------------------------------------------
 
-            scored_jobs.append({
+        hybrid_score = (
+            (ml_score * 0.50) +
+            (tfidf_score * 0.50)
+        )
 
-                "job":
-                    item["job"],
+        scored_jobs.append({
 
-                "required_skills":
-                    item["required_skills"],
+            "job":
+                item["job"],
 
-                "matched_skills":
-                    item["matched_skills"],
+            "required_skills":
+                item["required_skills"],
 
-                "recommendation_score":
-                    float(
-                        round(
-                            score,
-                            2
-                        )
+            "matched_skills":
+                item["matched_skills"],
+
+            "recommendation_score":
+                float(
+                    round(
+                        hybrid_score,
+                        2
                     )
-            })
+                )
+        })
 
     print(
         "JOBS SCORED:",

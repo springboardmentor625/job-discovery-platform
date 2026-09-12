@@ -14,6 +14,8 @@ COPY build_skill_vocabulary.py .
 COPY migrate_required_skills.py .
 COPY ml_model.py .
 COPY train_ml.py .
+COPY tfidf_model.py .
+COPY train_tfidf.py .
 
 
 
