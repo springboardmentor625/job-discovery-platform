@@ -1,6 +1,6 @@
 from django.urls import path
 from .views import RegisterView, LoginView, VerifyEmailView
-from .views import ResumeUploadView, ResumeDeleteView, JobSwipeView, SavedJobsView
+from .views import ResumeUploadView, ResumeDeleteView, JobSwipeView, SavedJobsView, SwipeHistoryView
 from .views import CandidateProfileView, ATSMatchView, RecommendationView
 from .views import JobListView
 
@@ -12,6 +12,7 @@ urlpatterns = [
     path("resume/delete/", ResumeDeleteView.as_view(), name="resume-delete"),
     path("jobs/swipe/",JobSwipeView.as_view(),name="job-swipe"),
     path("jobs/saved/", SavedJobsView.as_view(), name="saved-jobs"),
+    path("jobs/swipe-history/",SwipeHistoryView.as_view(),name="swipe-history"),
     path("profile/", CandidateProfileView.as_view(), name="candidate-profile"),
     path("ats/jobs/<int:job_id>/",ATSMatchView.as_view(),name="ats-match"),
     path("jobs/",JobListView.as_view(),name="job-list"),

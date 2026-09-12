@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import "./Dashboard.css";
 
@@ -12,6 +12,7 @@ function Dashboard({ user, onLogout }) {
 
   const [savedJobs, setSavedJobs] = useState([]);
   const [jobs, setJobs] = useState([]);
+  const [dashboardProfile, setDashboardProfile] = useState(null);
   const [jobsLoading, setJobsLoading] = useState(false);
   const [jobsError, setJobsError] = useState("");
 
@@ -23,6 +24,9 @@ function Dashboard({ user, onLogout }) {
   const [swipeJob, setSwipeJob] = useState(null);
   const [swipeDirection, setSwipeDirection] = useState("");
 
+  const [swipeHistory, setSwipeHistory] = useState([]);
+  const [swipesSinceRecommendationRefresh, setSwipesSinceRecommendationRefresh] = useState(0);
+
   const [selectedJob, setSelectedJob] = useState(null);
   const [atsJob, setAtsJob] = useState(null);
   const [atsResult, setAtsResult] = useState(null);
@@ -31,12 +35,14 @@ function Dashboard({ user, onLogout }) {
 
   const [activePage, setActivePage] = useState("dashboard");
 
-    useEffect(() => {
-      if (activePage === "recommendations") {
-        fetchRecommendations();
-      }
-    }, [activePage]);
-
+  useEffect(() => {
+    if (
+      activePage === "recommendations" ||
+      activePage === "dashboard"
+    ) {
+      fetchRecommendations();
+    }
+  }, [activePage]);
 
   useEffect(() => {
     const fetchJobs = async () => {
@@ -128,6 +134,8 @@ function Dashboard({ user, onLogout }) {
     };
 
     fetchSavedJobs();
+    fetchSwipeHistory();
+    fetchDashboardProfile();
   }, []);
 
   const filteredJobs = jobs.filter((job) => {
@@ -194,6 +202,28 @@ function Dashboard({ user, onLogout }) {
     }
   };
 
+  const fetchDashboardProfile = async () => {
+    try {
+      const token = localStorage.getItem("swipex_token");
+
+      const response = await axios.get(
+        "http://127.0.0.1:8000/api/profile/",
+        {
+          headers: {
+            Authorization: `Token ${token}`,
+          },
+        }
+      );
+
+      setDashboardProfile(response.data);
+    } catch (error) {
+      console.error(
+        "❌ DASHBOARD PROFILE ERROR:",
+        error.response?.data || error
+      );
+    }
+  };
+
   const fetchRecommendations = async () => {
     setRecommendationsLoading(true);
     setRecommendationsError("");
@@ -237,7 +267,7 @@ function Dashboard({ user, onLogout }) {
 
         skills: "",
 
-        description: "Recommended based on your profile.",
+        description: job.description || "No job description available.",
 
         match: job.final_score,
 
@@ -258,6 +288,37 @@ function Dashboard({ user, onLogout }) {
 
     } finally {
       setRecommendationsLoading(false);
+    }
+  };
+
+  const fetchSwipeHistory = async () => {
+    try {
+      const token = localStorage.getItem("swipex_token");
+
+      const response = await fetch(
+        "http://127.0.0.1:8000/api/jobs/swipe-history/",
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Token ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.error || "Failed to fetch swipe history."
+        );
+      }
+
+      console.log("🔥 SWIPE HISTORY FROM BACKEND:", data);
+
+      setSwipeHistory(data.swipe_history || []);
+    } catch (error) {
+      console.error("❌ FETCH SWIPE HISTORY ERROR:", error);
     }
   };
 
@@ -287,7 +348,22 @@ function Dashboard({ user, onLogout }) {
       }
 
       console.log("SWIPE SUCCESS:", data);
+
+      await fetchSwipeHistory();
+
+      setSwipesSinceRecommendationRefresh((prev) => {
+        const newCount = prev + 1;
+
+        if (newCount >= 5) {
+          fetchRecommendations();
+          return 0;
+        }
+
+        return newCount;
+      });
+
       setSwipeJob(job.id);
+
       // Show UI feedback
       if (direction === "right") {
         setSwipeMessage("❤️ Interested! Your response has been recorded.");
@@ -328,9 +404,11 @@ function Dashboard({ user, onLogout }) {
         <p>{description}</p>
       </div>
 
-      <div className="user-info">
-        <div className="notification">🔔</div>
-
+      <div
+        className="user-info"
+        onClick={() => goTo("profile")}
+        style={{ cursor: "pointer" }}
+      >
         <div className="user-avatar">
           {user?.full_name?.charAt(0)?.toUpperCase() || "U"}
         </div>
@@ -345,7 +423,28 @@ function Dashboard({ user, onLogout }) {
 
   /* ================= DASHBOARD PAGE ================= */
 
-  const DashboardPage = () => (
+  const DashboardPage = () => {
+
+    const profileFields = [
+      dashboardProfile?.headline,
+      dashboardProfile?.location,
+      dashboardProfile?.preferred_locations?.length > 0,
+      dashboardProfile?.job_type,
+      dashboardProfile?.bio,
+      dashboardProfile?.career_goal,
+      dashboardProfile?.preferred_job_role,
+    ];
+
+    const completedProfileFields = profileFields.filter(
+      (field) => field
+    ).length;
+
+    const profileCompletion = dashboardProfile
+      ? Math.round(
+          (completedProfileFields / profileFields.length) * 100
+        )
+      : 0;
+    return (
     <>
       <PageHeader
         title={`Welcome back, ${user?.full_name || "User"}! 👋`}
@@ -367,11 +466,16 @@ function Dashboard({ user, onLogout }) {
             </p>
 
             <div className="progress-bar">
-              <div className="progress-fill"></div>
+              <div
+                className="progress-fill"
+                style={{
+                  width: `${profileCompletion}%`,
+                }}
+              ></div>
             </div>
 
             <span className="progress-text">
-              70% Profile Completed
+              {profileCompletion}% Profile Completed
             </span>
           </div>
 
@@ -388,8 +492,13 @@ function Dashboard({ user, onLogout }) {
       {/* Statistics */}
       <section className="stats-container">
 
-        <div className="stat-card">
+        <div
+          className="stat-card"
+          onClick={() => goTo("jobs")}
+          style={{ cursor: "pointer" }}
+        >
           <div className="stat-icon blue">💼</div>
+
           <div>
             <span>Available Jobs</span>
             <h3>{jobs.length}</h3>
@@ -397,30 +506,17 @@ function Dashboard({ user, onLogout }) {
           </div>
         </div>
 
-        <div className="stat-card">
-          <div className="stat-icon green">📄</div>
-          <div>
-            <span>Applications</span>
-            <h3>0</h3>
-            <small>Applications submitted</small>
-          </div>
-        </div>
-
-        <div className="stat-card">
+        <div
+          className="stat-card"
+          onClick={() => goTo("saved")}
+          style={{ cursor: "pointer" }}
+        >
           <div className="stat-icon purple">❤️</div>
+
           <div>
             <span>Saved Jobs</span>
             <h3>{savedJobs.length}</h3>
             <small>Jobs saved for later</small>
-          </div>
-        </div>
-
-        <div className="stat-card">
-          <div className="stat-icon orange">📊</div>
-          <div>
-            <span>ATS Score</span>
-            <h3>--</h3>
-            <small>Upload resume to analyze</small>
           </div>
         </div>
 
@@ -510,93 +606,279 @@ function Dashboard({ user, onLogout }) {
       </section>
 
       {/* Recommended Jobs */}
-      <section className="jobs-section">
+      <section className="jobs-section swipe-jobs-section">
 
         <div className="section-header">
           <div>
             <h2>Recommended Jobs</h2>
             <p>Opportunities selected for your profile.</p>
           </div>
-
-          <button
-            className="view-all-button"
-            onClick={() => goTo("jobs")}
-          >
-            View All →
-          </button>
         </div>
-
-        {jobs.slice(0, 2).map((job) => (
+      <div className="jobs-grid">
+        {recommendations.slice(0, 3).map((job) => (
           <JobCard
             key={job.id}
             job={job}
             onViewJob={handleViewJob}
           />
         ))}
-
+      </div>
       </section>
     </>
-  );
+    );
+  };
 
   /* ================= JOB CARD ================= */
 
-  const JobCard = ({ job, onViewJob }) => (
-    <div
-      className="job-card swipe-job-card"
-      onClick={() => {
-        console.log("🔥 JOB CARD CLICKED:", job);
-        console.log("🔥 onViewJob VALUE:", onViewJob);
-        
-        if (typeof onViewJob === "function") {
-          console.log("🔥 onViewJob IS FUNCTION — CALLING NOW");
-          onViewJob(job);
-        } else {
-          console.error("❌ onViewJob IS NOT A FUNCTION:", onViewJob);
-        }
-      }}
-    >
+  const JobCard = ({ job, onViewJob }) => {
+    const dragStartX = useRef(0);
+    const dragStartY = useRef(0);
+    const dragXRef = useRef(0);
+    const dragYRef = useRef(0);
 
-      <div className="company-logo">
-        {job.company.charAt(0).toUpperCase()}
-      </div>
+    const [isDragging, setIsDragging] = useState(false);
+    const [dragX, setDragX] = useState(0);
+    const [dragY, setDragY] = useState(0);
 
-      <div className="job-details">
+    const hasDragged = useRef(false);
 
-        <div className="job-title-row">
-          <div>
-            <h3>{job.title}</h3>
+    const handlePointerDown = (event) => {
+      event.preventDefault();
 
-            <p className="company">
-              {job.company}
-            </p>
+      event.currentTarget.setPointerCapture(event.pointerId);
+
+      dragStartX.current = event.clientX;
+      dragStartY.current = event.clientY;
+
+      dragXRef.current = 0;
+      dragYRef.current = 0;
+
+      hasDragged.current = false;
+
+      setIsDragging(true);
+      setDragX(0);
+      setDragY(0);
+    };
+
+    const handlePointerMove = (event) => {
+      if (!isDragging) return;
+
+      event.preventDefault();
+
+      const offsetX = event.clientX - dragStartX.current;
+      const offsetY = event.clientY - dragStartY.current;
+
+      /*
+      * Only move the card a limited amount.
+      * This prevents the card from flying across the screen.
+      */
+      const limitedX = Math.max(
+        -120,
+        Math.min(120, offsetX)
+      );
+
+      const limitedY = Math.max(
+        -120,
+        Math.min(120, offsetY)
+      );
+
+      dragXRef.current = offsetX;
+      dragYRef.current = offsetY;
+
+      if (
+        Math.abs(offsetX) > 10 ||
+        Math.abs(offsetY) > 10
+      ) {
+        hasDragged.current = true;
+      }
+
+      setDragX(limitedX);
+      setDragY(limitedY);
+    };
+
+    const handlePointerUp = (event) => {
+      if (!isDragging) return;
+
+      const offsetX = dragXRef.current;
+      const offsetY = dragYRef.current;
+
+      const threshold = 60;
+
+      setIsDragging(false);
+
+      /*
+      * DOWN = SAVE
+      */
+      if (
+        offsetY >= threshold &&
+        offsetY > Math.abs(offsetX)
+      ) {
+        console.log("👇 JOB SWIPE DOWN:", job);
+
+        handleSwipe(job, "down");
+
+        setDragX(0);
+        setDragY(0);
+        dragXRef.current = 0;
+        dragYRef.current = 0;
+
+        return;
+      }
+
+      /*
+      * RIGHT = INTERESTED
+      */
+      if (
+        offsetX >= threshold &&
+        Math.abs(offsetX) > Math.abs(offsetY)
+      ) {
+        console.log("👉 JOB SWIPE RIGHT:", job);
+
+        handleSwipe(job, "right");
+
+        setDragX(0);
+        setDragY(0);
+        dragXRef.current = 0;
+        dragYRef.current = 0;
+
+        return;
+      }
+
+      /*
+      * LEFT = NOT INTERESTED
+      */
+      if (
+        offsetX <= -threshold &&
+        Math.abs(offsetX) > Math.abs(offsetY)
+      ) {
+        console.log("👈 JOB SWIPE LEFT:", job);
+
+        handleSwipe(job, "left");
+
+        setDragX(0);
+        setDragY(0);
+        dragXRef.current = 0;
+        dragYRef.current = 0;
+
+        return;
+      }
+
+      /*
+      * No swipe.
+      * Return card to original position.
+      */
+      setDragX(0);
+      setDragY(0);
+
+      dragXRef.current = 0;
+      dragYRef.current = 0;
+    };
+
+    const handlePointerCancel = () => {
+      setIsDragging(false);
+      setDragX(0);
+      setDragY(0);
+
+      dragXRef.current = 0;
+      dragYRef.current = 0;
+
+      hasDragged.current = false;
+    };
+
+    const handleCardClick = () => {
+      /*
+      * If the user dragged the card,
+      * don't open Job Details.
+      */
+      if (hasDragged.current) {
+        hasDragged.current = false;
+        return;
+      }
+
+      console.log("🔥 JOB CARD CLICKED:", job);
+      console.log("🔥 onViewJob VALUE:", onViewJob);
+
+      if (typeof onViewJob === "function") {
+        console.log(
+          "🔥 onViewJob IS FUNCTION — CALLING NOW"
+        );
+
+        onViewJob(job);
+      } else {
+        console.error(
+          "❌ onViewJob IS NOT A FUNCTION:",
+          onViewJob
+        );
+      }
+    };
+
+    return (
+      <div
+        className="job-card swipe-job-card"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        onClick={handleCardClick}
+        style={{
+          transform: isDragging
+            ? `translate(${dragX}px, ${dragY}px) rotate(${dragX * 0.02}deg)`
+            : "translate(0, 0) rotate(0deg)",
+
+          transition: isDragging
+            ? "none"
+            : "transform 0.2s ease",
+
+          touchAction: "none",
+
+          userSelect: "none",
+
+          WebkitUserSelect: "none",
+
+          cursor: isDragging
+            ? "grabbing"
+            : "grab",
+        }}
+      >
+        <div className="job-details">
+          <div className="job-title-row">
+            <div className="company-logo">
+              {job.company.charAt(0).toUpperCase()}
+            </div>
+
+            <div>
+              <h3>{job.title}</h3>
+              <p className="company">
+                {job.company}
+              </p>
+            </div>
           </div>
+
+          <div className="job-info">
+            <span>📍 {job.location}</span>
+            <span>💼 {job.type}</span>
+            <span>🎓 {job.experience}</span>
+          </div>
+
+          <p className="skills">
+            {job.skills || "Skills not specified"}
+          </p>
+
+          <p className="job-card-description">
+            {job.description
+              ? job.description.substring(0, 120) + "..."
+              : "No job description available."}
+          </p>
+
         </div>
 
-        <div className="job-info">
-          <span>📍 {job.location}</span>
-          <span>💼 {job.type}</span>
-          <span>🎓 {job.experience}</span>
+        <div className="job-card-click">
+          Drag ← / → / ↓ to Swipe
         </div>
 
-        <p className="skills">
-          {job.skills || "Skills not specified"}
-        </p>
-
-        <p className="job-card-description">
-          {job.description
-            ? job.description.substring(0, 120) + "..."
-            : "No job description available."}
-        </p>
-
       </div>
-
-      <div className="job-card-click">
-        Click to Swipe →
-      </div>
-
-    </div>
-  );
-
+    );
+  };
   /* ================= FIND JOBS ================= */
 
   const FindJobsPage = () => (
@@ -982,7 +1264,7 @@ function Dashboard({ user, onLogout }) {
           description="Jobs you saved for future consideration."
         />
 
-        <section className="jobs-section">
+        <section className="jobs-section swipe-jobs-section">
 
           <div className="section-header">
             <div>
@@ -994,13 +1276,15 @@ function Dashboard({ user, onLogout }) {
           </div>
 
           {saved.length > 0 ? (
-           saved.map((job) => (
-            <JobCard
-              key={job.id}
-              job={job}
-              onViewJob={handleViewJob}
-            />
-          ))
+          <div className="jobs-grid">
+            {saved.map((job) => (
+              <JobCard
+                key={job.id}
+                job={job}
+                onViewJob={handleViewJob}
+              />
+            ))}
+          </div>
           ) : (
             <div className="empty-state">
               <div className="empty-icon">❤️</div>
@@ -2326,6 +2610,114 @@ const ResumePage = () => {
     swipeMessage,
   }) => {
 
+  const dragStartX = useRef(0);
+  const dragStartY = useRef(0);
+  const dragXRef = useRef(0);
+  const dragYRef = useRef(0);
+
+  const [draggingJobId, setDraggingJobId] = useState(null);
+  const [dragX, setDragX] = useState(0);
+  const [dragY, setDragY] = useState(0);
+
+  const handlePointerDown = (event, job) => {
+    if (event.target.closest("button")) {
+      return;
+    }
+
+    event.preventDefault();
+
+    event.currentTarget.setPointerCapture(event.pointerId);
+
+    dragStartX.current = event.clientX;
+    dragStartY.current = event.clientY;
+
+    dragXRef.current = 0;
+    dragYRef.current = 0;
+
+    setDraggingJobId(job.id);
+    setDragX(0);
+    setDragY(0);
+  };
+
+  const handlePointerMove = (event, job) => {
+    if (draggingJobId !== job.id) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const offsetX = event.clientX - dragStartX.current;
+    const offsetY = event.clientY - dragStartY.current;
+
+    // Keep the movement small
+    const limitedX = Math.max(-100, Math.min(100, offsetX));
+    const limitedY = Math.max(-100, Math.min(100, offsetY));
+
+    dragXRef.current = offsetX;
+    dragYRef.current = offsetY;
+
+    setDragX(limitedX);
+    setDragY(limitedY);
+  };
+
+  const handlePointerUp = (event, job) => {
+    if (draggingJobId !== job.id) {
+      return;
+    }
+
+    const offsetX = dragXRef.current;
+    const offsetY = dragYRef.current;
+
+    const threshold = 60;
+
+    setDraggingJobId(null);
+    setDragX(0);
+    setDragY(0);
+
+    dragXRef.current = 0;
+    dragYRef.current = 0;
+
+    // DOWN
+    if (
+      offsetY >= threshold &&
+      offsetY > Math.abs(offsetX)
+    ) {
+      console.log("👇 SWIPE DOWN");
+      handleSwipe(job, "down");
+      return;
+    }
+
+    // RIGHT
+    if (
+      offsetX >= threshold &&
+      Math.abs(offsetX) > Math.abs(offsetY)
+    ) {
+      console.log("👉 SWIPE RIGHT");
+      handleSwipe(job, "right");
+      return;
+    }
+
+    // LEFT
+    if (
+      offsetX <= -threshold &&
+      Math.abs(offsetX) > Math.abs(offsetY)
+    ) {
+      console.log("👈 SWIPE LEFT");
+      handleSwipe(job, "left");
+      return;
+    }
+
+    console.log("↩️ SWIPE CANCELLED");
+  };
+
+  const handlePointerCancel = () => {
+    setDraggingJobId(null);
+    setDragX(0);
+    setDragY(0);
+
+    dragXRef.current = 0;
+    dragYRef.current = 0;
+  };
     return (
       <>
         <PageHeader
@@ -2363,27 +2755,55 @@ const ResumePage = () => {
             !recommendationsError &&
             recommendations.length > 0 && (
               <div className="jobs-grid">
+
                 {recommendations.map((job) => (
                   <div
                     className="job-card swipe-job-card"
                     key={job.id}
+                    onPointerDown={(event) =>
+                      handlePointerDown(event, job)
+                    }
+                    onPointerMove={(event) =>
+                      handlePointerMove(event, job)
+                    }
+                    onPointerUp={(event) =>
+                      handlePointerUp(event, job)
+                    }
+                    onPointerCancel={handlePointerCancel}
+                    style={{
+                      transform:
+                        draggingJobId === job.id
+                          ? `translate(${dragX}px, ${dragY}px) rotate(${dragX * 0.02}deg)`
+                          : "translate(0, 0) rotate(0deg)",
+                      transition:
+                        draggingJobId === job.id
+                          ? "none"
+                          : "transform 0.2s ease",
+                      touchAction: "none",
+                      userSelect: "none",
+                      WebkitUserSelect: "none",
+                      cursor:
+                        draggingJobId === job.id
+                          ? "grabbing"
+                          : "grab",
+                    }}
                   >
-                    <div className="company-logo">
-                      {job.company.charAt(0).toUpperCase()}
-                    </div>
-
                     <div className="job-details">
                       <div className="job-title-row">
-                        <div>
-                          <h3>{job.title}</h3>
-                          <p className="company">
-                            {job.company}
-                          </p>
-                        </div>
 
-                        <div className="recommendation-score">
-                          {job.match}%
-                          <span>Match</span>
+                        <div className="job-heading">
+
+                          <div className="company-logo">
+                            {job.company.charAt(0).toUpperCase()}
+                          </div>
+
+                          <div>
+                            <h3>{job.title}</h3>
+
+                            <p className="company">
+                              {job.company}
+                            </p>
+                          </div>
                         </div>
                       </div>
 
@@ -2399,6 +2819,10 @@ const ResumePage = () => {
                         <span>💼 Job Type: {job.jobTypeScore}%</span>
                       </div>
                     </div>
+
+                    <p className="recommendation-description">
+                      {job.description}
+                    </p>
 
                     <div className="recommendation-actions">
                       <button
@@ -2501,7 +2925,7 @@ const ResumePage = () => {
       case "jobs":
         return (
           <>
-            <FindJobsPage />
+            {FindJobsPage()}
 
             {selectedJob && (
               <div className="job-details-modal-overlay">

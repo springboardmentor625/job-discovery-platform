@@ -422,6 +422,37 @@ class JobSwipeView(APIView):
             else status.HTTP_200_OK
         )
 
+class SwipeHistoryView(APIView):
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+
+        swipe_history = JobSwipe.objects.filter(
+            user=request.user
+        ).select_related("job").order_by("-updated_at")
+
+        history = []
+
+        for swipe in swipe_history:
+            history.append({
+                "job_id": swipe.job.job_id,
+                "job_title": swipe.job.title,
+                "company_name": swipe.job.company_name,
+                "city": swipe.job.city,
+                "contract_type": swipe.job.contract_type,
+                "swipe_direction": swipe.swipe_direction,
+                "created_at": swipe.created_at,
+                "updated_at": swipe.updated_at,
+            })
+
+        return Response(
+            {
+                "swipe_history": history
+            },
+            status=status.HTTP_200_OK
+        )
+
 class SavedJobsView(APIView):
 
     permission_classes = [IsAuthenticated]
@@ -465,8 +496,21 @@ class RecommendationView(APIView):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get all jobs
-        jobs = Job.objects.all()
+        # Get user's previous swipe history
+        swipe_history = JobSwipe.objects.filter(
+            user=request.user
+        ).select_related("job")
+
+        # Get jobs that the user has already swiped
+        swiped_job_ids = swipe_history.values_list(
+            "job_id",
+            flat=True
+        )
+
+        # Get only jobs that the user has not swiped yet
+        jobs = Job.objects.exclude(
+            id__in=swiped_job_ids
+        )
 
         # Generate recommendations
         recommendations = get_recommended_jobs(
@@ -475,7 +519,8 @@ class RecommendationView(APIView):
             preferred_locations=profile.preferred_locations,
             candidate_job_type=profile.job_type,
             jobs=jobs,
-            limit=10,
+            swipe_history=swipe_history,
+            limit=20,
         )
 
         return Response(

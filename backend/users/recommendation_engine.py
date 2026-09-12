@@ -1,3 +1,6 @@
+from sklearn.linear_model import LogisticRegression
+from sklearn.feature_extraction.text import TfidfVectorizer
+
 def normalize_text(value):
     """
     Convert text into a normalized format
@@ -285,23 +288,236 @@ def calculate_match_score(
         "final_score": round(final_score, 2),
     }
 
+def calculate_swipe_preference_score(
+    job,
+    swipe_history,
+):
+    """
+    Learn the user's preferences from previous swipes.
+
+    RIGHT = strong positive preference
+    DOWN  = positive preference
+    LEFT  = negative preference
+    """
+
+    if not swipe_history:
+        return 0
+
+    score = 0
+    total_swipes = 0
+
+    current_title = normalize_text(job.title)
+    current_city = normalize_city(job.city)
+    current_type = normalize_text(job.contract_type)
+
+    current_skills = {
+        normalize_text(skill)
+        for skill in job.required_skills
+        if skill
+    }
+
+    for swipe in swipe_history:
+
+        previous_job = swipe.job
+
+        previous_title = normalize_text(previous_job.title)
+        previous_city = normalize_city(previous_job.city)
+        previous_type = normalize_text(previous_job.contract_type)
+
+        previous_skills = {
+            normalize_text(skill)
+            for skill in previous_job.required_skills
+            if skill
+        }
+
+        similarity = 0
+
+        # Job title similarity
+        if current_title and previous_title:
+            current_words = set(current_title.split())
+            previous_words = set(previous_title.split())
+
+            common_words = current_words.intersection(previous_words)
+
+            if common_words:
+                similarity += 40
+
+        # Skills similarity
+        if current_skills and previous_skills:
+            common_skills = current_skills.intersection(previous_skills)
+
+            if common_skills:
+                similarity += 40
+
+        # Location similarity
+        if (
+            current_city
+            and previous_city
+            and current_city == previous_city
+        ):
+            similarity += 10
+
+        # Job type similarity
+        if (
+            current_type
+            and previous_type
+            and current_type == previous_type
+        ):
+            similarity += 10
+
+        # Learn from the user's action
+        if swipe.swipe_direction == "right":
+            score += similarity
+
+        elif swipe.swipe_direction == "down":
+            score += similarity * 0.5
+
+        elif swipe.swipe_direction == "left":
+            score -= similarity
+
+        total_swipes += 1
+
+    if total_swipes == 0:
+        return 0
+
+    return round(score / total_swipes, 2)
 def get_recommended_jobs(
     resume_skills,
     preferred_role,
     preferred_locations,
     candidate_job_type,
     jobs,
+    swipe_history=None,
     limit=10,
 ):
     """
-    Calculate recommendation scores for multiple jobs
-    and return them ranked from highest to lowest score.
+    Generate SWIPEX recommendations.
+
+    Cold Start:
+        Fewer than 10 swipes -> use base recommendation score.
+
+    ML Mode:
+        10 or more swipes -> use Logistic Regression
+        trained from the candidate's accumulated swipe history.
     """
 
+    swipe_count = len(swipe_history) if swipe_history else 0
+
+    # ---------------------------------------------------------
+    # COLD START
+    # ---------------------------------------------------------
+    if swipe_count < 10:
+
+        recommendations = []
+
+        for job in jobs:
+
+            result = calculate_match_score(
+                resume_skills,
+                preferred_role,
+                preferred_locations,
+                candidate_job_type,
+                job,
+            )
+
+            recommendations.append(result)
+
+        recommendations.sort(
+            key=lambda job: job["final_score"],
+            reverse=True
+        )
+
+        return recommendations[:limit]
+
+    # ---------------------------------------------------------
+    # ML MODE
+    # ---------------------------------------------------------
+
+    model, vectorizer = train_swipe_model(
+        swipe_history
+    )
+
+    # If ML cannot be trained because the swipe history
+    # contains only one type of label, use the existing
+    # recommendation score as a temporary fallback.
+    if model is None or vectorizer is None:
+
+        recommendations = []
+
+        for job in jobs:
+
+            result = calculate_match_score(
+                resume_skills,
+                preferred_role,
+                preferred_locations,
+                candidate_job_type,
+                job,
+            )
+
+            recommendations.append(result)
+
+        recommendations.sort(
+            key=lambda job: job["final_score"],
+            reverse=True
+        )
+
+        return recommendations[:limit]
+
+    # ---------------------------------------------------------
+    # PREDICT NEW JOBS USING THE ML MODEL
+    # ---------------------------------------------------------
+
+    job_list = list(jobs)
+
+    job_texts = []
+
+    for job in job_list:
+
+        skills = job.required_skills or []
+
+        job_text = " ".join([
+            normalize_text(job.title),
+            " ".join(
+                normalize_text(skill)
+                for skill in skills
+                if skill
+            ),
+            normalize_text(job.city),
+            normalize_text(job.contract_type),
+            normalize_text(job.description),
+        ])
+
+        job_texts.append(job_text)
+
+    # Convert new jobs using the SAME vectorizer
+    # that was used during model training.
+    X_jobs = vectorizer.transform(job_texts)
+
+    # Predict probability that the candidate will
+    # be interested in each job.
+    probabilities = model.predict_proba(X_jobs)
+
+    positive_class_index = list(
+        model.classes_
+    ).index(1)
+
+    # Create recommendation list
     recommendations = []
 
-    for job in jobs:
-        result = calculate_match_score(
+    for index, job in enumerate(job_list):
+
+        like_probability = (
+            probabilities[index][positive_class_index]
+            * 100
+        )
+
+        # Calculate the original profile scores
+        # only so the existing frontend continues
+        # receiving the same response fields.
+        #
+        # IMPORTANT:
+        # These scores are NOT used for ML ranking.
+        base_result = calculate_match_score(
             resume_skills,
             preferred_role,
             preferred_locations,
@@ -309,13 +525,100 @@ def get_recommended_jobs(
             job,
         )
 
-        recommendations.append(result)
+        recommendations_result = {
+            "job_id": job.job_id,
+            "title": job.title,
+            "company_name": job.company_name,
+            "city": job.city,
+            "contract_type": job.contract_type,
+            "description": job.description,
 
-    # Highest score first
+            # Existing profile scores
+            # (display/reference only)
+            "skills_score": base_result["skills_score"],
+            "role_score": base_result["role_score"],
+            "location_score": base_result["location_score"],
+            "job_type_score": base_result["job_type_score"],
+
+            # ML score is the actual recommendation score
+            "ml_score": round(like_probability, 2),
+            "final_score": round(like_probability, 2),
+        }
+
+        recommendations.append(
+            recommendations_result
+        )
+
+    # Highest ML score first
     recommendations.sort(
         key=lambda job: job["final_score"],
         reverse=True
     )
 
-    # Return only the requested number of jobs
+    # Return top recommended jobs
     return recommendations[:limit]
+
+def train_swipe_model(swipe_history):
+    """
+    Train a lightweight Logistic Regression model from
+    the candidate's previous swipe history.
+
+    RIGHT = interested
+    DOWN  = saved/interested
+    LEFT  = not interested
+    """
+
+    if not swipe_history:
+        return None, None
+
+    job_texts = []
+    labels = []
+
+    for swipe in swipe_history:
+
+        job = swipe.job
+
+        skills = job.required_skills or []
+
+        # Combine important job information into one text
+        job_text = " ".join([
+            normalize_text(job.title),
+            " ".join(
+                normalize_text(skill)
+                for skill in skills
+                if skill
+            ),
+            normalize_text(job.city),
+            normalize_text(job.contract_type),
+            normalize_text(job.description),
+        ])
+
+        job_texts.append(job_text)
+
+        # Training labels
+        if swipe.swipe_direction in ["right", "down"]:
+            labels.append(1)
+
+        elif swipe.swipe_direction == "left":
+            labels.append(0)
+
+    # Need both positive and negative examples
+    if len(set(labels)) < 2:
+        return None, None
+
+    # Convert job text into numerical ML features
+    vectorizer = TfidfVectorizer(
+        stop_words="english",
+        max_features=1000
+    )
+
+    X = vectorizer.fit_transform(job_texts)
+
+    # Train Logistic Regression
+    model = LogisticRegression(
+        max_iter=1000
+    )
+
+    model.fit(X, labels)
+
+    return model, vectorizer
