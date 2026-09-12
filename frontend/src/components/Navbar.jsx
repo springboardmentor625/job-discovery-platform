@@ -29,8 +29,20 @@ export default function Navbar() {
             <Link to="/jobs" className="hover:text-brand-600">
               Discover
             </Link>
+            <Link to="/browse" className="hover:text-brand-600">
+              Browse
+            </Link>
+            <Link to="/companies" className="hover:text-brand-600">
+              Companies
+            </Link>
             <Link to="/applications" className="hover:text-brand-600">
               Applications
+            </Link>
+            <Link to="/notifications" className="hover:text-brand-600">
+              Notifications
+            </Link>
+            <Link to="/analytics" className="hover:text-brand-600">
+              Analytics
             </Link>
             <span className="text-gray-600">
               {user?.email} <span className="text-gray-400">({user?.role})</span>

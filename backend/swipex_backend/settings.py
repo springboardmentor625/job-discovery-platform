@@ -1,9 +1,13 @@
 """
-Django settings for the SwipeX backend (Milestone 1).
-Reads config from a .env file — copy .env.example to .env first.
+Django settings for the SwipeX backend.
+Local dev: copy .env.example to .env and fill in values (USE_SQLITE=True works with zero setup).
+Production (Render): set env vars in the Render dashboard — DATABASE_URL is provided automatically
+by a linked Render Postgres instance.
 """
 from pathlib import Path
 from datetime import timedelta
+
+import dj_database_url
 from decouple import config
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -11,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config("SECRET_KEY", default="dev-secret-key-change-me")
 DEBUG = config("DEBUG", default=True, cast=bool)
 
-ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+ALLOWED_HOSTS = ["localhost", "127.0.0.1", ".onrender.com"]
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -22,7 +26,6 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django.contrib.sites",
 
-    # third-party
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
@@ -32,7 +35,6 @@ INSTALLED_APPS = [
     "allauth.socialaccount.providers.google",
     "allauth.socialaccount.providers.github",
 
-    # local apps
     "users",
     "jobs",
     "resumes",
@@ -40,6 +42,7 @@ INSTALLED_APPS = [
     "applications",
     "recommendations",
     "notifications",
+    "analytics",
 ]
 
 SITE_ID = 1
@@ -47,6 +50,7 @@ SITE_ID = 1
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -76,8 +80,11 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "swipex_backend.wsgi.application"
 
-# --- Database ---
-if config("USE_SQLITE", default=False, cast=bool):
+DATABASE_URL = config("DATABASE_URL", default="")
+
+if DATABASE_URL:
+    DATABASES = {"default": dj_database_url.config(default=DATABASE_URL, conn_max_age=600)}
+elif config("USE_SQLITE", default=False, cast=bool):
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -111,19 +118,29 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
-# --- CORS (allow the Vite dev server to call this API) ---
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+extra_origin = config("FRONTEND_URL", default="")
+if extra_origin:
+    CORS_ALLOWED_ORIGINS.append(extra_origin)
 
-# --- DRF + JWT ---
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -139,7 +156,6 @@ SIMPLE_JWT = {
     "ROTATE_REFRESH_TOKENS": True,
 }
 
-# --- django-allauth / OAuth2 ---
 AUTHENTICATION_BACKENDS = [
     "django.contrib.auth.backends.ModelBackend",
     "allauth.account.auth_backends.AuthenticationBackend",

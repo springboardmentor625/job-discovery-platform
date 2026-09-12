@@ -8,7 +8,14 @@ class Recommendation(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="recommendations"
     )
     job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name="recommendations")
-    match_score = models.FloatField()  # AI-generated match percentage (Milestone 3)
+    match_score = models.FloatField()  # TF-IDF similarity score
+
+    # Groq AI ATS scoring — cached so we don't re-call the API unnecessarily
+    ats_score = models.IntegerField(null=True, blank=True)
+    matching_skills = models.JSONField(default=list, blank=True)
+    missing_skills = models.JSONField(default=list, blank=True)
+    suggestion = models.TextField(blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
         unique_together = ("user", "job")

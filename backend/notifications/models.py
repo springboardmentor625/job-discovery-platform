@@ -3,10 +3,20 @@ from django.db import models
 
 
 class Notification(models.Model):
+    class NotificationType(models.TextChoices):
+        HIGH_MATCH = "high_match", "High match job found"
+        STATUS_CHANGE = "status_change", "Application status changed"
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications"
     )
+    notification_type = models.CharField(
+        max_length=30, choices=NotificationType.choices, default=NotificationType.HIGH_MATCH
+    )
     message = models.TextField()
+    job = models.ForeignKey(
+        "jobs.Job", on_delete=models.CASCADE, null=True, blank=True, related_name="notifications"
+    )
     read = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -14,4 +24,4 @@ class Notification(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"Notification<{self.user.email}>: {self.message[:40]}"
+        return f"{self.user.email}: {self.message[:40]}"

@@ -8,6 +8,8 @@ const STEPS = [
   { to: "/resume", label: "Upload your resume", desc: "AI-parsed for skills automatically" },
   { to: "/jobs", label: "Discover jobs", desc: "Swipe through ATS-matched recommendations" },
   { to: "/applications", label: "Track applications", desc: "See what you've saved and applied to" },
+  { to: "/notifications", label: "Notifications", desc: "Strong matches and status changes" },
+  { to: "/analytics", label: "Your analytics", desc: "A real read on your job search" },
 ];
 
 export default function Dashboard() {

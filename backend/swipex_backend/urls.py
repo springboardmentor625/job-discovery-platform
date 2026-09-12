@@ -10,7 +10,9 @@ urlpatterns = [
     path("api/resumes/", include("resumes.urls")),
     path("api/swipes/", include("swipes.urls")),
     path("api/applications/", include("applications.urls")),
-    path("accounts/", include("allauth.urls")),  # OAuth2 login redirects
+    path("api/notifications/", include("notifications.urls")),
+    path("api/analytics/", include("analytics.urls")),
+    path("accounts/", include("allauth.urls")),
 ]
 
 if settings.DEBUG:

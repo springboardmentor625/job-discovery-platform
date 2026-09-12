@@ -8,12 +8,16 @@ import Profile from "./pages/Profile";
 import ResumeUpload from "./pages/ResumeUpload";
 import JobSwipe from "./pages/JobSwipe";
 import Applications from "./pages/Applications";
+import Notifications from "./pages/Notifications";
+import Analytics from "./pages/Analytics";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Layout>
         <Routes>
+          <Route path="/notifications" element={<PrivateRoute><Notifications /></PrivateRoute>} />
+          <Route path="/analytics" element={<PrivateRoute><Analytics /></PrivateRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
