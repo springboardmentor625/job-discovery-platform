@@ -248,9 +248,26 @@ function ResumeAnalysis() {
   // -------------------------------------------------------
 
   return (
-    <div className="page">
+    <div
+      className="page"
+      style={{
+        width: "100%",
+        minHeight: "100vh",
+        boxSizing: "border-box"
+      }}
+    >
 
-      <div className="form-container resume-analysis-container">
+      <div
+        className="form-container resume-analysis-container"
+        style={{
+          width: "100%",
+          maxWidth: "none",
+          minHeight: "100vh",
+          boxSizing: "border-box",
+          margin: "0",
+          padding: "40px 50px"
+        }}
+      >
 
         {}
 
