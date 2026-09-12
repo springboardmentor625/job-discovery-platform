@@ -621,7 +621,7 @@ class RecommendationService:
         swiped_job_ids: set[int],
         exclude_served_ids: set[int],
         positive_keywords: list[str],
-        limit: int = 80,
+        limit: int = 50,
     ) -> list[Job]:
 
         """
@@ -1161,7 +1161,7 @@ class RecommendationService:
 
                 positive_keywords=pos_keywords,
 
-                limit=80,
+                limit=50,
             )
         )
 
@@ -1189,7 +1189,7 @@ class RecommendationService:
 
                     positive_keywords=pos_keywords,
 
-                    limit=80,
+                    limit=50,
                 )
             )
 
