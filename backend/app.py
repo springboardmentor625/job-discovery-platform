@@ -2372,6 +2372,37 @@ def get_swipe_history():
 
 
 # ============================================================
+# DELETE SWIPE HISTORY
+# ============================================================
+
+@app.route(
+    "/api/swipe-history/<int:swipe_id>",
+    methods=["DELETE"]
+)
+@jwt_required()
+def delete_swipe_history(swipe_id):
+
+    user_id = get_jwt_identity()
+
+    swipe = SwipeHistory.query.filter_by(
+        swipe_id=swipe_id,
+        user_id=user_id
+    ).first()
+
+    if not swipe:
+        return jsonify({
+            "message": "Swipe history record not found"
+        }), 404
+
+    db.session.delete(swipe)
+    db.session.commit()
+
+    return jsonify({
+        "message": "Swipe history deleted successfully",
+        "swipe_id": swipe_id
+    }), 200
+
+# ============================================================
 # CREATE DATABASE TABLES + SEED JOBS
 # ============================================================
 

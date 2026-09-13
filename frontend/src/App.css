@@ -465,6 +465,9 @@ button:disabled {
 
 .sx-message {
   width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  grid-column: 1 / -1;
 
   margin: 22px auto 0;
   padding: 12px 15px;
@@ -651,7 +654,7 @@ button:disabled {
 .sx-dashboard-grid {
   display: grid;
 
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1fr 1fr;
 
   gap: 20px;
 }
@@ -860,6 +863,8 @@ button:disabled {
 
 
 .sx-action-row {
+  width: 100%;
+  grid-column: 1 / -1;
   display: flex;
 
   justify-content: flex-end;
@@ -1208,7 +1213,7 @@ button:disabled {
 .sx-mini-job {
   display: grid;
 
-  grid-template-columns: 38px 1fr auto;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
 
   align-items: center;
 
@@ -1217,6 +1222,27 @@ button:disabled {
   padding: 13px 0;
 
   border-bottom: 1px solid var(--border);
+}
+.sx-mini-job > div:nth-child(2) {
+  min-width: 0;
+}
+
+.sx-mini-job strong {
+  display: block;
+
+  overflow: hidden;
+
+  color: var(--text-soft);
+
+  font-size: 12px;
+
+  white-space: normal;
+
+  overflow-wrap: anywhere;
+}
+
+.sx-mini-job b {
+  white-space: nowrap;
 }
 
 .sx-mini-job:last-child {
@@ -1267,7 +1293,8 @@ button:disabled {
   display: grid;
 
   grid-template-columns:
-    44px 1fr auto auto;
+  44px minmax(0, 1fr) auto auto auto;
+
 
   align-items: center;
 
@@ -1726,4 +1753,27 @@ select:focus-visible {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
+}
+
+/* Swipe history delete button */
+.sx-delete-swipe-btn {
+    margin: 0;
+  padding: 7px 14px;
+
+  border: 1px solid rgba(248, 113, 113, 0.3);
+  border-radius: 7px;
+
+  background: rgba(248, 113, 113, 0.08);
+  color: #f87171;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.sx-delete-swipe-btn:hover {
+  background: rgba(248, 113, 113, 0.16);
+  border-color: rgba(248, 113, 113, 0.5);
 }

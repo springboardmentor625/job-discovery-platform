@@ -923,7 +923,49 @@ console.log(
         );
       }
     };
+  const handleDeleteSwipe = async (swipeId) => {
+  const authToken = token();
 
+  if (!authToken) {
+    setMessage("Please login first.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API}/api/swipe-history/${swipeId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setSwipeHistory((currentHistory) =>
+        currentHistory.filter(
+          (item) => item.swipe_id !== swipeId
+        )
+      );
+
+      setMessage(
+        "Swipe deleted. This job can be recommended again."
+      );
+    } else {
+      setMessage(
+        data.message ||
+          "Could not delete swipe history."
+      );
+    }
+  } catch {
+    setMessage(
+      "Could not connect to the backend."
+    );
+  }
+};
   // ============================================================
   // ATS
   // ============================================================
@@ -1625,9 +1667,7 @@ console.log(
 
               <div className="sx-panel sx-upload-panel">
 
-                <div className="sx-panel-icon">
-                  ↑
-                </div>
+                
 
                 <div className="sx-eyebrow">
                   RESUME ANALYSIS
@@ -1726,7 +1766,7 @@ console.log(
   </div>
 ) : (
   <div className="sx-empty-state">
-    <span>+</span>
+    
     <p>
       Upload a resume to see
       your detected skills.
@@ -2327,7 +2367,14 @@ console.log(
                           ).toLocaleString()}
                         </small>
                       )}
-
+                      <button
+  className="sx-delete-swipe-btn"
+  onClick={() =>
+    handleDeleteSwipe(item.swipe_id)
+  }
+>
+  Delete
+</button>
                     </div>
                   )
                 )}
