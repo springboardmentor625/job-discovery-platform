@@ -57,6 +57,14 @@ function LogoutButton() {
   }
 
   const handleLogout = () => {
+    const confirmed = window.confirm(
+      "Are you sure you want to logout?"
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
     localStorage.removeItem("access_token");
     localStorage.removeItem("token_type");
     localStorage.removeItem("resume_id");
