@@ -8,6 +8,7 @@ function MyApplications() {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [selectedApplication, setSelectedApplication] = useState(null);
 
   // =========================================================
   // LOAD APPLICATIONS
@@ -106,6 +107,24 @@ function MyApplications() {
     }
 
     return String(experience);
+  };
+
+  // =========================================================
+  // CLEAN HTML JOB DESCRIPTION
+  // =========================================================
+
+  const cleanJobDescription = (description) => {
+    if (!description) {
+      return "";
+    }
+
+    const tempDiv = document.createElement("div");
+    tempDiv.innerHTML = description;
+
+    return tempDiv.textContent
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   };
 
   // =========================================================
@@ -337,6 +356,9 @@ function MyApplications() {
               return (
                 <div
                   key={application.application_id}
+                  onClick={() =>
+                    setSelectedApplication(application)
+                  }
                   style={{
                     background: "#ffffff",
                     border: "1px solid #e5e7eb",
@@ -344,6 +366,7 @@ function MyApplications() {
                     padding: "24px",
                     boxShadow:
                       "0 2px 8px rgba(15, 23, 42, 0.04)",
+                    cursor: "pointer",
                   }}
                 >
                   {/* =================================================
@@ -561,6 +584,365 @@ function MyApplications() {
           </div>
         )}
       </div>
+
+      {/* =========================================================
+          SELECTED APPLICATION DETAILS
+      ========================================================= */}
+
+      {selectedApplication && (
+        <div
+          onClick={() => setSelectedApplication(null)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(15, 23, 42, 0.55)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "30px",
+            zIndex: 1000,
+          }}
+        >
+          <div
+            onClick={(event) => event.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: "750px",
+              maxHeight: "85vh",
+              overflowY: "auto",
+              background: "#ffffff",
+              borderRadius: "16px",
+              padding: "30px",
+              boxShadow:
+                "0 20px 50px rgba(15, 23, 42, 0.2)",
+            }}
+          >
+            {/* MODAL HEADER */}
+
+            <div
+              style={{
+                display: "flex",
+                alignItems: "flex-start",
+                justifyContent: "space-between",
+                gap: "20px",
+                marginBottom: "24px",
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    fontSize: "26px",
+                    fontWeight: "700",
+                    color: "#111827",
+                  }}
+                >
+                  {selectedApplication.title ||
+                    "Job Title"}
+                </h2>
+
+                <p
+                  style={{
+                    margin: "8px 0 0",
+                    color: "#64748b",
+                    fontSize: "14px",
+                  }}
+                >
+                  Application ID:{" "}
+                  {selectedApplication.application_id}
+                </p>
+              </div>
+
+              <button
+                onClick={() =>
+                  setSelectedApplication(null)
+                }
+                style={{
+                  border: "1px solid #d1d5db",
+                  background: "#ffffff",
+                  color: "#374151",
+                  width: "36px",
+                  height: "36px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  fontSize: "18px",
+                  fontWeight: "600",
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* STATUS */}
+
+            <div
+              style={{
+                marginBottom: "24px",
+              }}
+            >
+              <span
+                style={{
+                  ...getStatusStyle(
+                    selectedApplication.status
+                  ),
+                  padding: "7px 14px",
+                  borderRadius: "999px",
+                  fontSize: "12px",
+                  fontWeight: "700",
+                }}
+              >
+                {String(
+                  selectedApplication.status ||
+                    "APPLIED"
+                ).replace(/_/g, " ")}
+              </span>
+            </div>
+
+            {/* JOB INFORMATION */}
+
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(2, 1fr)",
+                gap: "18px",
+                marginBottom: "26px",
+              }}
+            >
+              <div
+                style={{
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  padding: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontWeight: "600",
+                    marginBottom: "6px",
+                  }}
+                >
+                  LOCATION
+                </div>
+
+                <div
+                  style={{
+                    color: "#334155",
+                    fontSize: "14px",
+                  }}
+                >
+                  {selectedApplication.location ||
+                    "Not specified"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  padding: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontWeight: "600",
+                    marginBottom: "6px",
+                  }}
+                >
+                  EMPLOYMENT
+                </div>
+
+                <div
+                  style={{
+                    color: "#334155",
+                    fontSize: "14px",
+                  }}
+                >
+                  {selectedApplication.employment_type ||
+                    "Not specified"}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  padding: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontWeight: "600",
+                    marginBottom: "6px",
+                  }}
+                >
+                  EXPERIENCE
+                </div>
+
+                <div
+                  style={{
+                    color: "#334155",
+                    fontSize: "14px",
+                  }}
+                >
+                  {formatExperience(
+                    selectedApplication.experience_required
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  padding: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontWeight: "600",
+                    marginBottom: "6px",
+                  }}
+                >
+                  SALARY
+                </div>
+
+                <div
+                  style={{
+                    color: "#334155",
+                    fontSize: "14px",
+                    fontWeight: "600",
+                  }}
+                >
+                  {formatSalary(
+                    selectedApplication.salary_min,
+                    selectedApplication.salary_max
+                  )}
+                </div>
+              </div>
+
+              <div
+                style={{
+                  background: "#f8fafc",
+                  borderRadius: "10px",
+                  padding: "16px",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "12px",
+                    color: "#94a3b8",
+                    fontWeight: "600",
+                    marginBottom: "6px",
+                  }}
+                >
+                  APPLIED DATE
+                </div>
+
+                <div
+                  style={{
+                    color: "#334155",
+                    fontSize: "14px",
+                  }}
+                >
+                  {formatDate(
+                    selectedApplication.applied_at
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* DESCRIPTION */}
+
+            {selectedApplication.description && (
+              <div
+                style={{
+                  marginBottom: "24px",
+                }}
+              >
+                <h3
+                  style={{
+                    margin: "0 0 10px",
+                    fontSize: "18px",
+                    fontWeight: "700",
+                    color: "#111827",
+                  }}
+                >
+                  About this Job
+                </h3>
+
+                <div
+                  style={{
+                    color: "#475569",
+                    fontSize: "14px",
+                    lineHeight: "1.7",
+                    whiteSpace: "pre-line",
+                  }}
+                >
+                  {cleanJobDescription(
+                    selectedApplication.description
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* REQUIRED SKILLS */}
+
+            {Array.isArray(
+              selectedApplication.required_skills
+            ) &&
+              selectedApplication.required_skills.length >
+                0 && (
+                <div>
+                  <h3
+                    style={{
+                      margin: "0 0 12px",
+                      fontSize: "18px",
+                      fontWeight: "700",
+                      color: "#111827",
+                    }}
+                  >
+                    Required Skills
+                  </h3>
+
+                  <div
+                    style={{
+                      display: "flex",
+                      flexWrap: "wrap",
+                      gap: "8px",
+                    }}
+                  >
+                    {selectedApplication.required_skills.map(
+                      (skill, index) => (
+                        <span
+                          key={index}
+                          style={{
+                            background: "#eff6ff",
+                            color: "#1d4ed8",
+                            padding: "6px 10px",
+                            borderRadius: "7px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                          }}
+                        >
+                          {skill}
+                        </span>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
