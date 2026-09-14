@@ -1,6 +1,15 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+
+import {
+  useEffect,
+  useState,
+} from "react";
+
+import {
+  useNavigate,
+} from "react-router-dom";
+
 import api from "../api/api";
+
 
 const EXISTING_SKILLS = [
 
@@ -259,6 +268,7 @@ const EXISTING_SKILLS = [
 "AWS", "Azure", "Google Cloud Platform",
 
 ];
+
 
 const EXISTING_ROLES = [
 
@@ -946,12 +956,17 @@ const EXISTING_ROLES = [
 
 ];
 
+
 const MIN_SALARY = 10000;
 
+
 function CompleteProfile() {
+
   const navigate = useNavigate();
 
+
   const [formData, setFormData] = useState({
+
     headline: "",
     summary: "",
     location: "",
@@ -963,28 +978,220 @@ function CompleteProfile() {
     preferredLocation: "",
     preferredRole: "",
     expectedSalary: "",
+
   });
 
+
   const [skills, setSkills] = useState([]);
+
   const [skillInput, setSkillInput] = useState("");
 
   const [error, setError] = useState("");
+
   const [isLoading, setIsLoading] = useState(false);
+
+  const [isProfileLoading, setIsProfileLoading] =
+    useState(true);
+
+  const [profileExists, setProfileExists] =
+    useState(false);
+
+
+  // =========================================================
+  // LOAD EXISTING PROFILE
+  // =========================================================
+
+  useEffect(() => {
+
+    const loadProfile = async () => {
+
+      try {
+
+        setIsProfileLoading(true);
+
+        setError("");
+
+
+        const response =
+          await api.get("/api/profile/");
+
+
+        const profile =
+          response.data?.profile ||
+          response.data;
+
+
+        if (!profile) {
+
+          setProfileExists(false);
+
+          return;
+
+        }
+
+
+        setProfileExists(true);
+
+
+        // -----------------------------------------------------
+        // LOAD SAVED PROFILE DETAILS
+        // -----------------------------------------------------
+
+        setFormData({
+
+          headline:
+            profile.headline || "",
+
+          summary:
+            profile.summary || "",
+
+          location:
+            profile.location || "",
+
+          experience:
+            profile.experience_years != null
+              ? String(profile.experience_years)
+              : "",
+
+          education:
+            typeof profile.education === "object"
+              ? profile.education?.details || ""
+              : profile.education || "",
+
+          projects:
+            Array.isArray(profile.projects)
+              ? profile.projects.join(", ")
+              : profile.projects || "",
+
+          certifications:
+            Array.isArray(profile.certifications)
+              ? profile.certifications.join(", ")
+              : profile.certifications || "",
+
+          preferredJobType:
+            profile.preferred_job_type || "",
+
+          preferredLocation:
+            profile.preferred_location || "",
+
+          preferredRole:
+            profile.preferred_role || "",
+
+          expectedSalary:
+            profile.expected_salary != null
+              ? String(profile.expected_salary)
+              : "",
+
+        });
+
+
+        // -----------------------------------------------------
+        // LOAD SAVED SKILLS IF AVAILABLE
+        // -----------------------------------------------------
+
+        if (Array.isArray(profile.skills)) {
+
+          setSkills(profile.skills);
+
+        } else if (
+          Array.isArray(profile.extracted_skills)
+        ) {
+
+          setSkills(profile.extracted_skills);
+
+        } else {
+
+          setSkills([]);
+
+        }
+
+
+      } catch (error) {
+
+        console.error(
+          "Profile loading error:",
+          error
+        );
+
+
+        // -----------------------------------------------------
+        // NO PROFILE EXISTS
+        // -----------------------------------------------------
+
+        if (
+          error.response?.status === 404
+        ) {
+
+          setProfileExists(false);
+
+          setFormData({
+
+            headline: "",
+            summary: "",
+            location: "",
+            experience: "",
+            education: "",
+            projects: "",
+            certifications: "",
+            preferredJobType: "",
+            preferredLocation: "",
+            preferredRole: "",
+            expectedSalary: "",
+
+          });
+
+          setSkills([]);
+
+        } else {
+
+          setError(
+            error.response?.data?.detail ||
+            "Failed to load profile."
+          );
+
+        }
+
+      } finally {
+
+        setIsProfileLoading(false);
+
+      }
+
+    };
+
+
+    loadProfile();
+
+  }, []);
+
 
   // =========================================================
   // GENERAL INPUT
   // =========================================================
 
   const handleChange = (event) => {
-    const { name, value } = event.target;
 
-    setFormData((previousData) => ({
-      ...previousData,
-      [name]: value,
-    }));
+    const {
+      name,
+      value,
+    } = event.target;
+
+
+    setFormData(
+      (previousData) => ({
+
+        ...previousData,
+
+        [name]: value,
+
+      })
+    );
+
 
     setError("");
+
   };
+
 
   // =========================================================
   // SKILL SUGGESTIONS
@@ -995,249 +1202,534 @@ function CompleteProfile() {
       ? []
       : EXISTING_SKILLS
           .filter((skill) =>
-            skill.toLowerCase().includes(skillInput.toLowerCase())
+            skill
+              .toLowerCase()
+              .includes(
+                skillInput.toLowerCase()
+              )
           )
-          .filter((skill) => !skills.includes(skill));
+          .filter(
+            (skill) =>
+              !skills.includes(skill)
+          );
+
 
   // =========================================================
   // ADD EXISTING SKILL
   // =========================================================
 
   const addExistingSkill = (skill) => {
+
     if (!skills.includes(skill)) {
-      setSkills((previousSkills) => [...previousSkills, skill]);
+
+      setSkills(
+        (previousSkills) => [
+          ...previousSkills,
+          skill,
+        ]
+      );
+
     }
 
+
     setSkillInput("");
+
   };
+
 
   // =========================================================
   // ADD CUSTOM SKILL
   // =========================================================
 
   const addCustomSkill = () => {
-    const newSkill = skillInput.trim();
+
+    const newSkill =
+      skillInput.trim();
+
 
     if (!newSkill) return;
 
-    const existingSkill = EXISTING_SKILLS.find(
-      (skill) =>
-        skill.toLowerCase() === newSkill.toLowerCase()
-    );
+
+    const existingSkill =
+      EXISTING_SKILLS.find(
+        (skill) =>
+          skill.toLowerCase() ===
+          newSkill.toLowerCase()
+      );
+
 
     if (existingSkill) {
-      addExistingSkill(existingSkill);
+
+      addExistingSkill(
+        existingSkill
+      );
+
       return;
+
     }
+
 
     if (!skills.includes(newSkill)) {
-      setSkills((previousSkills) => [
-        ...previousSkills,
-        newSkill,
-      ]);
+
+      setSkills(
+        (previousSkills) => [
+          ...previousSkills,
+          newSkill,
+        ]
+      );
+
     }
 
+
     setSkillInput("");
+
   };
+
 
   // =========================================================
   // REMOVE SKILL
   // =========================================================
 
-  const removeSkill = (skillToRemove) => {
-    setSkills((previousSkills) =>
-      previousSkills.filter(
-        (skill) => skill !== skillToRemove
-      )
+  const removeSkill = (
+    skillToRemove
+  ) => {
+
+    setSkills(
+      (previousSkills) =>
+        previousSkills.filter(
+          (skill) =>
+            skill !== skillToRemove
+        )
     );
+
   };
+
 
   // =========================================================
   // ENTER KEY
   // =========================================================
 
-  const handleSkillKeyDown = (event) => {
+  const handleSkillKeyDown = (
+    event
+  ) => {
+
     if (event.key === "Enter") {
+
       event.preventDefault();
 
-      if (filteredSkills.length > 0) {
-        addExistingSkill(filteredSkills[0]);
+
+      if (
+        filteredSkills.length > 0
+      ) {
+
+        addExistingSkill(
+          filteredSkills[0]
+        );
+
       } else {
+
         addCustomSkill();
+
       }
+
     }
+
   };
+
 
   // =========================================================
   // SALARY
   // =========================================================
 
-  const handleSalaryChange = (event) => {
-    const value = event.target.value.replace(/\D/g, "");
+  const handleSalaryChange = (
+    event
+  ) => {
 
-    setFormData((previousData) => ({
-      ...previousData,
-      expectedSalary: value,
-    }));
+    const value =
+      event.target.value.replace(
+        /\D/g,
+        ""
+      );
+
+
+    setFormData(
+      (previousData) => ({
+
+        ...previousData,
+
+        expectedSalary: value,
+
+      })
+    );
+
 
     setError("");
+
   };
+
 
   // =========================================================
   // VALIDATION
   // =========================================================
 
   const validateForm = () => {
-    if (!formData.headline.trim()) {
+
+    if (
+      !formData.headline.trim()
+    ) {
+
       return "Please enter your professional headline.";
+
     }
 
-    if (!formData.summary.trim()) {
+
+    if (
+      !formData.summary.trim()
+    ) {
+
       return "Please enter your professional summary.";
+
     }
 
-    if (!formData.location.trim()) {
+
+    if (
+      !formData.location.trim()
+    ) {
+
       return "Please enter your current location.";
+
     }
 
-    if (formData.experience === "") {
+
+    if (
+      formData.experience === ""
+    ) {
+
       return "Please select your experience.";
+
     }
 
-    if (!formData.education.trim()) {
+
+    if (
+      !formData.education.trim()
+    ) {
+
       return "Please enter your education.";
+
     }
+
 
     if (skills.length === 0) {
+
       return "Please add at least one skill.";
+
     }
+
 
     if (
       formData.preferredRole &&
-      !EXISTING_ROLES.includes(formData.preferredRole)
+      !EXISTING_ROLES.includes(
+        formData.preferredRole
+      )
     ) {
+
       return "Please select a valid preferred job role.";
+
     }
 
-    if (formData.expectedSalary) {
-      const salary = Number(formData.expectedSalary);
 
-      if (salary < MIN_SALARY) {
+    if (
+      formData.expectedSalary
+    ) {
+
+      const salary =
+        Number(
+          formData.expectedSalary
+        );
+
+
+      if (
+        salary < MIN_SALARY
+      ) {
+
         return `Expected salary must be at least ₹${MIN_SALARY.toLocaleString(
           "en-IN"
         )}.`;
+
       }
+
     }
+
 
     return "";
+
   };
 
+
   // =========================================================
-  // SUBMIT PROFILE
+  // CREATE / UPDATE PROFILE PAYLOAD
   // =========================================================
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
+  const getProfilePayload = () => {
 
-    const validationError = validateForm();
+    return {
+
+      headline:
+        formData.headline,
+
+      summary:
+        formData.summary,
+
+      location:
+        formData.location,
+
+      experience_years:
+        Number(
+          formData.experience
+        ),
+
+      // Keep existing backend format
+      education: {
+
+        details:
+          formData.education,
+
+      },
+
+      projects:
+        formData.projects
+          ? [formData.projects]
+          : [],
+
+      certifications:
+        formData.certifications
+          ? [formData.certifications]
+          : [],
+
+      preferred_job_type:
+        formData.preferredJobType,
+
+      preferred_location:
+        formData.preferredLocation,
+
+    };
+
+  };
+
+
+  // =========================================================
+  // SAVE PROFILE
+  // =========================================================
+
+  const saveProfile = async () => {
+
+    const validationError =
+      validateForm();
+
 
     if (validationError) {
-      setError(validationError);
-      return;
+
+      setError(
+        validationError
+      );
+
+      return false;
+
     }
 
+
     setIsLoading(true);
+
     setError("");
 
+
     try {
-      const payload = {
-        headline: formData.headline,
-        summary: formData.summary,
-        location: formData.location,
-        experience_years: Number(formData.experience),
 
-        // Keep existing backend format
-        education: {
-          details: formData.education,
-        },
+      const payload =
+        getProfilePayload();
 
-        projects: [formData.projects],
-        certifications: [formData.certifications],
 
-        preferred_job_type:
-          formData.preferredJobType,
+      // -----------------------------------------------------
+      // UPDATE EXISTING PROFILE
+      // -----------------------------------------------------
 
-        preferred_location:
-          formData.preferredLocation,
-      };
+      if (profileExists) {
 
-      try {
-        // 1. CREATE PROFILE
-        const response = await api.post(
-          "/api/profile/",
-          payload
-        );
-
-        console.log(
-          "Profile created:",
-          response.data
-        );
-
-        // Keep existing workflow
-        navigate("/upload-resume");
-
-      } catch (postError) {
-        const errDetail =
-          postError.response?.data?.detail;
-
-        // 2. UPDATE IF PROFILE ALREADY EXISTS
-        if (
-          typeof errDetail === "string" &&
-          errDetail.includes("already exists")
-        ) {
-          const putResponse = await api.put(
+        const response =
+          await api.put(
             "/api/profile/",
             payload
           );
 
-          console.log(
-            "Profile updated:",
-            putResponse.data
-          );
 
-          // Keep existing workflow
-          navigate("/upload-resume");
-        } else {
-          throw postError;
-        }
+        console.log(
+          "Profile updated:",
+          response.data
+        );
+
+
+        return true;
+
       }
 
+
+      // -----------------------------------------------------
+      // CREATE NEW PROFILE
+      // -----------------------------------------------------
+
+      const response =
+        await api.post(
+          "/api/profile/",
+          payload
+        );
+
+
+      console.log(
+        "Profile created:",
+        response.data
+      );
+
+
+      setProfileExists(true);
+
+
+      return true;
+
+
     } catch (error) {
+
       console.error(
-        "Profile error:",
+        "Profile save error:",
         error
       );
+
 
       const errDetail =
         error.response?.data?.detail;
 
-      if (Array.isArray(errDetail)) {
+
+      if (
+        Array.isArray(errDetail)
+      ) {
+
         setError(
           `Validation error: ${errDetail[0].loc[1]} - ${errDetail[0].msg}`
         );
+
       } else {
+
         setError(
           errDetail ||
           "Failed to save profile."
         );
+
       }
 
+
+      return false;
+
     } finally {
+
       setIsLoading(false);
+
     }
+
   };
 
+
+  // =========================================================
+  // SAVE PROFILE & CONTINUE
+  // =========================================================
+
+  const handleSubmit = async (
+    event
+  ) => {
+
+    event.preventDefault();
+
+
+    const saved =
+      await saveProfile();
+
+
+    if (!saved) return;
+
+
+    // Keep existing workflow
+    navigate(
+      "/upload-resume"
+    );
+
+  };
+
+
+  // =========================================================
+  // SAVE PROFILE & GO TO DASHBOARD
+  // =========================================================
+
+  const handleGoToDashboard =
+    async () => {
+
+      const saved =
+        await saveProfile();
+
+
+      if (!saved) return;
+
+
+      navigate(
+        "/candidate-dashboard"
+      );
+
+    };
+
+
+  // =========================================================
+  // PROFILE LOADING
+  // =========================================================
+
+  if (isProfileLoading) {
+
+    return (
+
+      <div
+        className="profile-page"
+        style={{
+          minHeight: "100vh",
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+
+        <div
+          className="profile-loading"
+          style={{
+            textAlign: "center",
+          }}
+        >
+
+          <div
+            className="button-spinner"
+          >
+          </div>
+
+          <p>
+            Loading your profile...
+          </p>
+
+        </div>
+
+      </div>
+
+    );
+
+  }
+
+
   return (
+
     <div className="profile-page">
 
       {/* =====================================================
@@ -1273,9 +1765,26 @@ function CompleteProfile() {
           MAIN CONTENT
       ===================================================== */}
 
-      <main className="profile-main">
+      <main
+        className="profile-main"
+        style={{
+          width: "100%",
+          minHeight: "calc(100vh - 80px)",
+          display: "flex",
+          justifyContent: "center",
+          boxSizing: "border-box",
+          padding: "30px 24px",
+        }}
+      >
 
-        <div className="profile-wrapper">
+        <div
+          className="profile-wrapper"
+          style={{
+            width: "100%",
+            maxWidth: "1200px",
+            margin: "0 auto",
+          }}
+        >
 
           {/* PAGE INTRO */}
 
@@ -1339,6 +1848,9 @@ function CompleteProfile() {
           <form
             onSubmit={handleSubmit}
             className="profile-form"
+            style={{
+              width: "100%",
+            }}
           >
 
             {/* =================================================
@@ -1594,9 +2106,13 @@ function CompleteProfile() {
                     type="text"
                     value={skillInput}
                     onChange={(event) =>
-                      setSkillInput(event.target.value)
+                      setSkillInput(
+                        event.target.value
+                      )
                     }
-                    onKeyDown={handleSkillKeyDown}
+                    onKeyDown={
+                      handleSkillKeyDown
+                    }
                     placeholder="Search or type a skill..."
                   />
 
@@ -1622,7 +2138,9 @@ function CompleteProfile() {
                           key={skill}
                           className="skill-suggestion-new"
                           onClick={() =>
-                            addExistingSkill(skill)
+                            addExistingSkill(
+                              skill
+                            )
                           }
                         >
 
@@ -1649,7 +2167,9 @@ function CompleteProfile() {
                     <button
                       type="button"
                       className="add-custom-skill-new"
-                      onClick={addCustomSkill}
+                      onClick={
+                        addCustomSkill
+                      }
                     >
                       + Add "{skillInput.trim()}"
                     </button>
@@ -1681,7 +2201,9 @@ function CompleteProfile() {
                           <button
                             type="button"
                             onClick={() =>
-                              removeSkill(skill)
+                              removeSkill(
+                                skill
+                              )
                             }
                             aria-label={`Remove ${skill}`}
                           >
@@ -1750,7 +2272,9 @@ function CompleteProfile() {
                   <select
                     id="preferredJobType"
                     name="preferredJobType"
-                    value={formData.preferredJobType}
+                    value={
+                      formData.preferredJobType
+                    }
                     onChange={handleChange}
                   >
 
@@ -1797,7 +2321,9 @@ function CompleteProfile() {
                     id="preferredLocation"
                     name="preferredLocation"
                     type="text"
-                    value={formData.preferredLocation}
+                    value={
+                      formData.preferredLocation
+                    }
                     onChange={handleChange}
                     placeholder="e.g. Bangalore"
                   />
@@ -1822,7 +2348,9 @@ function CompleteProfile() {
                   <select
                     id="preferredRole"
                     name="preferredRole"
-                    value={formData.preferredRole}
+                    value={
+                      formData.preferredRole
+                    }
                     onChange={handleChange}
                   >
 
@@ -1830,16 +2358,18 @@ function CompleteProfile() {
                       Select preferred role
                     </option>
 
-                    {EXISTING_ROLES.map((role) => (
+                    {EXISTING_ROLES.map(
+                      (role) => (
 
-                      <option
-                        value={role}
-                        key={role}
-                      >
-                        {role}
-                      </option>
+                        <option
+                          value={role}
+                          key={role}
+                        >
+                          {role}
+                        </option>
 
-                    ))}
+                      )
+                    )}
 
                   </select>
 
@@ -1875,8 +2405,12 @@ function CompleteProfile() {
                       name="expectedSalary"
                       type="text"
                       inputMode="numeric"
-                      value={formData.expectedSalary}
-                      onChange={handleSalaryChange}
+                      value={
+                        formData.expectedSalary
+                      }
+                      onChange={
+                        handleSalaryChange
+                      }
                       placeholder="10,000"
                     />
 
@@ -1885,7 +2419,9 @@ function CompleteProfile() {
                   <p className="field-hint">
                     Enter salary as a number only.
                     Minimum accepted value is ₹
-                    {MIN_SALARY.toLocaleString("en-IN")}.
+                    {MIN_SALARY.toLocaleString(
+                      "en-IN"
+                    )}.
                   </p>
 
                 </div>
@@ -1899,28 +2435,51 @@ function CompleteProfile() {
                 SUBMIT AREA
             ================================================= */}
 
-            <div className="profile-submit-area">
+            <div
+              className="profile-submit-area"
+              style={{
+                width: "100%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "20px",
+                flexWrap: "wrap",
+              }}
+            >
 
-              <div className="submit-info">
+              {/* =================================================
+                  GO TO DASHBOARD BUTTON — LEFT SIDE
+              ================================================= */}
 
-                <div className="submit-check">
-                  ✓
-                </div>
+              <button
+                type="button"
+                onClick={
+                  handleGoToDashboard
+                }
+                disabled={isLoading}
+                style={{
+                  padding: "13px 24px",
+                  border: "1px solid #d1d5db",
+                  borderRadius: "8px",
+                  backgroundColor: "#ffffff",
+                  color: "#374151",
+                  fontSize: "14px",
+                  fontWeight: "600",
+                  cursor: isLoading
+                    ? "not-allowed"
+                    : "pointer",
+                  transition: "all 0.2s ease",
+                  boxShadow:
+                    "0 2px 6px rgba(0, 0, 0, 0.08)",
+                }}
+              >
+                Go to Candidate Dashboard
+              </button>
 
-                <div>
 
-                  <strong>
-                    Almost there!
-                  </strong>
-
-                  <span>
-                    Save your profile to continue to resume upload.
-                  </span>
-
-                </div>
-
-              </div>
-
+              {/* =================================================
+                  EXISTING SAVE & CONTINUE BUTTON — RIGHT SIDE
+              ================================================= */}
 
               <button
                 type="submit"
@@ -1963,7 +2522,10 @@ function CompleteProfile() {
       </main>
 
     </div>
+
   );
+
 }
+
 
 export default CompleteProfile;
