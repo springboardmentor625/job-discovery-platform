@@ -479,6 +479,17 @@ function UploadResume() {
 
 
   // =========================================================
+  // BACK TO DASHBOARD
+  // =========================================================
+
+  const handleBackToDashboard = () => {
+
+    navigate("/dashboard");
+
+  };
+
+
+  // =========================================================
   // UI
   // =========================================================
 
@@ -742,6 +753,23 @@ function UploadResume() {
               </button>
 
             </form>
+
+
+            {/* ===================================================
+                BACK TO DASHBOARD
+            =================================================== */}
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleBackToDashboard}
+              style={{
+                marginTop: "12px",
+                width: "100%"
+              }}
+            >
+              Back to Dashboard
+            </button>
 
 
             {/* ===================================================
@@ -1027,6 +1055,23 @@ function UploadResume() {
               </button>
 
             </div>
+
+
+            {/* =================================================
+                BACK TO DASHBOARD
+            ================================================= */}
+
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleBackToDashboard}
+              style={{
+                marginTop: "12px",
+                width: "100%"
+              }}
+            >
+              Back to Dashboard
+            </button>
 
 
             {/* =================================================
