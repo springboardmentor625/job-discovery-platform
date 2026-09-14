@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -70,21 +71,171 @@ function SavedJobs() {
   }, []);
 
   // =========================================================
-  // CLEAN HTML JOB DESCRIPTION
+  // FORMAT JOB DESCRIPTION
   // =========================================================
 
-  const cleanJobDescription = (description) => {
+  const formatJobDescription = (description) => {
     if (!description) {
-      return "";
+      return [];
     }
 
-    const tempDiv = document.createElement("div");
-    tempDiv.innerHTML = description;
+    const tempDiv =
+      document.createElement("div");
 
-    return tempDiv.textContent
+    tempDiv.innerHTML =
+      description;
+
+    // Convert common HTML block elements
+    // into readable line breaks.
+    tempDiv
+      .querySelectorAll("br")
+      .forEach((element) => {
+        element.replaceWith("\n");
+      });
+
+    tempDiv
+      .querySelectorAll(
+        "p, div, section, article, h1, h2, h3, h4, h5, h6"
+      )
+      .forEach((element) => {
+        element.insertAdjacentText(
+          "beforebegin",
+          "\n"
+        );
+
+        element.insertAdjacentText(
+          "afterend",
+          "\n"
+        );
+      });
+
+    // Convert list items into bullet-style text.
+    tempDiv
+      .querySelectorAll("li")
+      .forEach((element) => {
+        element.insertAdjacentText(
+          "beforebegin",
+          "\n• "
+        );
+
+        element.insertAdjacentText(
+          "afterend",
+          "\n"
+        );
+      });
+
+    let text =
+      tempDiv.textContent || "";
+
+    text = text
       .replace(/\u00a0/g, " ")
-      .replace(/\s+/g, " ")
+      .replace(/[ \t]+/g, " ")
+      .replace(/\n[ \t]+/g, "\n")
+      .replace(/[ \t]+\n/g, "\n")
+      .replace(/\n{3,}/g, "\n\n")
       .trim();
+
+    if (!text) {
+      return [];
+    }
+
+    const lines =
+      text
+        .split(/\n/)
+        .map((line) =>
+          line.trim()
+        )
+        .filter(
+          (line) =>
+            line.length > 0
+        );
+
+    return lines;
+  };
+
+  // =========================================================
+  // CHECK DESCRIPTION HEADING
+  // =========================================================
+
+  const isDescriptionHeading = (
+    line
+  ) => {
+    const normalized =
+      line
+        .replace(/^[-•*]\s*/, "")
+        .replace(
+          /:$/,
+          ""
+        )
+        .trim()
+        .toLowerCase();
+
+    const knownHeadings = [
+      "about this role",
+      "about the role",
+      "about the job",
+      "job description",
+      "job summary",
+      "role",
+      "role overview",
+      "overview",
+      "responsibilities",
+      "key responsibilities",
+      "roles and responsibilities",
+      "requirements",
+      "job requirements",
+      "qualifications",
+      "key qualifications",
+      "skills",
+      "required skills",
+      "technical skills",
+      "experience",
+      "education",
+      "benefits",
+      "what you will do",
+      "what you'll do",
+      "what you will bring",
+      "what you'll bring",
+      "preferred qualifications",
+      "preferred skills",
+      "nice to have",
+      "about the company",
+      "what we offer",
+    ];
+
+    if (
+      knownHeadings.includes(
+        normalized
+      )
+    ) {
+      return true;
+    }
+
+    // Detect short heading-like lines
+    // ending with a colon.
+    if (
+      line.endsWith(":") &&
+      line.length <= 80
+    ) {
+      return true;
+    }
+
+    // Detect all-uppercase headings.
+    const lettersOnly =
+      line.replace(
+        /[^A-Za-z]/g,
+        ""
+      );
+
+    if (
+      lettersOnly.length >= 4 &&
+      lettersOnly ===
+        lettersOnly.toUpperCase()
+    ) {
+      return true;
+    }
+
+    return false;
   };
 
   // =========================================================
@@ -829,14 +980,117 @@ function SavedJobs() {
                 style={{
                   color: "#475569",
                   fontSize: "14px",
-                  lineHeight: "1.7",
-                  whiteSpace: "pre-line",
+                  lineHeight: "1.8",
                 }}
               >
-                {cleanJobDescription(
-                  selectedJob.description
-                ) ||
-                  "Job description not available."}
+                {(() => {
+                  const formattedDescription =
+                    formatJobDescription(
+                      selectedJob.description
+                    );
+
+                  if (
+                    formattedDescription.length ===
+                    0
+                  ) {
+                    return (
+                      "Job description not available."
+                    );
+                  }
+
+                  return formattedDescription.map(
+                    (line, index) => {
+                      const isHeading =
+                        isDescriptionHeading(
+                          line
+                        );
+
+                      const isBullet =
+                        /^([•*-]|\d+[.)])\s+/.test(
+                          line
+                        );
+
+                      const cleanedLine =
+                        isBullet
+                          ? line.replace(
+                              /^([•*-]|\d+[.)])\s+/,
+                              ""
+                            )
+                          : line;
+
+                      if (isHeading) {
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              marginTop:
+                                index === 0
+                                  ? "0"
+                                  : "18px",
+                              marginBottom:
+                                "7px",
+                              color:
+                                "#1e293b",
+                              fontWeight:
+                                "700",
+                              fontSize:
+                                "14px",
+                            }}
+                          >
+                            {line}
+                          </div>
+                        );
+                      }
+
+                      if (isBullet) {
+                        return (
+                          <div
+                            key={index}
+                            style={{
+                              display:
+                                "flex",
+                              alignItems:
+                                "flex-start",
+                              gap: "8px",
+                              marginBottom:
+                                "7px",
+                              paddingLeft:
+                                "6px",
+                            }}
+                          >
+                            <span
+                              style={{
+                                fontWeight:
+                                  "700",
+                                color:
+                                  "#2563eb",
+                                flexShrink: 0,
+                              }}
+                            >
+                              •
+                            </span>
+
+                            <span>
+                              {cleanedLine}
+                            </span>
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div
+                          key={index}
+                          style={{
+                            marginBottom:
+                              "9px",
+                          }}
+                        >
+                          {line}
+                        </div>
+                      );
+                    }
+                  );
+                })()}
               </div>
             </div>
 
