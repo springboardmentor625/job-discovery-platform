@@ -1,3 +1,4 @@
+
 import { useLocation, useNavigate } from "react-router-dom";
 
 function ApplicationSuccess() {
@@ -12,6 +13,11 @@ function ApplicationSuccess() {
   const saved = location.state?.saved;
 
   const favorite = location.state?.favorite;
+
+  const remainingJobs =
+    Array.isArray(location.state?.remainingJobs)
+      ? location.state.remainingJobs
+      : [];
 
   return (
     <div
@@ -326,7 +332,7 @@ function ApplicationSuccess() {
 
           {/* ===================================================
               EXPLANATION
-          =================================================== */}
+          ===================================================== */}
 
           <div
             className="application-success-info"
@@ -358,13 +364,25 @@ function ApplicationSuccess() {
             className="application-success-footer"
             style={{
               marginTop: "0",
+              display: "flex",
+              flexDirection: "column",
+              gap: "12px",
             }}
           >
+            {/* VIEW MORE RECOMMENDED JOBS */}
+
             <button
               type="button"
               className="application-success-button"
               onClick={() =>
-                navigate("/recommended-jobs")
+                navigate(
+                  "/swipe-jobs",
+                  {
+                    state: {
+                      jobs: remainingJobs,
+                    },
+                  }
+                )
               }
               style={{
                 width: "100%",
@@ -391,6 +409,44 @@ function ApplicationSuccess() {
                 className="application-success-button-arrow"
                 style={{
                   fontSize: "20px",
+                  fontWeight: "400",
+                }}
+              >
+                →
+              </span>
+            </button>
+
+            {/* VIEW ALL APPLICATIONS */}
+
+            <button
+              type="button"
+              className="application-success-applications-button"
+              onClick={() =>
+                navigate("/applications")
+              }
+              style={{
+                width: "100%",
+                minHeight: "58px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                border: "1px solid #2563eb",
+                borderRadius: "10px",
+                background: "#ffffff",
+                color: "#2563eb",
+                fontSize: "16px",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              <span>
+                View My Applications
+              </span>
+
+              <span
+                style={{
+                  fontSize: "19px",
                   fontWeight: "400",
                 }}
               >
