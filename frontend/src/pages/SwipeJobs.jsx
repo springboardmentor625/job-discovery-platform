@@ -554,6 +554,16 @@ function SwipeJobs() {
 
 
         // ---------------------------------------------------
+        // GET ALL FOLLOWING JOBS
+        // ---------------------------------------------------
+
+        const remainingJobs =
+          jobs.slice(
+            currentIndex + 1
+          );
+
+
+        // ---------------------------------------------------
         // EXISTING APPLICATION WORKFLOW
         // ---------------------------------------------------
 
@@ -602,6 +612,9 @@ function SwipeJobs() {
                 atsResponse?.suggestions ||
                 atsResponse?.improvement_suggestions ||
                 [],
+
+              remainingJobs:
+                remainingJobs,
 
             },
           }
