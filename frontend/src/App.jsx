@@ -22,7 +22,7 @@ import ApplicationSuccess from "./pages/ApplicationSuccess";
 import CandidateDashboard from "./pages/CandidateDashboard";
 
 import MyApplications from "./pages/MyApplications";
-
+import SwipeHistory from "./pages/SwipeHistory";
 
 // =========================================================
 // LOGOUT BUTTON
@@ -228,7 +228,10 @@ function App() {
           path="/application-success"
           element={<ApplicationSuccess />}
         />
-
+        <Route
+        path="/swipe-history"
+        element={<SwipeHistory />}
+        />
       </Routes>
     </>
   );
