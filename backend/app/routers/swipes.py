@@ -6,14 +6,18 @@ from fastapi import (
     Depends,
     HTTPException,
 )
+
 from fastapi.security import (
     HTTPBearer,
     HTTPAuthorizationCredentials,
 )
+
 from pydantic import BaseModel
+
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+
 from ..models import (
     User,
     Job,
@@ -22,6 +26,7 @@ from ..models import (
     SwipeHistory,
     Application,
 )
+
 from ..utils.security import verify_access_token
 
 
@@ -38,6 +43,7 @@ security = HTTPBearer()
 # =========================================================
 
 class SwipeRequest(BaseModel):
+
     job_id: int
     swipe_action: str
 
@@ -48,9 +54,13 @@ class SwipeRequest(BaseModel):
 
 @router.post("/")
 def create_swipe(
+
     request: SwipeRequest,
+
     credentials: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
+
 ):
 
     # -----------------------------------------------------
@@ -62,6 +72,7 @@ def create_swipe(
     payload = verify_access_token(token)
 
     if payload is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token"
@@ -74,15 +85,18 @@ def create_swipe(
     user_id = payload.get("sub")
 
     if user_id is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
         )
 
     try:
+
         user_id = int(user_id)
 
     except (TypeError, ValueError):
+
         raise HTTPException(
             status_code=401,
             detail="Invalid user ID in token"
@@ -99,6 +113,7 @@ def create_swipe(
     )
 
     if not user:
+
         raise HTTPException(
             status_code=404,
             detail="User not found"
@@ -115,6 +130,7 @@ def create_swipe(
     )
 
     if not job:
+
         raise HTTPException(
             status_code=404,
             detail="Job not found"
@@ -133,6 +149,7 @@ def create_swipe(
     swipe_action = request.swipe_action.upper()
 
     if swipe_action not in allowed_actions:
+
         raise HTTPException(
             status_code=400,
             detail=(
@@ -167,12 +184,19 @@ def create_swipe(
         if existing_save:
 
             return {
+
                 "message": "Job is already saved.",
+
                 "swipe_id": existing_save.swipe_id,
+
                 "user_id": user_id,
+
                 "job_id": request.job_id,
+
                 "swipe_action": "SAVE",
+
                 "swiped_at": existing_save.swiped_at
+
             }
 
     # =====================================================
@@ -180,10 +204,15 @@ def create_swipe(
     # =====================================================
 
     swipe = SwipeHistory(
+
         user_id=user_id,
+
         job_id=request.job_id,
+
         swipe_action=swipe_action,
+
         swiped_at=datetime.utcnow()
+
     )
 
     db.add(swipe)
@@ -197,11 +226,14 @@ def create_swipe(
         db.rollback()
 
         raise HTTPException(
+
             status_code=500,
+
             detail=(
                 "Database error while saving swipe: "
                 f"{str(e)}"
             )
+
         )
 
     # =====================================================
@@ -232,11 +264,14 @@ def create_swipe(
             db.rollback()
 
             raise HTTPException(
+
                 status_code=400,
+
                 detail=(
                     "Please upload a resume before "
                     "applying for a job."
                 )
+
             )
 
         # -------------------------------------------------
@@ -269,29 +304,42 @@ def create_swipe(
                 db.rollback()
 
                 raise HTTPException(
+
                     status_code=500,
+
                     detail=f"Database error: {str(e)}"
+
                 )
 
             return {
+
                 "message": (
                     "Job swipe recorded. "
                     "You have already applied for this job."
                 ),
+
                 "swipe_id": swipe.swipe_id,
+
                 "user_id": user_id,
+
                 "job_id": request.job_id,
+
                 "swipe_action": swipe_action,
+
                 "application_id": (
                     existing_application.application_id
                 ),
+
                 "application_status": (
                     existing_application.status
                 ),
+
                 "resume_id": (
                     existing_application.resume_id
                 ),
+
                 "swiped_at": swipe.swiped_at
+
             }
 
         # -------------------------------------------------
@@ -299,11 +347,17 @@ def create_swipe(
         # -------------------------------------------------
 
         application = Application(
+
             user_id=user_id,
+
             job_id=request.job_id,
+
             resume_id=resume.resume_id,
+
             status="APPLIED",
+
             applied_at=datetime.utcnow()
+
         )
 
         db.add(application)
@@ -319,6 +373,7 @@ def create_swipe(
         db.refresh(swipe)
 
         if application:
+
             db.refresh(application)
 
     except Exception as e:
@@ -326,8 +381,11 @@ def create_swipe(
         db.rollback()
 
         raise HTTPException(
+
             status_code=500,
+
             detail=f"Database error: {str(e)}"
+
         )
 
     # =====================================================
@@ -337,19 +395,30 @@ def create_swipe(
     if swipe_action == "RIGHT":
 
         return {
+
             "message": (
                 "Job marked for application "
                 "and application submitted successfully."
             ),
+
             "swipe_id": swipe.swipe_id,
+
             "user_id": user_id,
+
             "job_id": request.job_id,
+
             "swipe_action": swipe_action,
+
             "application_id": application.application_id,
+
             "resume_id": application.resume_id,
+
             "application_status": application.status,
+
             "swiped_at": swipe.swiped_at,
+
             "applied_at": application.applied_at
+
         }
 
     # =====================================================
@@ -359,12 +428,19 @@ def create_swipe(
     if swipe_action == "LEFT":
 
         return {
+
             "message": "Job skipped successfully.",
+
             "swipe_id": swipe.swipe_id,
+
             "user_id": user_id,
+
             "job_id": request.job_id,
+
             "swipe_action": swipe_action,
+
             "swiped_at": swipe.swiped_at
+
         }
 
     # =====================================================
@@ -372,12 +448,19 @@ def create_swipe(
     # =====================================================
 
     return {
+
         "message": "Job saved successfully.",
+
         "swipe_id": swipe.swipe_id,
+
         "user_id": user_id,
+
         "job_id": request.job_id,
+
         "swipe_action": swipe_action,
+
         "swiped_at": swipe.swiped_at
+
     }
 
 
@@ -387,8 +470,11 @@ def create_swipe(
 
 @router.get("/saved")
 def get_saved_jobs(
+
     credentials: HTTPAuthorizationCredentials = Depends(security),
+
     db: Session = Depends(get_db)
+
 ):
 
     # -----------------------------------------------------
@@ -400,6 +486,7 @@ def get_saved_jobs(
     payload = verify_access_token(token)
 
     if payload is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token"
@@ -412,15 +499,18 @@ def get_saved_jobs(
     user_id = payload.get("sub")
 
     if user_id is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid token"
         )
 
     try:
+
         user_id = int(user_id)
 
     except (TypeError, ValueError):
+
         raise HTTPException(
             status_code=401,
             detail="Invalid user ID in token"
@@ -437,6 +527,7 @@ def get_saved_jobs(
     )
 
     if not user:
+
         raise HTTPException(
             status_code=404,
             detail="User not found"
@@ -475,6 +566,7 @@ def get_saved_jobs(
         )
 
         if not job:
+
             continue
 
         # -------------------------------------------------
@@ -496,21 +588,37 @@ def get_saved_jobs(
         )
 
         saved_jobs.append({
+
             "swipe_id": swipe.swipe_id,
+
             "job_id": job.job_id,
+
             "company_id": job.company_id,
+
             "company_name": company_name,
+
             "title": job.title,
+
             "description": job.description,
+
             "location": job.location,
+
             "employment_type": job.employment_type,
+
             "salary_min": job.salary_min,
+
             "salary_max": job.salary_max,
+
             "experience_required": job.experience_required,
+
             "required_skills": job.required_skills,
+
             "posted_date": job.posted_date,
+
             "status": job.status,
+
             "saved_at": swipe.swiped_at
+
         })
 
     # -----------------------------------------------------
@@ -518,7 +626,192 @@ def get_saved_jobs(
     # -----------------------------------------------------
 
     return {
+
         "user_id": user_id,
+
         "saved_jobs": saved_jobs,
+
         "count": len(saved_jobs)
+
+    }
+
+
+# =========================================================
+# GET SWIPE HISTORY
+# =========================================================
+
+@router.get("/history")
+def get_swipe_history(
+
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+
+    db: Session = Depends(get_db)
+
+):
+
+    # -----------------------------------------------------
+    # 1. VERIFY JWT
+    # -----------------------------------------------------
+
+    token = credentials.credentials
+
+    payload = verify_access_token(token)
+
+    if payload is None:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid or expired token"
+        )
+
+    # -----------------------------------------------------
+    # 2. GET USER ID
+    # -----------------------------------------------------
+
+    user_id = payload.get("sub")
+
+    if user_id is None:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid token"
+        )
+
+    try:
+
+        user_id = int(user_id)
+
+    except (TypeError, ValueError):
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid user ID in token"
+        )
+
+    # -----------------------------------------------------
+    # 3. CHECK USER
+    # -----------------------------------------------------
+
+    user = (
+        db.query(User)
+        .filter(User.user_id == user_id)
+        .first()
+    )
+
+    if not user:
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    # -----------------------------------------------------
+    # 4. GET SWIPE HISTORY
+    # -----------------------------------------------------
+
+    swipe_history = (
+        db.query(SwipeHistory)
+        .filter(
+            SwipeHistory.user_id == user_id
+        )
+        .order_by(
+            SwipeHistory.swiped_at.desc()
+        )
+        .all()
+    )
+
+    # -----------------------------------------------------
+    # 5. BUILD RESPONSE
+    # -----------------------------------------------------
+
+    history = []
+
+    for swipe in swipe_history:
+
+        # -------------------------------------------------
+        # GET JOB
+        # -------------------------------------------------
+
+        job = (
+            db.query(Job)
+            .filter(
+                Job.job_id == swipe.job_id
+            )
+            .first()
+        )
+
+        if not job:
+
+            continue
+
+        # -------------------------------------------------
+        # GET COMPANY
+        # -------------------------------------------------
+
+        company = (
+            db.query(Company)
+            .filter(
+                Company.company_id == job.company_id
+            )
+            .first()
+        )
+
+        company_name = (
+            company.company_name
+            if company
+            else "Company not disclosed"
+        )
+
+        # -------------------------------------------------
+        # ADD HISTORY RECORD
+        # -------------------------------------------------
+
+        history.append({
+
+            "swipe_id": swipe.swipe_id,
+
+            "job_id": job.job_id,
+
+            "title": job.title,
+
+            "company_id": job.company_id,
+
+            "company_name": company_name,
+
+            "description": job.description,
+
+            "location": job.location,
+
+            "employment_type": job.employment_type,
+
+            "salary_min": job.salary_min,
+
+            "salary_max": job.salary_max,
+
+            "experience_required": job.experience_required,
+
+            "required_skills": job.required_skills,
+
+            "posted_date": job.posted_date,
+
+            "status": job.status,
+
+            "swipe_action": swipe.swipe_action,
+
+            "swiped_at": swipe.swiped_at
+
+        })
+
+    # -----------------------------------------------------
+    # 6. RETURN HISTORY
+    # -----------------------------------------------------
+
+    return {
+
+        "user_id": user_id,
+
+        "history": history,
+
+        "count": len(history)
+
     }
