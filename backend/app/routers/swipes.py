@@ -17,6 +17,7 @@ from ..database import get_db
 from ..models import (
     User,
     Job,
+    Company,
     Resume,
     SwipeHistory,
     Application,
@@ -476,10 +477,29 @@ def get_saved_jobs(
         if not job:
             continue
 
+        # -------------------------------------------------
+        # GET ACTUAL COMPANY NAME
+        # -------------------------------------------------
+
+        company = (
+            db.query(Company)
+            .filter(
+                Company.company_id == job.company_id
+            )
+            .first()
+        )
+
+        company_name = (
+            company.company_name
+            if company
+            else "Company not disclosed"
+        )
+
         saved_jobs.append({
             "swipe_id": swipe.swipe_id,
             "job_id": job.job_id,
             "company_id": job.company_id,
+            "company_name": company_name,
             "title": job.title,
             "description": job.description,
             "location": job.location,
@@ -502,4 +522,3 @@ def get_saved_jobs(
         "saved_jobs": saved_jobs,
         "count": len(saved_jobs)
     }
-
