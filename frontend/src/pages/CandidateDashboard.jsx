@@ -1,9 +1,133 @@
 
 import { useNavigate, useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
+import api from "../api/api";
 
 function CandidateDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
+
+  // =========================================================
+  // DASHBOARD DATA
+  // =========================================================
+
+  const [email, setEmail] = useState("");
+  const [resumeStatus, setResumeStatus] = useState("Loading...");
+  const [applicationsCount, setApplicationsCount] = useState(0);
+  const [savedJobsCount, setSavedJobsCount] = useState(0);
+
+  // =========================================================
+  // LOAD OVERVIEW DATA
+  // =========================================================
+
+  useEffect(() => {
+    const loadDashboardData = async () => {
+      try {
+        const [
+          userResponse,
+          resumeResponse,
+          applicationsResponse,
+          savedJobsResponse,
+        ] = await Promise.all([
+          api.get("/api/auth/me"),
+          api.get("/api/resumes/me"),
+          api.get("/api/applications"),
+          api.get("/api/swipes/saved"),
+        ]);
+
+        // EMAIL
+        setEmail(userResponse.data?.email || "");
+
+        // RESUME STATUS
+        const resumes = Array.isArray(resumeResponse.data)
+          ? resumeResponse.data
+          : Array.isArray(resumeResponse.data?.resumes)
+          ? resumeResponse.data.resumes
+          : resumeResponse.data
+          ? [resumeResponse.data]
+          : [];
+
+        if (resumes.length > 0) {
+          const latestResume = resumes.reduce((latest, current) => {
+            const latestDate = new Date(
+              latest?.updated_at ||
+                latest?.uploaded_at ||
+                latest?.created_at ||
+                0
+            ).getTime();
+
+            const currentDate = new Date(
+              current?.updated_at ||
+                current?.uploaded_at ||
+                current?.created_at ||
+                0
+            ).getTime();
+
+            return currentDate > latestDate ? current : latest;
+          }, resumes[0]);
+
+          const resumeDate =
+            latestResume?.updated_at ||
+            latestResume?.uploaded_at ||
+            latestResume?.created_at;
+
+          if (resumeDate) {
+            const formattedDate = new Date(
+              resumeDate
+            ).toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+
+            setResumeStatus(`Last updated — ${formattedDate}`);
+          } else {
+            setResumeStatus("Uploaded");
+          }
+        } else {
+          setResumeStatus("Not uploaded");
+        }
+
+        // APPLICATIONS
+        const applications = Array.isArray(
+          applicationsResponse.data
+        )
+          ? applicationsResponse.data
+          : Array.isArray(
+              applicationsResponse.data?.applications
+            )
+          ? applicationsResponse.data.applications
+          : [];
+
+        setApplicationsCount(applications.length);
+
+        // SAVED JOBS
+        const savedJobs = Array.isArray(
+          savedJobsResponse.data
+        )
+          ? savedJobsResponse.data
+          : Array.isArray(savedJobsResponse.data?.jobs)
+          ? savedJobsResponse.data.jobs
+          : Array.isArray(savedJobsResponse.data?.saved_jobs)
+          ? savedJobsResponse.data.saved_jobs
+          : [];
+
+        setSavedJobsCount(savedJobs.length);
+      } catch (error) {
+        console.error(
+          "Failed to load dashboard data:",
+          error
+        );
+
+        setEmail("");
+        setResumeStatus("Unable to load");
+        setApplicationsCount(0);
+        setSavedJobsCount(0);
+      }
+    };
+
+    loadDashboardData();
+  }, []);
 
   // =========================================================
   // LOGOUT
@@ -187,15 +311,18 @@ function CandidateDashboard() {
             JOB DISCOVERY
           </div>
 
+
           <SidebarItem
             label="AI Recommended Jobs"
             path="/recommended-jobs"
           />
 
+
           <SidebarItem
             label="Swipe Jobs"
             path="/swipe-jobs"
           />
+
 
           <SidebarItem
             label="Saved Jobs"
@@ -219,13 +346,14 @@ function CandidateDashboard() {
             APPLICATIONS
           </div>
 
+
           <SidebarItem
             label="My Applications"
             path="/applications"
           />
 
 
-          {/* RESUME & AI */}
+          {/* RESUME */}
 
           <div
             style={{
@@ -241,19 +369,10 @@ function CandidateDashboard() {
             RESUME
           </div>
 
+
           <SidebarItem
             label="Upload Resume"
             path="/upload-resume"
-          />
-
-          <SidebarItem
-            label="Resume Analysis"
-            path="/resume-analysis"
-          />
-
-          <SidebarItem
-            label="ATS Analysis"
-            path="/ats-analysis"
           />
 
 
@@ -272,6 +391,7 @@ function CandidateDashboard() {
           >
             PROFILE
           </div>
+
 
           <SidebarItem
             label="Profile"
@@ -333,8 +453,10 @@ function CandidateDashboard() {
         <div
           style={{
             marginBottom: "32px",
+            position: "relative",
           }}
         >
+
           <div
             style={{
               fontSize: "13px",
@@ -342,8 +464,9 @@ function CandidateDashboard() {
               marginBottom: "7px",
             }}
           >
-           
+            &#x20;
           </div>
+
 
           <h1
             style={{
@@ -357,6 +480,7 @@ function CandidateDashboard() {
             Welcome to SwipeX
           </h1>
 
+
           <p
             style={{
               marginTop: "9px",
@@ -367,6 +491,25 @@ function CandidateDashboard() {
           >
             Manage your profile, resume and job search from one place.
           </p>
+
+
+          {/* EMAIL */}
+
+          {email && (
+            <div
+              style={{
+                position: "absolute",
+                top: "0",
+                right: "0",
+                fontSize: "20px",
+                color: "#374151",
+                fontWeight: "500",
+              }}
+            >
+              {email}
+            </div>
+          )}
+
         </div>
 
 
@@ -378,13 +521,13 @@ function CandidateDashboard() {
           style={{
             display: "grid",
             gridTemplateColumns:
-              "repeat(4, minmax(0, 1fr))",
+              "repeat(3, minmax(0, 1fr))",
             gap: "18px",
             marginBottom: "30px",
           }}
         >
 
-          {/* RECOMMENDED JOBS */}
+          {/* RESUME STATUS */}
 
           <div
             style={{
@@ -394,6 +537,7 @@ function CandidateDashboard() {
               padding: "22px",
             }}
           >
+
             <div
               style={{
                 fontSize: "13px",
@@ -401,8 +545,45 @@ function CandidateDashboard() {
                 marginBottom: "10px",
               }}
             >
-              AI Recommended Jobs
+              Resume Status
             </div>
+
+
+            <div
+              style={{
+                fontSize: "21px",
+                fontWeight: "700",
+                color: "#111827",
+                lineHeight: "1.4",
+              }}
+            >
+              {resumeStatus}
+            </div>
+
+          </div>
+
+
+          {/* APPLICATIONS */}
+
+          <div
+            style={{
+              backgroundColor: "#ffffff",
+              border: "1px solid #e5e7eb",
+              borderRadius: "12px",
+              padding: "22px",
+            }}
+          >
+
+            <div
+              style={{
+                fontSize: "13px",
+                color: "#6b7280",
+                marginBottom: "10px",
+              }}
+            >
+              Applications
+            </div>
+
 
             <div
               style={{
@@ -411,27 +592,9 @@ function CandidateDashboard() {
                 color: "#111827",
               }}
             >
-              Explore
+              {applicationsCount}
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/recommended-jobs")
-              }
-              style={{
-                marginTop: "14px",
-                border: "none",
-                background: "none",
-                padding: 0,
-                color: "#4f46e5",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              View recommendations →
-            </button>
           </div>
 
 
@@ -445,6 +608,7 @@ function CandidateDashboard() {
               padding: "22px",
             }}
           >
+
             <div
               style={{
                 fontSize: "13px",
@@ -455,56 +619,6 @@ function CandidateDashboard() {
               Saved Jobs
             </div>
 
-            <div
-              style={{
-                fontSize: "25px",
-                fontWeight: "700",
-                color: "#111827",
-              }}
-            >
-              Saved
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/saved-jobs")
-              }
-              style={{
-                marginTop: "14px",
-                border: "none",
-                background: "none",
-                padding: 0,
-                color: "#4f46e5",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              View saved jobs →
-            </button>
-          </div>
-
-
-          {/* RESUME */}
-
-          <div
-            style={{
-              backgroundColor: "#ffffff",
-              border: "1px solid #e5e7eb",
-              borderRadius: "12px",
-              padding: "22px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "13px",
-                color: "#6b7280",
-                marginBottom: "10px",
-              }}
-            >
-              Resume
-            </div>
 
             <div
               style={{
@@ -513,78 +627,9 @@ function CandidateDashboard() {
                 color: "#111827",
               }}
             >
-              Manage
+              {savedJobsCount}
             </div>
 
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/resume-analysis")
-              }
-              style={{
-                marginTop: "14px",
-                border: "none",
-                background: "none",
-                padding: 0,
-                color: "#4f46e5",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              View resume analysis →
-            </button>
-          </div>
-
-
-          {/* ATS */}
-
-          <div
-            style={{
-              backgroundColor: "#ffffff",
-              border: "1px solid #e5e7eb",
-              borderRadius: "12px",
-              padding: "22px",
-            }}
-          >
-            <div
-              style={{
-                fontSize: "13px",
-                color: "#6b7280",
-                marginBottom: "10px",
-              }}
-            >
-              ATS Analysis
-            </div>
-
-            <div
-              style={{
-                fontSize: "25px",
-                fontWeight: "700",
-                color: "#111827",
-              }}
-            >
-              Analyze
-            </div>
-
-            <button
-              type="button"
-              onClick={() =>
-                navigate("/ats-analysis")
-              }
-              style={{
-                marginTop: "14px",
-                border: "none",
-                background: "none",
-                padding: 0,
-                color: "#4f46e5",
-                fontSize: "13px",
-                fontWeight: "600",
-                cursor: "pointer",
-              }}
-            >
-              Open ATS analysis →
-            </button>
           </div>
 
         </div>
@@ -613,6 +658,7 @@ function CandidateDashboard() {
           >
             Quick Actions
           </h2>
+
 
           <p
             style={{
@@ -653,6 +699,7 @@ function CandidateDashboard() {
               }}
             >
               AI Recommended Jobs
+
               <div
                 style={{
                   marginTop: "5px",
@@ -663,6 +710,7 @@ function CandidateDashboard() {
               >
                 Explore jobs matched to your profile.
               </div>
+
             </button>
 
 
@@ -684,6 +732,7 @@ function CandidateDashboard() {
               }}
             >
               Swipe Jobs
+
               <div
                 style={{
                   marginTop: "5px",
@@ -694,6 +743,7 @@ function CandidateDashboard() {
               >
                 Discover jobs through swipe-based matching.
               </div>
+
             </button>
 
 
@@ -715,6 +765,7 @@ function CandidateDashboard() {
               }}
             >
               Upload Resume
+
               <div
                 style={{
                   marginTop: "5px",
@@ -725,6 +776,7 @@ function CandidateDashboard() {
               >
                 Upload or update your resume.
               </div>
+
             </button>
 
           </div>
@@ -734,9 +786,9 @@ function CandidateDashboard() {
 
         {/* ===================================================
             INFORMATION
-        =================================================== */}
+        ===================================================== */}
 
-         <div
+        <div
           style={{
             marginTop: "24px",
             padding: "18px 20px",
@@ -748,7 +800,7 @@ function CandidateDashboard() {
             lineHeight: "1.6",
           }}
         >
-          
+          &#x20;
         </div>
 
       </main>
