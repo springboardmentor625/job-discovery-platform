@@ -1,3 +1,4 @@
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -9,6 +10,7 @@ from ..models import (
     User,
     Resume,
     Job,
+    Company,
     CandidateProfile,
     SwipeHistory,
 )
@@ -32,20 +34,6 @@ security = HTTPBearer()
 
 # =========================================================
 # PERFORMANCE SETTINGS
-# =========================================================
-#
-# The database currently contains 55,000+ active jobs.
-#
-# We DO NOT run the ML model on every job.
-#
-# Instead:
-#
-# 1. Fetch a limited pool of recent active jobs
-# 2. Remove jobs already swiped by the user
-# 3. Apply cheap candidate filtering
-# 4. Run ML only on the best candidates
-# 5. Return only the top recommendations
-#
 # =========================================================
 
 INITIAL_JOB_POOL = 5000
@@ -73,6 +61,7 @@ def get_current_user_id(
     )
 
     if payload is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token",
@@ -83,6 +72,7 @@ def get_current_user_id(
     )
 
     if user_id is None:
+
         raise HTTPException(
             status_code=401,
             detail="Invalid token",
@@ -115,7 +105,9 @@ def normalize_value(value):
     if value is None:
         return ""
 
-    return str(value).strip().lower()
+    return str(
+        value
+    ).strip().lower()
 
 
 # =========================================================
@@ -137,8 +129,13 @@ def calculate_skill_match(
     This is NOT used as a fixed final recommendation weight.
     """
 
-    resume_skills = resume_skills or []
-    required_skills = required_skills or []
+    resume_skills = (
+        resume_skills or []
+    )
+
+    required_skills = (
+        required_skills or []
+    )
 
     resume_skills_lower = {
         normalize_value(skill)
@@ -147,18 +144,22 @@ def calculate_skill_match(
     }
 
     matched_skills = []
+
     missing_skills = []
 
     for skill in required_skills:
 
-        normalized_skill = normalize_value(
-            skill
+        normalized_skill = (
+            normalize_value(skill)
         )
 
         if not normalized_skill:
             continue
 
-        if normalized_skill in resume_skills_lower:
+        if (
+            normalized_skill
+            in resume_skills_lower
+        ):
 
             matched_skills.append(
                 skill
@@ -248,7 +249,8 @@ def calculate_experience_match(
         return 100.0
 
     experience_score = (
-        candidate / required
+        candidate
+        / required
     ) * 100
 
     return round(
@@ -355,11 +357,6 @@ def calculate_swipe_score(
 
     Negative:
         LEFT
-
-    Already-swiped jobs are excluded from the
-    recommendation candidate pool, so this function
-    mainly remains for compatibility with the
-    existing scoring architecture.
     """
 
     if not swipe_history:
@@ -409,21 +406,14 @@ def build_swipe_preferences(
     """
     Build lightweight preference information from
     the user's previous swipe activity.
-
-    Positive interactions:
-        RIGHT / SAVE
-
-    Negative interactions:
-        LEFT
-
-    These signals are used for candidate filtering
-    and later personalization.
     """
 
     positive_skills = set()
+
     negative_skills = set()
 
     positive_title_words = set()
+
     negative_title_words = set()
 
     job_map = {
@@ -460,7 +450,8 @@ def build_swipe_preferences(
         job_skills = {
             normalize_value(skill)
             for skill in (
-                job.required_skills or []
+                job.required_skills
+                or []
             )
             if normalize_value(skill)
         }
@@ -494,10 +485,17 @@ def build_swipe_preferences(
             )
 
     return {
-        "positive_skills": positive_skills,
-        "negative_skills": negative_skills,
-        "positive_title_words": positive_title_words,
-        "negative_title_words": negative_title_words,
+        "positive_skills":
+            positive_skills,
+
+        "negative_skills":
+            negative_skills,
+
+        "positive_title_words":
+            positive_title_words,
+
+        "negative_title_words":
+            negative_title_words,
     }
 
 
@@ -516,20 +514,7 @@ def calculate_candidate_pre_score(
     """
     Cheap pre-filter score.
 
-    IMPORTANT:
     This is NOT the final recommendation score.
-
-    It exists only to decide which jobs deserve
-    expensive ML processing.
-
-    Signals:
-    - Resume skill overlap
-    - Positive swipe skill similarity
-    - Negative swipe similarity
-    - Title similarity
-    - Location compatibility
-    - Experience compatibility
-    - Job type compatibility
     """
 
     required_skills = (
@@ -546,7 +531,8 @@ def calculate_candidate_pre_score(
     resume_skill_set = {
         normalize_value(skill)
         for skill in (
-            resume_skills or []
+            resume_skills
+            or []
         )
         if normalize_value(skill)
     }
@@ -569,16 +555,20 @@ def calculate_candidate_pre_score(
     ) * 100
 
     # -----------------------------------------------------
-    # Positive swipe similarity
+    # Positive / negative swipe similarity
     # -----------------------------------------------------
 
-    positive_skills = swipe_preferences[
-        "positive_skills"
-    ]
+    positive_skills = (
+        swipe_preferences[
+            "positive_skills"
+        ]
+    )
 
-    negative_skills = swipe_preferences[
-        "negative_skills"
-    ]
+    negative_skills = (
+        swipe_preferences[
+            "negative_skills"
+        ]
+    )
 
     positive_overlap = (
         job_skills
@@ -602,13 +592,17 @@ def calculate_candidate_pre_score(
         if len(word) > 2
     }
 
-    positive_title_words = swipe_preferences[
-        "positive_title_words"
-    ]
+    positive_title_words = (
+        swipe_preferences[
+            "positive_title_words"
+        ]
+    )
 
-    negative_title_words = swipe_preferences[
-        "negative_title_words"
-    ]
+    negative_title_words = (
+        swipe_preferences[
+            "negative_title_words"
+        ]
+    )
 
     positive_title_overlap = (
         job_title_words
@@ -624,31 +618,36 @@ def calculate_candidate_pre_score(
     # Profile compatibility
     # -----------------------------------------------------
 
-    location_score = calculate_location_match(
-        preferred_location,
-        job.location,
+    location_score = (
+        calculate_location_match(
+            preferred_location,
+            job.location,
+        )
     )
 
-    experience_score = calculate_experience_match(
-        candidate_experience,
-        job.experience_required,
+    experience_score = (
+        calculate_experience_match(
+            candidate_experience,
+            job.experience_required,
+        )
     )
 
-    job_type_score = calculate_job_type_match(
-        preferred_job_type,
-        job.employment_type,
+    job_type_score = (
+        calculate_job_type_match(
+            preferred_job_type,
+            job.employment_type,
+        )
     )
 
     # -----------------------------------------------------
     # Cheap ranking signal
-    #
-    # This is intentionally only a candidate-generation
-    # score. It is NOT returned to the frontend.
     # -----------------------------------------------------
 
     score = 0.0
 
-    score += resume_skill_score
+    score += (
+        resume_skill_score
+    )
 
     score += (
         len(positive_overlap)
@@ -671,12 +670,15 @@ def calculate_candidate_pre_score(
     )
 
     if location_score == 100:
+
         score += 10
 
     if experience_score >= 100:
+
         score += 5
 
     if job_type_score == 100:
+
         score += 5
 
     return round(
@@ -695,12 +697,8 @@ def calculate_similar_job_swipe_score(
     swiped_jobs,
 ):
     """
-    Learn a personalization signal from previous
-    interactions with similar jobs.
-
-    Similarity is based on:
-    - Job title words
-    - Required skills
+    Learn personalization from previous interactions
+    with similar jobs.
     """
 
     if not swipe_history:
@@ -719,7 +717,8 @@ def calculate_similar_job_swipe_score(
     current_skills = {
         normalize_value(skill)
         for skill in (
-            job.required_skills or []
+            job.required_skills
+            or []
         )
         if normalize_value(skill)
     }
@@ -730,6 +729,7 @@ def calculate_similar_job_swipe_score(
     }
 
     positive_signals = 0
+
     negative_signals = 0
 
     positive_actions = {
@@ -754,7 +754,10 @@ def calculate_similar_job_swipe_score(
         if not previous_job:
             continue
 
-        if previous_job.job_id == job.job_id:
+        if (
+            previous_job.job_id
+            == job.job_id
+        ):
             continue
 
         previous_title_words = {
@@ -815,7 +818,10 @@ def calculate_similar_job_swipe_score(
         - negative_signals
     ) / total_signals
 
-    score = preference_ratio * 5
+    score = (
+        preference_ratio
+        * 5
+    )
 
     return round(
         score,
@@ -973,39 +979,10 @@ def get_recommended_jobs(
     """
     Generate personalized job recommendations.
 
-    OPTIMIZED FLOW:
+    The recommendation and ML logic remains unchanged.
 
-        Resume
-           |
-           v
-      Candidate Profile
-           |
-           v
-      Swipe History
-           |
-           v
-      Exclude Already Swiped Jobs
-           |
-           v
-      Initial Job Pool
-           |
-           v
-      Cheap Candidate Filtering
-           |
-           v
-      Top ML Candidates
-           |
-           v
-      Trained ML Model
-           |
-           v
-      Swipe Personalization
-           |
-           v
-      Final Recommendation Score
-           |
-           v
-      Top 30 Jobs
+    Additional company information is now returned:
+        company_name
     """
 
     # =====================================================
@@ -1121,7 +1098,9 @@ def get_recommended_jobs(
     # =====================================================
 
     candidate_experience = None
+
     preferred_location = None
+
     preferred_job_type = None
 
     if candidate_profile:
@@ -1146,7 +1125,8 @@ def get_recommended_jobs(
     swipe_history = (
         db.query(SwipeHistory)
         .filter(
-            SwipeHistory.user_id == user_id
+            SwipeHistory.user_id
+            == user_id
         )
         .order_by(
             SwipeHistory.swiped_at.asc()
@@ -1166,12 +1146,6 @@ def get_recommended_jobs(
 
     # =====================================================
     # 11. GET JOBS REFERENCED BY SWIPE HISTORY
-    # =====================================================
-    #
-    # We only load jobs the user actually interacted with.
-    #
-    # This is much smaller than loading all 55,000 jobs.
-    #
     # =====================================================
 
     swiped_jobs = []
@@ -1202,26 +1176,21 @@ def get_recommended_jobs(
     # =====================================================
     # 13. GET INITIAL ACTIVE JOB POOL
     # =====================================================
-    #
-    # IMPORTANT:
-    #
-    # We do NOT fetch every active job.
-    #
-    # The previous implementation loaded all 55,000+
-    # jobs and ran ML against each one.
-    #
-    # Now we:
-    #
-    # - only fetch recent active jobs
-    # - exclude jobs already processed by the user
-    # - use a maximum initial pool
-    #
-    # =====================================================
 
     job_query = (
-        db.query(Job)
+        db.query(
+            Job,
+            Company.company_name,
+        )
+        .outerjoin(
+            Company,
+            Job.company_id
+            == Company.company_id,
+        )
         .filter(
-            func.upper(Job.status) == "ACTIVE"
+            func.upper(
+                Job.status
+            ) == "ACTIVE"
         )
     )
 
@@ -1238,7 +1207,7 @@ def get_recommended_jobs(
             )
         )
 
-    jobs = (
+    job_rows = (
         job_query
         .order_by(
             Job.posted_date.desc()
@@ -1248,6 +1217,25 @@ def get_recommended_jobs(
         )
         .all()
     )
+
+    # Convert query result from:
+    #
+    # (Job, company_name)
+    #
+    # into:
+    #
+    # [(Job, company_name), ...]
+    #
+    # while preserving the existing recommendation logic.
+
+    jobs = [
+        {
+            "job": job,
+            "company_name": company_name,
+        }
+        for job, company_name
+        in job_rows
+    ]
 
     # =====================================================
     # 14. CHECK AVAILABLE JOBS
@@ -1284,16 +1272,18 @@ def get_recommended_jobs(
     # =====================================================
     # 15. CHEAP CANDIDATE FILTERING
     # =====================================================
-    #
-    # No ML is used here.
-    #
-    # This stage is intentionally fast.
-    #
-    # =====================================================
 
     candidate_jobs = []
 
-    for job in jobs:
+    for job_data in jobs:
+
+        job = job_data["job"]
+
+        company_name = (
+            job_data[
+                "company_name"
+            ]
+        )
 
         pre_score = (
             calculate_candidate_pre_score(
@@ -1310,6 +1300,7 @@ def get_recommended_jobs(
             (
                 pre_score,
                 job,
+                company_name,
             )
         )
 
@@ -1326,18 +1317,6 @@ def get_recommended_jobs(
     # =====================================================
     # 17. KEEP ONLY TOP ML CANDIDATES
     # =====================================================
-    #
-    # Example:
-    #
-    # 5,000 jobs
-    #      ↓
-    # cheap filtering
-    #      ↓
-    # 300 jobs
-    #      ↓
-    # ML
-    #
-    # =====================================================
 
     candidate_jobs = candidate_jobs[
         :ML_CANDIDATE_LIMIT
@@ -1352,6 +1331,7 @@ def get_recommended_jobs(
     for (
         pre_score,
         job,
+        company_name,
     ) in candidate_jobs:
 
         required_skills = (
@@ -1420,7 +1400,10 @@ def get_recommended_jobs(
             ),
         ]
 
-        if job.experience_required is not None:
+        if (
+            job.experience_required
+            is not None
+        ):
 
             job_text_parts.append(
                 str(
@@ -1507,14 +1490,6 @@ def get_recommended_jobs(
         # =================================================
         # FINAL RECOMMENDATION SCORE
         # =================================================
-        #
-        # ML remains the primary compatibility score.
-        #
-        # Swipe history remains personalization.
-        #
-        # No old 60/20/10/10 formula.
-        #
-        # =================================================
 
         recommendation_score = (
             ml_match_percentage
@@ -1562,6 +1537,12 @@ def get_recommended_jobs(
 
                 "company_id":
                     job.company_id,
+
+                # NEW:
+                # Actual company name from Companies table
+                "company_name":
+                    company_name
+                    or "Company not specified",
 
                 "title":
                     job.title,
@@ -1625,7 +1606,9 @@ def get_recommended_jobs(
 
     recommendations.sort(
         key=lambda job:
-            job["recommendation_score"],
+            job[
+                "recommendation_score"
+            ],
         reverse=True,
     )
 
@@ -1666,3 +1649,4 @@ def get_recommended_jobs(
         "count":
             len(recommendations),
     }
+
