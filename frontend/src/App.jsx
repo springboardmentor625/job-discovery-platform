@@ -11,10 +11,6 @@ import Login from "./pages/Login";
 import CompleteProfile from "./pages/CompleteProfile";
 
 import UploadResume from "./pages/UploadResume";
-import ResumeParsing from "./pages/ResumeParsing";
-import ResumeAnalysis from "./pages/ResumeAnalysis";
-
-import ATSAnalysis from "./pages/ATSAnalysis";
 
 import RecommendedJobs from "./pages/RecommendedJobs";
 import SwipeJobs from "./pages/SwipeJobs";
@@ -168,30 +164,6 @@ function App() {
         <Route
           path="/upload-resume"
           element={<UploadResume />}
-        />
-
-        {/* AI Resume Parsing */}
-
-        <Route
-          path="/resume-parsing"
-          element={<ResumeParsing />}
-        />
-
-        {/* Resume Analysis */}
-
-        <Route
-          path="/resume-analysis"
-          element={<ResumeAnalysis />}
-        />
-
-
-        {/* =================================================
-            ATS WORKFLOW
-        ================================================= */}
-
-        <Route
-          path="/ats-analysis"
-          element={<ATSAnalysis />}
         />
 
 
