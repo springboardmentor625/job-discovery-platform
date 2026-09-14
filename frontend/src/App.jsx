@@ -37,6 +37,7 @@ function LogoutButton() {
     "/register",
     "/login",
     "/dashboard",
+    "/candidate-dashboard",
   ];
 
   const isLoggedIn =
@@ -141,6 +142,12 @@ function App() {
 
         <Route
           path="/dashboard"
+          element={<CandidateDashboard />}
+        />
+
+        {/* Candidate Dashboard alternate path */}
+        <Route
+          path="/candidate-dashboard"
           element={<CandidateDashboard />}
         />
 
