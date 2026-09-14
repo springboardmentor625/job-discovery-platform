@@ -1,3 +1,4 @@
+
 from fastapi import (
     APIRouter,
     Depends,
@@ -13,11 +14,13 @@ from fastapi.security import (
 from sqlalchemy.orm import Session
 
 from ..database import get_db
+
 from ..models import (
     User,
     Resume,
     Job,
-    ATSReport
+    ATSReport,
+    CandidateProfile
 )
 
 from ..utils.security import (
@@ -162,7 +165,19 @@ def analyze_resume(
         )
 
     # -----------------------------------------------------
-    # 5. GET RESUME SKILLS
+    # 5. GET CANDIDATE PROFILE
+    # -----------------------------------------------------
+
+    profile = (
+        db.query(CandidateProfile)
+        .filter(
+            CandidateProfile.user_id == user_id
+        )
+        .first()
+    )
+
+    # -----------------------------------------------------
+    # 6. GET RESUME SKILLS
     # -----------------------------------------------------
 
     resume_skills = resume.extracted_skills
@@ -175,7 +190,7 @@ def analyze_resume(
         )
 
     # -----------------------------------------------------
-    # 6. GET REQUIRED JOB SKILLS
+    # 7. GET REQUIRED JOB SKILLS
     # -----------------------------------------------------
 
     required_skills = job.required_skills
@@ -188,16 +203,69 @@ def analyze_resume(
         )
 
     # -----------------------------------------------------
-    # 7. CALCULATE ATS SCORE
+    # 8. GET EXPERIENCE INFORMATION
+    # -----------------------------------------------------
+
+    resume_experience = None
+
+    if profile:
+
+        resume_experience = (
+            profile.experience_years
+        )
+
+    required_experience = (
+        job.experience_required
+    )
+
+    # -----------------------------------------------------
+    # 9. GET ROLE INFORMATION
+    # -----------------------------------------------------
+
+    resume_role = None
+
+    if profile:
+
+        resume_role = (
+            profile.headline
+        )
+
+    job_title = job.title
+
+    # -----------------------------------------------------
+    # 10. GET LOCATION INFORMATION
+    # -----------------------------------------------------
+
+    preferred_location = None
+
+    if profile:
+
+        preferred_location = (
+            profile.preferred_location
+        )
+
+    job_location = job.location
+
+    # -----------------------------------------------------
+    # 11. CALCULATE ATS SCORE
     # -----------------------------------------------------
 
     result = calculate_ats_score(
         resume_skills=resume_skills,
-        required_skills=required_skills
+        required_skills=required_skills,
+
+        resume_experience=resume_experience,
+        required_experience=required_experience,
+
+        resume_role=resume_role,
+        job_title=job_title,
+
+        preferred_location=preferred_location,
+        job_location=job_location
     )
 
     # -----------------------------------------------------
-    # 8. GENERATE SUGGESTIONS
+    # 12. GENERATE SUGGESTIONS
     # -----------------------------------------------------
 
     suggestions = generate_suggestions(
@@ -205,7 +273,7 @@ def analyze_resume(
     )
 
     # -----------------------------------------------------
-    # 9. CREATE ATS REPORT
+    # 13. CREATE ATS REPORT
     # -----------------------------------------------------
 
     new_report = ATSReport(
@@ -221,7 +289,7 @@ def analyze_resume(
     db.add(new_report)
 
     # -----------------------------------------------------
-    # 10. SAVE REPORT
+    # 14. SAVE REPORT
     # -----------------------------------------------------
 
     try:
@@ -240,11 +308,12 @@ def analyze_resume(
         )
 
     # -----------------------------------------------------
-    # 11. RETURN RESULT
+    # 15. RETURN RESULT
     # -----------------------------------------------------
 
     return {
-        "message": "ATS analysis completed successfully",
+        "message":
+            "ATS analysis completed successfully",
 
         "ats_report_id":
             new_report.ats_report_id,
