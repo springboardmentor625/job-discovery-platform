@@ -1,6 +1,7 @@
 The SwipeX backend is a FastAPI-based REST API that handles authentication, candidate profiles, resumes, ATS analysis, jobs, recommendations, swipe actions, applications and dashboard operations.
 
-** Technology Stack
+**Technology Stack
+**
 - Python
 - FastAPI
 - Uvicorn
@@ -8,7 +9,8 @@ The SwipeX backend is a FastAPI-based REST API that handles authentication, cand
 - AI/ML components
 - Docker
 
-** Main Responsibilities
+**Main Responsibilities
+**
 - User registration and authentication
 - Candidate profile management
 - Resume upload and processing
@@ -23,7 +25,8 @@ The SwipeX backend is a FastAPI-based REST API that handles authentication, cand
 - Candidate dashboard
 - Database communication
 
-** API Modules
+**API Modules
+**
 -Authentication
 -Candidate Profile
 -Resumes
