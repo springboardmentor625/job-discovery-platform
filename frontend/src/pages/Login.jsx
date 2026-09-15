@@ -189,7 +189,6 @@ function Login() {
             <input
               id="email"
               type="email"
-              placeholder="Enter your email"
               value={email}
               onChange={(event) => {
                 setEmail(event.target.value);
@@ -228,7 +227,6 @@ function Login() {
                     ? "text"
                     : "password"
                 }
-                placeholder="Enter your password"
                 value={password}
                 onChange={(event) => {
                   setPassword(event.target.value);
