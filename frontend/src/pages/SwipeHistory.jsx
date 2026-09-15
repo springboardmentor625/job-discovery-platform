@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -182,39 +183,34 @@ function SwipeHistory() {
     salaryMin,
     salaryMax
   ) => {
+    const min =
+      salaryMin == null ||
+      salaryMin === ""
+        ? null
+        : Number(salaryMin);
+
+    const max =
+      salaryMax == null ||
+      salaryMax === ""
+        ? null
+        : Number(salaryMax);
+
+    // Treat null, missing, invalid, and 0 values
+    // as undisclosed salary.
     if (
-      salaryMin == null &&
-      salaryMax == null
+      min == null ||
+      max == null ||
+      Number.isNaN(min) ||
+      Number.isNaN(max) ||
+      min === 0 ||
+      max === 0
     ) {
       return "Salary not disclosed";
     }
 
-    if (
-      salaryMin != null &&
-      salaryMax != null
-    ) {
-      return `₹${Number(
-        salaryMin
-      ).toLocaleString(
-        "en-IN"
-      )} - ₹${Number(
-        salaryMax
-      ).toLocaleString(
-        "en-IN"
-      )}`;
-    }
-
-    if (salaryMin != null) {
-      return `₹${Number(
-        salaryMin
-      ).toLocaleString(
-        "en-IN"
-      )}+`;
-    }
-
-    return `Up to ₹${Number(
-      salaryMax
-    ).toLocaleString(
+    return `₹${min.toLocaleString(
+      "en-IN"
+    )} - ₹${max.toLocaleString(
       "en-IN"
     )}`;
   };
