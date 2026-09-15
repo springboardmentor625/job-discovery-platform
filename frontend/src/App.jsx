@@ -74,12 +74,12 @@ function App() {
   const [extractedSkills, setExtractedSkills] = useState([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
   // Jobs
-  // Jobs
 const [jobs, setJobs] = useState([]);
 const [jobsLoading, setJobsLoading] = useState(false);
 const [jobsPage, setJobsPage] = useState(1);
 const [jobsPagination, setJobsPagination] = useState(null);
 const [jobLocationFilter, setJobLocationFilter] = useState("");
+const [jobSkillsFilter, setJobSkillsFilter] = useState("");
 
   // ATS
   const [selectedJob, setSelectedJob] = useState(null);
@@ -544,7 +544,7 @@ setSkillsLoading(false);
 
   try {
     const response = await fetch(
-  `${API}/api/jobs?page=${pageNumber}&limit=20&location=${encodeURIComponent(jobLocationFilter)}`,
+  `${API}/api/jobs?page=${pageNumber}&limit=20&location=${encodeURIComponent(jobLocationFilter)}&skills=${encodeURIComponent(jobSkillsFilter)}`,
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -1875,10 +1875,10 @@ setTimeout(() => {
               </button>
 
             </div>
-
-            {/* Job Filters */}
+{/* Job Filters */}
 <div className="sx-job-filters">
 
+  {/* Location */}
   <div className="sx-filter-field">
     <label>
       Location
@@ -1894,6 +1894,23 @@ setTimeout(() => {
     />
   </div>
 
+  {/* Skills */}
+  <div className="sx-filter-field">
+    <label>
+      Skills
+    </label>
+
+    <input
+      type="text"
+      placeholder="e.g. Python, SQL, Pandas"
+      value={jobSkillsFilter}
+      onChange={(e) =>
+        setJobSkillsFilter(e.target.value)
+      }
+    />
+  </div>
+
+  {/* Apply Filter */}
   <button
     className="sx-filter-btn"
     onClick={() => handleViewJobs(1)}
@@ -1905,7 +1922,6 @@ setTimeout(() => {
   </button>
 
 </div>
-
             {message && (
               <div className="sx-message">
                 {message}

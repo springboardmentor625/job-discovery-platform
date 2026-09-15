@@ -1268,9 +1268,16 @@ def seed_demo_jobs():
 @jwt_required()
 def get_jobs():
 
-    # Location filter
+    # Job filters
     location = request.args.get("location", "").strip()
 
+    skills_param = request.args.get("skills", "").strip()
+
+    selected_skills = [
+        skill.strip().lower()
+        for skill in skills_param.split(",")
+        if skill.strip()
+    ]
     # Pagination
     try:
         page = max(int(request.args.get("page", 1)), 1)
@@ -1292,6 +1299,40 @@ def get_jobs():
      query = query.filter(
         Job.location.ilike(f"%{location}%")
     )
+    # Skills filter - AND logic
+    if selected_skills:
+        jobs_with_skills = query.all()
+
+        filtered_jobs = []
+
+        for job in jobs_with_skills:
+            try:
+                job_skills = json.loads(
+                    job.required_skills or "[]"
+                )
+
+                job_skills = {
+                    skill.strip().lower()
+                    for skill in job_skills
+                }
+
+                if all(
+                    skill in job_skills
+                    for skill in selected_skills
+                ):
+                    filtered_jobs.append(job)
+
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+        job_ids = [
+            job.job_id
+            for job in filtered_jobs
+        ]
+
+        query = query.filter(
+            Job.job_id.in_(job_ids)
+        )
 
     total_jobs = query.count()
 
