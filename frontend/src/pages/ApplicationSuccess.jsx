@@ -75,7 +75,6 @@ function ApplicationSuccess() {
                 letterSpacing: "1.5px",
               }}
             >
-              SWIPEX APPLICATION
             </p>
 
             <h1
@@ -120,7 +119,7 @@ function ApplicationSuccess() {
                     fontWeight: "700",
                   }}
                 >
-                  {job.company}
+                  {job.company_name || job.company}
                 </strong>
                 .
               </p>
@@ -197,7 +196,6 @@ function ApplicationSuccess() {
                       lineHeight: "1.5",
                     }}
                   >
-                    Your application has been successfully recorded.
                   </span>
                 </div>
               </div>
@@ -358,17 +356,54 @@ function ApplicationSuccess() {
 
           {/* ===================================================
               CONTINUE
-          =================================================== */}
+          ===================================================== */}
 
           <div
             className="application-success-footer"
             style={{
               marginTop: "0",
               display: "flex",
-              flexDirection: "column",
+              flexDirection: "row",
               gap: "12px",
+              width: "100%",
             }}
           >
+            {/* BACK TO DASHBOARD */}
+
+            <button
+              type="button"
+              className="application-success-dashboard-button"
+              onClick={() => navigate("/dashboard")}
+              style={{
+                flex: "1",
+                minHeight: "58px",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "10px",
+                border: "1px solid #2563eb",
+                borderRadius: "10px",
+                background: "#ffffff",
+                color: "#2563eb",
+                fontSize: "16px",
+                fontWeight: "700",
+                cursor: "pointer",
+              }}
+            >
+              <span>
+                Back to Dashboard
+              </span>
+
+              <span
+                style={{
+                  fontSize: "19px",
+                  fontWeight: "400",
+                }}
+              >
+                ←
+              </span>
+            </button>
+
             {/* VIEW MORE RECOMMENDED JOBS */}
 
             <button
@@ -385,7 +420,7 @@ function ApplicationSuccess() {
                 )
               }
               style={{
-                width: "100%",
+                flex: "1",
                 minHeight: "58px",
                 display: "flex",
                 alignItems: "center",
@@ -425,7 +460,7 @@ function ApplicationSuccess() {
                 navigate("/applications")
               }
               style={{
-                width: "100%",
+                flex: "1",
                 minHeight: "58px",
                 display: "flex",
                 alignItems: "center",
@@ -457,7 +492,7 @@ function ApplicationSuccess() {
 
           {/* ===================================================
               SECURITY / INFO NOTE
-          =================================================== */}
+          ===================================================== */}
 
           <p
             className="application-success-note"
