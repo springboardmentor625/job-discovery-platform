@@ -1751,7 +1751,6 @@ function CompleteProfile() {
             </div>
 
             <div className="profile-brand-subtitle">
-              Career Discovery Platform
             </div>
 
           </div>
@@ -1797,7 +1796,6 @@ function CompleteProfile() {
             <div>
 
               <p className="profile-eyebrow">
-                PROFILE SETUP
               </p>
 
               <h1>
@@ -1805,10 +1803,7 @@ function CompleteProfile() {
               </h1>
 
               <p className="profile-description">
-                Tell us about your background, skills and
-                career preferences. SwipeX will use this
-                information to help find suitable
-                opportunities for you.
+                
               </p>
 
             </div>
@@ -1902,7 +1897,6 @@ function CompleteProfile() {
                     type="text"
                     value={formData.headline}
                     onChange={handleChange}
-                    placeholder="e.g. Computer Science Student"
                     required
                   />
 
@@ -1961,7 +1955,6 @@ function CompleteProfile() {
                     type="text"
                     value={formData.location}
                     onChange={handleChange}
-                    placeholder="e.g. Bangalore"
                     required
                   />
 
@@ -2069,13 +2062,10 @@ function CompleteProfile() {
                 <div>
 
                   <h2>
-                    Skills & Expertise
+                    Skills
                   </h2>
 
-                  <p>
-                    Add the technologies and skills you are
-                    comfortable working with.
-                  </p>
+                  
 
                 </div>
 
@@ -2249,10 +2239,7 @@ function CompleteProfile() {
                     Job Preferences
                   </h2>
 
-                  <p>
-                    Tell us what kind of opportunities you are
-                    looking for.
-                  </p>
+                  
 
                 </div>
 
@@ -2325,7 +2312,6 @@ function CompleteProfile() {
                       formData.preferredLocation
                     }
                     onChange={handleChange}
-                    placeholder="e.g. Bangalore"
                   />
 
                 </div>
@@ -2374,7 +2360,6 @@ function CompleteProfile() {
                   </select>
 
                   <p className="field-hint">
-                    Select a role from the available job roles.
                   </p>
 
                 </div>
@@ -2411,7 +2396,6 @@ function CompleteProfile() {
                       onChange={
                         handleSalaryChange
                       }
-                      placeholder="10,000"
                     />
 
                   </div>
@@ -2473,7 +2457,7 @@ function CompleteProfile() {
                     "0 2px 6px rgba(0, 0, 0, 0.08)",
                 }}
               >
-                Go to Candidate Dashboard
+                Back to Dashboard
               </button>
 
 
