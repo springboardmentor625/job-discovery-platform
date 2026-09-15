@@ -43,19 +43,19 @@ http://127.0.0.1:8000/docs
 
 ReDoc is available at: http://127.0.0.1:8000/redoc
 
-** Database
+** Database:
 SwipeX uses PostgreSQL for persistent data storage.
 
 The database stores information related to:
-Users
-Candidate profiles
-Companies
-Jobs
-Resumes
-Applications
-Swipe history
-ATS reports
-Recommendations
+Users,
+Candidate profiles,
+Companies,
+Jobs,
+Resumes,
+Applications,
+Swipe history,
+ATS reports,
+Recommendations,
 Notifications
 
 ** Running the Backend
