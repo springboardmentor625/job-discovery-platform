@@ -249,7 +249,7 @@ function Register() {
                   <div>
                     <strong>AI-powered matching</strong>
                     <span>
-                      Get intelligent job recommendations.
+                      Get AI job recommendations.
                     </span>
                   </div>
                 </div>
@@ -260,9 +260,9 @@ function Register() {
                   </div>
 
                   <div>
-                    <strong>Career assistance</strong>
+                    <strong>ATS Scoring</strong>
                     <span>
-                      Improve your resume and job readiness.
+                      Check job-resume compatibility.
                     </span>
                   </div>
                 </div>
@@ -347,7 +347,6 @@ function Register() {
                     type="text"
                     value={formData.fullName}
                     onChange={handleChange}
-                    placeholder="Enter your full name"
                     autoComplete="name"
                     required
                   />
@@ -395,7 +394,6 @@ function Register() {
                     type="email"
                     value={formData.email}
                     onChange={handleChange}
-                    placeholder="you@example.com"
                     autoComplete="email"
                     required
                   />
@@ -453,7 +451,6 @@ function Register() {
 
                       setError("");
                     }}
-                    placeholder="Enter 10-digit phone number"
                     autoComplete="tel"
                     required
                   />
@@ -725,8 +722,7 @@ function Register() {
             </p>
 
             <p className="register-security-note">
-              Your information is securely used to personalize
-              your SwipeX experience.
+              
             </p>
 
           </section>
