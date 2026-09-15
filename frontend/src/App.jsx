@@ -79,6 +79,7 @@ const [jobs, setJobs] = useState([]);
 const [jobsLoading, setJobsLoading] = useState(false);
 const [jobsPage, setJobsPage] = useState(1);
 const [jobsPagination, setJobsPagination] = useState(null);
+const [jobLocationFilter, setJobLocationFilter] = useState("");
 
   // ATS
   const [selectedJob, setSelectedJob] = useState(null);
@@ -543,7 +544,7 @@ setSkillsLoading(false);
 
   try {
     const response = await fetch(
-      `${API}/api/jobs?page=${pageNumber}&limit=20`,
+  `${API}/api/jobs?page=${pageNumber}&limit=20&location=${encodeURIComponent(jobLocationFilter)}`,
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -562,10 +563,15 @@ setSkillsLoading(false);
     );
 
     if (response.ok) {
-      setJobs((prevJobs) => [
-  ...prevJobs,
-  ...(data.jobs || [])
-]);
+      if (pageNumber === 1) {
+        setJobs(data.jobs || []);
+      } else {
+        setJobs((prevJobs) => [
+          ...prevJobs,
+          ...(data.jobs || [])
+        ]);
+      }
+
       setJobsPage(pageNumber);
       setJobsPagination(data.pagination || null);
       setPage("jobs");
@@ -1869,6 +1875,36 @@ setTimeout(() => {
               </button>
 
             </div>
+
+            {/* Job Filters */}
+<div className="sx-job-filters">
+
+  <div className="sx-filter-field">
+    <label>
+      Location
+    </label>
+
+    <input
+      type="text"
+      placeholder="Search by location..."
+      value={jobLocationFilter}
+      onChange={(e) =>
+        setJobLocationFilter(e.target.value)
+      }
+    />
+  </div>
+
+  <button
+    className="sx-filter-btn"
+    onClick={() => handleViewJobs(1)}
+    disabled={jobsLoading}
+  >
+    {jobsLoading
+      ? "Loading..."
+      : "Apply Filter"}
+  </button>
+
+</div>
 
             {message && (
               <div className="sx-message">

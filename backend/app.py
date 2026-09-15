@@ -1268,6 +1268,9 @@ def seed_demo_jobs():
 @jwt_required()
 def get_jobs():
 
+    # Location filter
+    location = request.args.get("location", "").strip()
+
     # Pagination
     try:
         page = max(int(request.args.get("page", 1)), 1)
@@ -1282,6 +1285,12 @@ def get_jobs():
     # Get only the requested page of active jobs
     query = Job.query.filter(
         db.func.lower(Job.status) == "active"
+    )
+
+    if location:
+
+     query = query.filter(
+        Job.location.ilike(f"%{location}%")
     )
 
     total_jobs = query.count()
