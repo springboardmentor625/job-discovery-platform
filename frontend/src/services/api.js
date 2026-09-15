@@ -1,9 +1,23 @@
 import axios from "axios";
 
+const getApiBase = () => {
+  const envBase = import.meta.env.VITE_API_BASE;
+  const hostname =
+    typeof window !== "undefined" && window.location?.hostname
+      ? window.location.hostname
+      : "localhost";
+
+  if (hostname && hostname !== "localhost" && hostname !== "127.0.0.1") {
+    return `http://${hostname}:8001/api/`;
+  }
+
+  return envBase || `http://${hostname}:8001/api/`;
+};
+
+const API_BASE = getApiBase();
+
 const api = axios.create({
-  baseURL:
-    import.meta.env.VITE_API_BASE ||
-    "http://127.0.0.1:8000/api/",
+  baseURL: API_BASE,
   headers: {
     "Content-Type": "application/json",
   },
@@ -16,7 +30,6 @@ api.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
 
-  // If uploading FormData, delete Content-Type so browser sets boundary automatically
   if (config.data instanceof FormData) {
     delete config.headers["Content-Type"];
   }
@@ -30,7 +43,11 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       const currentPath = window.location.pathname;
-      if (currentPath !== "/" && currentPath !== "/register") {
+
+      if (
+        currentPath !== "/" &&
+        currentPath !== "/register"
+      ) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
         window.location.href = "/";

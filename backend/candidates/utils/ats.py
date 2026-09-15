@@ -204,13 +204,18 @@ class AIAtsService:
         seen = set()
 
         for skill in skills:
-            key = clean_text(skill).lower()
+            normalized = normalize_skills([skill])
+
+            if not normalized:
+                continue
+
+            key = clean_text(normalized[0]).lower()
 
             if not key or key in seen:
                 continue
 
             seen.add(key)
-            result.append(skill)
+            result.append(normalized[0])
 
         return result
 
@@ -397,11 +402,7 @@ class AIAtsService:
         # -------------------------------------------------
 
         if required_field:
-            required_skills.extend(
-                normalize_skills(
-                    required_field
-                )
-            )
+            required_skills=normalize_skills(required_field)
 
         # -------------------------------------------------
         # 2. Explicit required sections from description

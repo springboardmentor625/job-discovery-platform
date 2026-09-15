@@ -1,6 +1,7 @@
 import shutil
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from django.db.models import Q
 
 from rest_framework import generics, viewsets, serializers, status
@@ -548,7 +549,13 @@ class JobViewSet(viewsets.ModelViewSet):
     pagination_class = JobPagination
 
     def get_queryset(self):
-        queryset = Job.objects.all().order_by("-id")
+        from django.utils import timezone
+        now = timezone.now()
+        queryset = (
+            Job.objects.filter(is_active=True)
+            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+            .order_by("-id")
+        )
         params = self.request.query_params
 
         # =========================
@@ -688,11 +695,13 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
         job = serializer.validated_data.get("job")
         decision = serializer.validated_data.get("decision", "interested").lower()
 
-        # Map legacy swipes to standard
-        if decision == "right":
+        # Map swipe gestures to standard decisions
+        if decision in ("right", "interested"):
             decision = "interested"
-        elif decision == "left":
+        elif decision in ("left", "skipped"):
             decision = "skipped"
+        elif decision in ("up", "saved"):
+            decision = "saved"
 
         existing_swipe = JobSwipe.objects.filter(
             candidate=candidate,
@@ -709,13 +718,85 @@ class JobSwipeViewSet(viewsets.ModelViewSet):
                 decision=decision
             )
 
-        # Invalidate served jobs cache so the next recommendation reflects newest swipe behavior
+        # Invalidate preference cache so subsequent batch generations reflect updated preferences
+        # Preserve CURRENT_BATCH_CACHE so browser refresh preserves current deck position
         try:
             from django.core.cache import cache
-            from .services.recommendation_service import SERVED_JOBS_CACHE_PREFIX
-            cache.delete(f"{SERVED_JOBS_CACHE_PREFIX}{candidate.id}")
+            from .services.recommendation_service import (
+                PREFERENCE_CACHE_PREFIX,
+            )
+            cache.delete(f"{PREFERENCE_CACHE_PREFIX}{candidate.id}")
         except Exception:
             pass
+
+    def perform_destroy(self, instance):
+        candidate = instance.candidate
+        # Delete only the candidate's JobSwipe record (job itself is never deleted)
+        instance.delete()
+
+        # Invalidate caches so the unswiped job can reappear in recommendations and Explore
+        try:
+            from django.core.cache import cache
+            from .services.recommendation_service import (
+                SERVED_JOBS_CACHE_PREFIX,
+                PREFERENCE_CACHE_PREFIX,
+                CURRENT_BATCH_CACHE_PREFIX,
+            )
+            cache.delete(f"{SERVED_JOBS_CACHE_PREFIX}{candidate.id}")
+            cache.delete(f"{PREFERENCE_CACHE_PREFIX}{candidate.id}")
+            cache.delete(f"{CURRENT_BATCH_CACHE_PREFIX}{candidate.id}")
+        except Exception:
+            pass
+
+    @action(detail=False, methods=["post"], url_path="undo")
+    def undo(self, request):
+        candidate = Candidate.objects.filter(
+            email__iexact=request.user.email
+        ).first()
+        if not candidate:
+            return Response(
+                {"detail": "Candidate profile not found."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        job_id = request.data.get("job_id")
+        swipe_id = request.data.get("swipe_id")
+
+        if swipe_id:
+            swipe = JobSwipe.objects.filter(
+                id=swipe_id, candidate=candidate
+            ).first()
+        elif job_id:
+            swipe = JobSwipe.objects.filter(
+                job_id=job_id, candidate=candidate
+            ).first()
+        else:
+            # Undo most recent swipe
+            swipe = (
+                JobSwipe.objects.filter(candidate=candidate)
+                .order_by("-created_at")
+                .first()
+            )
+
+        if not swipe:
+            return Response(
+                {"detail": "No swipe found to undo."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        undone_job_id = swipe.job_id
+        undone_decision = swipe.decision
+        self.perform_destroy(swipe)
+
+        return Response(
+            {
+                "detail": "Swipe undone successfully.",
+                "job_id": undone_job_id,
+                "decision": undone_decision,
+            },
+            status=status.HTTP_200_OK,
+        )
+
 
 
 # =====================================
@@ -755,10 +836,27 @@ class ApplicationViewSet(viewsets.ModelViewSet):
             job = Job.objects.get(id=job_id)
         except Job.DoesNotExist:
             return Response({"detail": "Job not found."}, status=status.HTTP_404_NOT_FOUND)
+        if (
+    not job.is_active
+    or (
+        job.expires_at is not None
+        and job.expires_at <= timezone.now()
+    )
+):
+            return Response(
+        {"detail": "This job is no longer accepting applications."},
+        status=status.HTTP_400_BAD_REQUEST
+    )
+        status_val = request.data.get("status", "link_opened")
+        if status_val not in ("link_opened", "applied"):
+            status_val = "link_opened"
 
-        # Idempotent: If application already exists, return it with 200 OK
+        # If application already exists, update status if requested and return it with 200 OK
         existing = Application.objects.filter(candidate=candidate, job=job).first()
         if existing:
+            if existing.status != status_val:
+                existing.status = status_val
+                existing.save(update_fields=["status"])
             serializer = self.get_serializer(existing)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
@@ -766,6 +864,7 @@ class ApplicationViewSet(viewsets.ModelViewSet):
         application = Application.objects.create(
             candidate=candidate,
             job=job,
+            status=status_val,
             applied_resume=resume,
             cover_letter=request.data.get("cover_letter", ""),
             portfolio_url=request.data.get("portfolio_url", ""),
@@ -788,3 +887,44 @@ class RecommendationView(APIView):
         refresh = request.query_params.get("refresh", "").lower() in ("true", "1", "yes")
         recommendations = RecommendationService.get_recommendations(request.user, force_refresh=refresh)
         return Response(recommendations)
+
+
+# =====================================
+# JOBS LAST-UPDATED INDICATOR
+# =====================================
+
+class JobsLastUpdatedView(APIView):
+    """
+    GET /api/jobs/last-updated/
+
+    Returns the most recent import timestamp for live jobs, counts
+    of jobs by source, and the total active job count.  Used by the
+    frontend to show a "Refreshed X minutes ago" badge.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Max, Count
+        from django.utils import timezone
+        now = timezone.now()
+
+        qs = Job.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
+
+        # Most recent posted_at among live-imported jobs
+        live_qs = qs.exclude(source="dataset")
+        last_updated = live_qs.aggregate(last=Max("posted_at"))["last"]
+
+        # Per-source counts
+        source_counts = list(
+            qs.values("source").annotate(count=Count("id")).order_by("source")
+        )
+
+        return Response(
+            {
+                "last_updated": last_updated,
+                "total_active": qs.count(),
+                "sources": source_counts,
+            }
+        )

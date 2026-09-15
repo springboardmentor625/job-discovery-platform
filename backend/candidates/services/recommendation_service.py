@@ -1,4 +1,4 @@
-﻿"""
+"""
 Recommendation Service for SwipeX.
 
 Features:
@@ -45,6 +45,7 @@ from ..utils.ats import (
 
 SERVED_JOBS_CACHE_PREFIX = "swipex_served_jobs_"
 PREFERENCE_CACHE_PREFIX = "swipex_preference_profile_"
+CURRENT_BATCH_CACHE_PREFIX = "swipex_current_batch_"
 
 class RecommendationService:
     """
@@ -69,39 +70,12 @@ class RecommendationService:
                 "none",
                 "null",
                 "not specified",
+                "competitive",
                 "",
             }:
                 return salary_text
 
-        description = str(
-            getattr(job, "description", "") or ""
-        )
-
-        min_match = re.search(
-            r"Min\s+Hourly\s+Rate.*?\$?\s*([0-9]+(?:\.[0-9]+)?)",
-            description,
-            re.IGNORECASE,
-        )
-
-        max_match = re.search(
-            r"Max\s+Hourly\s+Rate.*?\$?\s*([0-9]+(?:\.[0-9]+)?)",
-            description,
-            re.IGNORECASE,
-        )
-
-        if min_match and max_match:
-            return (
-                f"${min_match.group(1)} - "
-                f"${max_match.group(1)}/hr"
-            )
-
-        if min_match:
-            return f"From ${min_match.group(1)}/hr"
-
-        if max_match:
-            return f"Up to ${max_match.group(1)}/hr"
-
-        return "Competitive"
+        return "Not specified"
 
     @staticmethod
     def clean_value(
@@ -269,7 +243,7 @@ class RecommendationService:
                     str(job.title).split()
                 )
 
-            # Interested / Right swipe
+            # Interested / Right swipe (strong positive preference)
             elif decision in {
                 "interested",
                 "right",
@@ -279,13 +253,13 @@ class RecommendationService:
                     job_snippet
                 )
 
-                positive_weights.append(1.0)
+                positive_weights.append(1.5)
 
                 positive_keywords.extend(
                     str(job.title).split()
                 )
 
-            # Saved
+            # Saved (positive preference)
             elif decision == "saved":
 
                 positive_jobs.append(
@@ -298,7 +272,7 @@ class RecommendationService:
                     str(job.title).split()
                 )
 
-            # Skipped / Left swipe
+            # Skipped / Left swipe (negative preference)
             elif decision in {
                 "skipped",
                 "left",
@@ -308,7 +282,7 @@ class RecommendationService:
                     job_snippet
                 )
 
-                negative_weights.append(0.8)
+                negative_weights.append(1.0)
 
         # -----------------------------------------------------
         # EMPTY PROFILE FALLBACK
@@ -621,7 +595,7 @@ class RecommendationService:
         swiped_job_ids: set[int],
         exclude_served_ids: set[int],
         positive_keywords: list[str],
-        limit: int = 50,
+        limit: int = 200,
     ) -> list[Job]:
 
         """
@@ -724,6 +698,12 @@ class RecommendationService:
 
         collected_ids: set[int] = set()
 
+        from django.utils import timezone as dj_tz
+        now = dj_tz.now()
+        base_qs = Job.objects.filter(is_active=True).filter(
+            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+        )
+
         # -----------------------------------------------------
         # ADD UNIQUE JOBS
         # -----------------------------------------------------
@@ -779,7 +759,7 @@ class RecommendationService:
 
                 pos_qs = (
 
-                    Job.objects.filter(q_pos)
+                    base_qs.filter(q_pos)
 
                     .exclude(
                         id__in=all_excluded_ids
@@ -810,7 +790,7 @@ class RecommendationService:
 
                 role_qs = (
 
-                    Job.objects.filter(q_roles)
+                    base_qs.filter(q_roles)
 
                     .exclude(
                         id__in=all_excluded_ids
@@ -852,7 +832,7 @@ class RecommendationService:
 
                 skill_qs = (
 
-                    Job.objects.filter(q_skills)
+                    base_qs.filter(q_skills)
 
                     .exclude(
                         id__in=all_excluded_ids
@@ -883,7 +863,7 @@ class RecommendationService:
 
                 loc_qs = (
 
-                    Job.objects.filter(q_loc)
+                    base_qs.filter(q_loc)
 
                     .exclude(
                         id__in=all_excluded_ids
@@ -912,7 +892,7 @@ class RecommendationService:
 
             mode_qs = (
 
-                Job.objects.filter(
+                base_qs.filter(
                     work_mode__iexact=work_mode
                 )
 
@@ -938,7 +918,7 @@ class RecommendationService:
 
         total_remaining_jobs = (
 
-            Job.objects
+            base_qs
 
             .exclude(
                 id__in=all_excluded_ids
@@ -972,7 +952,7 @@ class RecommendationService:
 
             general_qs = (
 
-                Job.objects
+                base_qs
 
                 .exclude(
                     id__in=all_excluded_ids
@@ -1062,6 +1042,38 @@ class RecommendationService:
                 flat=True,
             )
         )
+
+        # -----------------------------------------------------
+        # BATCH PRESERVATION ACROSS REFRESHES (WITH EXPIRY CHECK)
+        # -----------------------------------------------------
+        batch_cache_key = f"{CURRENT_BATCH_CACHE_PREFIX}{candidate.id}"
+        if force_refresh:
+            cache.delete(batch_cache_key)
+        else:
+            cached_batch = cache.get(batch_cache_key)
+            if cached_batch:
+                from django.utils import timezone as dj_tz
+                now = dj_tz.now()
+                cached_job_ids = [
+                    item.get("job", {}).get("id")
+                    for item in cached_batch
+                    if item.get("job", {}).get("id")
+                ]
+                active_non_expired_ids = set(
+                    Job.objects.filter(
+                        id__in=cached_job_ids,
+                        is_active=True,
+                    ).filter(
+                        Q(expires_at__isnull=True) | Q(expires_at__gt=now)
+                    ).values_list("id", flat=True)
+                )
+                remaining_batch = [
+                    item for item in cached_batch
+                    if item.get("job", {}).get("id") in active_non_expired_ids
+                    and item.get("job", {}).get("id") not in swiped_job_ids
+                ]
+                if remaining_batch:
+                    return remaining_batch
 
         # =====================================================
         # SAVED JOBS
@@ -1692,6 +1704,12 @@ class RecommendationService:
             served_ids | newly_served,
 
             timeout=3600,
+        )
+
+        cache.set(
+            batch_cache_key,
+            final_batch,
+            timeout=86400,
         )
 
         return final_batch

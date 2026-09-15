@@ -21,6 +21,7 @@ function SwipeHistory() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all"); // 'all' | 'interested' | 'saved' | 'skipped'
   const [selectedJob, setSelectedJob] = useState(null);
+  const [removingSwipeId, setRemovingSwipeId] = useState(null);
 
   useEffect(() => {
     fetchSwipes();
@@ -42,6 +43,27 @@ function SwipeHistory() {
       toast.error("Unable to load swipe history.");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleRemoveSwipe = async (e, swipe) => {
+    e.stopPropagation();
+    const jobTitle = swipe.job?.title || "this job";
+    const confirmed = window.confirm(
+      `Remove this swipe on "${jobTitle}"? The job will be eligible to appear again in recommendations.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setRemovingSwipeId(swipe.id);
+      await api.delete(`swipes/${swipe.id}/`);
+      setSwipes((prev) => prev.filter((s) => s.id !== swipe.id));
+      toast.success("Swipe removed. The job can appear again in recommendations.");
+    } catch (error) {
+      console.error("Failed to remove swipe:", error);
+      toast.error(error.response?.data?.detail || "Unable to remove swipe.");
+    } finally {
+      setRemovingSwipeId(null);
     }
   };
 
@@ -92,7 +114,18 @@ function SwipeHistory() {
       desc: "Start exploring and swiping job opportunities in Recommendations to build your personalized discovery history.",
     };
   };
+  const handleUnsaveSuccess = (jobId) => {
+  setSwipes((prev) =>
+    prev.filter(
+      (swipe) =>
+        !(swipe.job?.id === jobId && swipe.decision === "saved")
+    )
+  );
 
+  setSelectedJob((prev) =>
+    prev ? { ...prev, is_saved: false } : prev
+  );
+};
   const handleApplySuccess = (jobId) => {
     setSwipes((prev) =>
       prev.map((s) => {
@@ -239,7 +272,12 @@ function SwipeHistory() {
                     <div>
                       <p className="text-[10px] uppercase font-bold text-slate-400">Salary</p>
                       <p className="font-semibold text-slate-800 truncate mt-0.5">
-                        {job.salary || "Competitive"}
+                        {job.salary &&
+                        !["competitive", "nan", "none", "null", "not specified"].includes(
+                          String(job.salary).toLowerCase().trim()
+                        )
+                          ? job.salary
+                          : "Not specified"}
                       </p>
                     </div>
                     <div>
@@ -256,14 +294,26 @@ function SwipeHistory() {
                   </p>
                 </div>
 
-                {/* BOTTOM FOOTER: DECISION BADGE & DATE */}
-                <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
-                  <div>{getDecisionBadge(swipe.decision)}</div>
-                  {swipeDate && (
-                    <span className="text-[11px] text-slate-400">
-                      Swiped {swipeDate}
-                    </span>
-                  )}
+                {/* BOTTOM FOOTER: DECISION BADGE, DATE & REMOVE SWIPE */}
+                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {getDecisionBadge(swipe.decision)}
+                    {swipeDate && (
+                      <span className="text-[11px] text-slate-400 hidden sm:inline">
+                        {swipeDate}
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => handleRemoveSwipe(e, swipe)}
+                    disabled={removingSwipeId === swipe.id}
+                    className="px-2.5 py-1 rounded-lg border border-red-200 text-red-600 hover:bg-red-50 text-xs font-semibold transition disabled:opacity-50 cursor-pointer"
+                    title="Remove this swipe to allow job to reappear in recommendations"
+                  >
+                    {removingSwipeId === swipe.id ? "Removing..." : "Remove Swipe"}
+                  </button>
                 </div>
               </div>
             );
@@ -299,6 +349,7 @@ function SwipeHistory() {
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
           onApplySuccess={handleApplySuccess}
+          onUnsaveSuccess={handleUnsaveSuccess}
         />
       )}
     </div>

@@ -1,4 +1,4 @@
-﻿import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "react-hot-toast";
 import {
   motion,
@@ -15,52 +15,53 @@ import {
   FaCheckCircle,
   FaThLarge,
   FaLayerGroup,
+  FaSearch,
+  FaFilter,
+  FaClock,
+  FaExclamationCircle,
 } from "react-icons/fa";
 import api from "../services/api";
 import JobDetailsModal from "../components/JobDetailsModal";
 
 /* =========================================================
+   RELATIVE TIME HELPER
+========================================================= */
+function relativeTime(isoString) {
+  if (!isoString) return "";
+  try {
+    const diff = Date.now() - new Date(isoString).getTime();
+    if (isNaN(diff) || diff < 0) return "";
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return mins <= 1 ? "Just now" : `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return `${months}mo ago`;
+  } catch {
+    return "";
+  }
+}
+
+/* =========================================================
    SKILL BADGES COMPONENT
 ========================================================= */
 function SkillSection({ title, skills, badgeColor, emptyText }) {
-  const [showAll, setShowAll] = useState(false);
-
-  const displayLimit = 3;
-  const hasMore = skills.length > displayLimit;
-
-  const visibleSkills = showAll
-    ? skills
-    : skills.slice(0, displayLimit);
-
   return (
     <div className="space-y-1">
-      <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-wider">
+      <div className="text-[11px] font-bold uppercase tracking-wider">
         <span className={badgeColor.text}>
           {title} ({skills.length})
         </span>
-
-        {hasMore && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowAll(!showAll);
-            }}
-            className="text-[10px] lowercase font-semibold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
-          >
-            {showAll
-              ? "show less"
-              : `+${skills.length - displayLimit} more`}
-          </button>
-        )}
       </div>
 
-      <div className="h-10 overflow-y-auto pr-1 flex flex-wrap gap-1 content-start custom-scrollbar">
-        {visibleSkills.length > 0 ? (
-          visibleSkills.map((skill, i) => (
+      <div className="max-h-24 overflow-y-auto pr-1 flex flex-wrap gap-1 content-start custom-scrollbar">
+        {skills.length > 0 ? (
+          skills.map((skill, i) => (
             <span
               key={i}
-              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border ${badgeColor.badge}`}
+              className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border break-words max-w-full ${badgeColor.badge}`}
             >
               {skill}
             </span>
@@ -107,18 +108,6 @@ function SwipeCard({
     x,
     [-250, -150, 0, 150, 250],
     [0.2, 0.8, 1, 0.8, 0.2]
-  );
-
-  const interestedOpacity = useTransform(
-    x,
-    [20, 100],
-    [0, 1]
-  );
-
-  const skippedOpacity = useTransform(
-    x,
-    [-100, -20],
-    [1, 0]
   );
 
   /* =========================================================
@@ -178,7 +167,7 @@ function SwipeCard({
         onCardClick(item);
       }}
       className={`
-        w-full max-w-md h-[540px]
+        w-full max-w-md min-h-[520px] max-h-[580px] h-auto
         bg-white rounded-3xl
         border border-slate-200/90
         shadow-xl
@@ -193,27 +182,6 @@ function SwipeCard({
         }
       `}
     >
-      {/* =====================================================
-          STAMP OVERLAYS
-      ===================================================== */}
-      {isTop && (
-        <>
-          <motion.div
-            style={{ opacity: interestedOpacity }}
-            className="absolute top-8 right-8 z-30 pointer-events-none border-4 border-emerald-500 text-emerald-600 px-4 py-1.5 rounded-xl font-black text-xl tracking-wider rotate-12 bg-white/90 shadow-md uppercase"
-          >
-            Interested
-          </motion.div>
-
-          <motion.div
-            style={{ opacity: skippedOpacity }}
-            className="absolute top-8 left-8 z-30 pointer-events-none border-4 border-red-500 text-red-600 px-4 py-1.5 rounded-xl font-black text-xl tracking-wider -rotate-12 bg-white/90 shadow-md uppercase"
-          >
-            Skipped
-          </motion.div>
-        </>
-      )}
-
       {/* =====================================================
           TOP CONTENT
       ===================================================== */}
@@ -259,7 +227,7 @@ function SwipeCard({
           </div>
         </div>
 
-        {/* LOCATION */}
+        {/* LOCATION & SALARY */}
         <div className="flex items-center gap-2 text-xs text-slate-600 flex-wrap font-medium">
 
           <span className="inline-flex items-center gap-1 truncate max-w-[150px]">
@@ -274,41 +242,23 @@ function SwipeCard({
             {job.work_mode || "On-site"}
           </span>
 
-          {job.salary && (
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[140px]">
-              💵 {job.salary}
-            </span>
-          )}
+          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[160px]">
+            💵 {job.salary && !["competitive", "nan", "none", "null", "not specified"].includes(String(job.salary).toLowerCase().trim()) ? job.salary : "Not specified"}
+          </span>
 
         </div>
 
         {/* =====================================================
-            SCORES
+            ATS SCORE
         ===================================================== */}
-        <div className="space-y-2 pt-1">
-
-          <div className="grid grid-cols-2 gap-2.5">
-
-            <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-2.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-                ATS Score
-              </p>
-
-              <p className="text-2xl font-black text-indigo-700">
-                {atsScore}%
-              </p>
-            </div>
-
-            <div className="bg-emerald-50/70 border border-emerald-100 rounded-2xl p-2.5 text-center">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-                Skill Match
-              </p>
-
-              <p className="text-2xl font-black text-emerald-700">
-                {skillPct}%
-              </p>
-            </div>
-
+        <div className="pt-1">
+          <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-2.5 text-center flex items-center justify-between px-6">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
+              ATS Score
+            </p>
+            <p className="text-2xl font-black text-indigo-700">
+              {atsScore}%
+            </p>
           </div>
         </div>
 
@@ -353,8 +303,12 @@ function SwipeCard({
 
         <span>← Drag left to Skip</span>
 
-        <span className="text-indigo-600 font-bold">
-          Click for details
+        <span className="text-indigo-600 font-bold flex items-center gap-1">
+          {relativeTime(job.posted_at) ? (
+            <><FaClock className="text-slate-300" />{relativeTime(job.posted_at)}</>
+          ) : (
+            "Click for details"
+          )}
         </span>
 
         <span>Drag right for Interested →</span>
@@ -440,41 +394,28 @@ function GridCard({
             {job.work_mode || "On-site"}
           </span>
 
-          {job.salary && (
-            <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[130px]">
-              💵 {job.salary}
+          <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[160px]">
+            💵 {job.salary && !["competitive", "nan", "none", "null", "not specified"].includes(String(job.salary).toLowerCase().trim()) ? job.salary : "Not specified"}
+          </span>
+
+          {relativeTime(job.posted_at) && (
+            <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+              <FaClock className="shrink-0" />
+              {relativeTime(job.posted_at)}
             </span>
           )}
 
         </div>
 
-        {/* METRICS */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* ATS SCORE */}
+        <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-2.5 text-center flex items-center justify-between px-5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+            ATS Score
+          </p>
 
-          <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-2.5 text-center">
-
-            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-              ATS Score
-            </p>
-
-            <p className="text-xl font-black text-indigo-700">
-              {atsScore}%
-            </p>
-
-          </div>
-
-          <div className="bg-emerald-50/70 border border-emerald-100 rounded-xl p-2.5 text-center">
-
-            <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700">
-              Skill Match
-            </p>
-
-            <p className="text-xl font-black text-emerald-700">
-              {skillPct}%
-            </p>
-
-          </div>
-
+          <p className="text-xl font-black text-indigo-700">
+            {atsScore}%
+          </p>
         </div>
 
         {/* DESCRIPTION */}
@@ -523,9 +464,8 @@ function GridCard({
             onSwipe("skipped", job.id);
           }}
           disabled={actionLoading[job.id]}
-          className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center justify-center gap-1.5 transition disabled:opacity-50"
+          className="flex-1 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs inline-flex items-center justify-center transition disabled:opacity-50 cursor-pointer"
         >
-          <FaTimes />
           Skip
         </button>
 
@@ -536,13 +476,12 @@ function GridCard({
             onSwipe("saved", job.id);
           }}
           disabled={actionLoading[job.id]}
-          className={`flex-1 h-10 rounded-xl font-bold text-xs inline-flex items-center justify-center gap-1.5 transition disabled:opacity-50 ${
+          className={`flex-1 h-10 rounded-xl font-bold text-xs inline-flex items-center justify-center transition disabled:opacity-50 cursor-pointer ${
             isSaved
               ? "bg-amber-600 text-white"
               : "bg-amber-500 hover:bg-amber-600 text-white"
           }`}
         >
-          <FaBookmark />
           {isSaved ? "Saved" : "Save"}
         </button>
 
@@ -553,9 +492,8 @@ function GridCard({
             onSwipe("interested", job.id);
           }}
           disabled={actionLoading[job.id]}
-          className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center justify-center gap-1.5 transition disabled:opacity-50 shadow-xs"
+          className="flex-1 h-10 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs inline-flex items-center justify-center transition disabled:opacity-50 shadow-xs cursor-pointer"
         >
-          <FaCheck />
           Interested
         </button>
 
@@ -567,17 +505,123 @@ function GridCard({
 /* =========================================================
    MAIN RECOMMENDATIONS COMPONENT
 ========================================================= */
+const STORAGE_KEY = "swipex_deck_cache";
+
 function Recommendations() {
   const [recommendations, setRecommendations] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(false);
   const [actionLoading, setActionLoading] = useState({});
   const [selectedJob, setSelectedJob] = useState(null);
 
   const [viewMode, setViewMode] = useState("deck");
 
+  // Server-side pagination state for Browse / Explore section
+  const [browseJobs, setBrowseJobs] = useState([]);
+  const [browseLoading, setBrowseLoading] = useState(false);
+  const [browseError, setBrowseError] = useState(false);
+  const [browsePage, setBrowsePage] = useState(1);
+  const [browseTotal, setBrowseTotal] = useState(0);
+  const [browseSearchInput, setBrowseSearchInput] = useState("");
+  const [browseSearch, setBrowseSearch] = useState("");
+  const [browseWorkMode, setBrowseWorkMode] = useState("all");
+  const [browseExperience, setBrowseExperience] = useState("all");
+  const BROWSE_PER_PAGE = 6;
+
+  // Client-side pagination state for Grid view (AI recommendations grid)
+  const [gridPage, setGridPage] = useState(1);
+  const GRID_PER_PAGE = 6;
+
   useEffect(() => {
+    try {
+      const cached = localStorage.getItem(STORAGE_KEY);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setRecommendations(parsed);
+          setLoading(false);
+          // Sync with backend without changing or replacing current first card
+          api
+            .get("recommendations/")
+            .then((res) => {
+              const data = Array.isArray(res.data) ? res.data : [];
+              if (data.length > 0) {
+                setRecommendations((prev) => {
+                  if (!prev || prev.length === 0) return data;
+                  const unswipedIds = new Set(data.map((d) => d.job?.id));
+                  const remaining = prev.filter((p) =>
+                    unswipedIds.has(p.job?.id)
+                  );
+                  const nextDeck =
+                    remaining.length > 0 ? remaining : data;
+                  try {
+                    localStorage.setItem(
+                      STORAGE_KEY,
+                      JSON.stringify(nextDeck)
+                    );
+                  } catch (e) {}
+                  return nextDeck;
+                });
+              }
+            })
+            .catch(() => {});
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Storage read error:", e);
+    }
     fetchRecommendations(false);
   }, []);
+
+  /* =========================================================
+     FETCH BROWSE JOBS (SERVER-SIDE 6-ITEM PAGINATION)
+  ========================================================= */
+  const fetchBrowseJobs = async (
+    page = 1,
+    searchQuery = browseSearch,
+    workMode = browseWorkMode,
+    exp = browseExperience
+  ) => {
+    try {
+      setBrowseLoading(true);
+      setBrowseError(false);
+      const params = { page };
+      if (searchQuery && searchQuery.trim()) params.search = searchQuery.trim();
+      if (workMode && workMode !== "all") params.work_mode = workMode;
+      if (exp && exp !== "all") params.experience = exp;
+
+      const res = await api.get("jobs/", { params });
+      const data = res.data;
+      const results = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+        ? data.results
+        : [];
+      const total =
+        typeof data?.count === "number" ? data.count : results.length;
+
+      const formatted = results.map((j) => ({
+        job: j,
+        ats_score: j.ats_score ?? 0,
+        skill_match_percentage: j.skill_match_percentage ?? 0,
+        matched_skills: j.matched_skills || [],
+        missing_skills: j.missing_skills || [],
+        is_applied: j.is_applied,
+        is_saved: j.is_saved,
+      }));
+
+      setBrowseJobs(formatted);
+      setBrowseTotal(total);
+      setBrowsePage(page);
+    } catch (err) {
+      console.error("Browse jobs error:", err);
+      toast.error("Unable to load browse jobs.");
+      setBrowseError(true);
+    } finally {
+      setBrowseLoading(false);
+    }
+  };
 
   /* =========================================================
      FETCH RECOMMENDATIONS
@@ -585,6 +629,7 @@ function Recommendations() {
   const fetchRecommendations = async (forceRefresh = false) => {
     try {
       setLoading(true);
+      setFetchError(false);
 
       const url = forceRefresh
         ? "recommendations/?refresh=true"
@@ -592,25 +637,23 @@ function Recommendations() {
 
       const res = await api.get(url);
 
-      const data = Array.isArray(res.data)
-        ? res.data
-        : [];
+      const data = Array.isArray(res.data) ? res.data : [];
 
       setRecommendations(data);
 
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (e) {}
+
       if (forceRefresh) {
         toast.success(
-          "Loaded new 50-job batch tailored to your swipe preferences!"
+          "Your recommendations have been refreshed based on your profile and swipe preferences."
         );
       }
     } catch (error) {
-      console.error(
-        "Recommendations error:",
-        error
-      );
-
+      console.error("Recommendations error:", error);
       setRecommendations([]);
-
+      setFetchError(true);
       toast.error(
         error?.response?.data?.detail ||
           "Unable to load recommendations."
@@ -623,10 +666,7 @@ function Recommendations() {
   /* =========================================================
      SWIPE ACTION
   ========================================================= */
-  const handleSwipeAction = async (
-    decision,
-    jobId
-  ) => {
+  const handleSwipeAction = async (decision, jobId) => {
     if (!jobId || actionLoading[jobId]) return;
 
     try {
@@ -651,12 +691,34 @@ function Recommendations() {
       }
 
       /*
-        Remove job from recommendation pool
+        Remove job from recommendation pool and update localStorage
       */
-      setRecommendations((prev) =>
-        prev.filter(
-          (item) => item.job?.id !== jobId
-        )
+      setRecommendations((prev) => {
+        const updated = prev.filter((item) => item.job?.id !== jobId);
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+        } catch (e) {}
+        return updated;
+      });
+
+      /*
+        Update browse jobs if this job was viewed in browse mode
+      */
+      setBrowseJobs((prev) =>
+        prev.map((item) => {
+          if (item.job?.id === jobId) {
+            return {
+              ...item,
+              is_saved: decision === "saved" ? true : item.is_saved,
+              job: {
+                ...item.job,
+                is_saved:
+                  decision === "saved" ? true : item.job?.is_saved,
+              },
+            };
+          }
+          return item;
+        })
       );
 
       /*
@@ -666,14 +728,9 @@ function Recommendations() {
         setSelectedJob(null);
       }
     } catch (error) {
-      console.error(
-        "Swipe action error:",
-        error
-      );
-
+      console.error("Swipe action error:", error);
       toast.error(
-        error?.response?.data?.detail ||
-          "Failed to register decision."
+        error?.response?.data?.detail || "Failed to register decision."
       );
     } finally {
       setActionLoading((prev) => ({
@@ -699,7 +756,22 @@ function Recommendations() {
             },
           };
         }
+        return item;
+      })
+    );
 
+    setBrowseJobs((prev) =>
+      prev.map((item) => {
+        if (item.job?.id === jobId) {
+          return {
+            ...item,
+            is_applied: true,
+            job: {
+              ...item.job,
+              is_applied: true,
+            },
+          };
+        }
         return item;
       })
     );
@@ -759,49 +831,60 @@ function Recommendations() {
             <button
               type="button"
               onClick={() => setViewMode("deck")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "deck"
                   ? "bg-white text-indigo-600 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <FaLayerGroup />
-              Swipe Deck
+              Swipe Deck ({recommendations.length})
             </button>
 
             <button
               type="button"
-              onClick={() => setViewMode("grid")}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 ${
+              onClick={() => {
+                setViewMode("grid");
+                if (browseJobs.length === 0) {
+                  fetchBrowseJobs(1);
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
                 viewMode === "grid"
                   ? "bg-white text-indigo-600 shadow-xs"
                   : "text-slate-600 hover:text-slate-900"
               }`}
             >
               <FaThLarge />
-              Browse (50)
+              Browse / Explore
             </button>
 
           </div>
 
-          {/* NEW BATCH */}
+          {/* REFRESH RECOMMENDATIONS */}
           <button
             type="button"
-            onClick={() =>
-              fetchRecommendations(true)
-            }
-            disabled={loading}
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition shrink-0 disabled:opacity-50"
+            onClick={() => {
+              if (viewMode === "deck") {
+                fetchRecommendations(true);
+              } else {
+                fetchBrowseJobs(browsePage);
+              }
+            }}
+            disabled={loading || browseLoading}
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold transition shrink-0 disabled:opacity-50 cursor-pointer"
           >
             <FaSync
               className={
-                loading ? "animate-spin" : ""
+                (loading || browseLoading) ? "animate-spin" : ""
               }
             />
 
-            {loading
-              ? "Generating..."
-              : "New Batch"}
+            {loading || browseLoading
+              ? "Refreshing..."
+              : viewMode === "deck"
+              ? "Refresh Recommendations"
+              : "Refresh Jobs"}
           </button>
 
         </div>
@@ -817,8 +900,38 @@ function Recommendations() {
           <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
 
           <p className="text-sm font-bold text-slate-600">
-            Analyzing 123,849 jobs & calculating ATS matches...
+            Calculating ATS matches &amp; ranking jobs for you...
           </p>
+
+        </div>
+
+      ) : fetchError ? (
+
+        /* ===================================================
+           RECOMMENDATIONS ERROR STATE
+        =================================================== */
+        <div className="bg-white rounded-3xl p-12 border border-red-100 shadow-xs text-center max-w-lg mx-auto space-y-4">
+
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto text-2xl shadow-xs">
+            <FaExclamationCircle />
+          </div>
+
+          <h3 className="text-lg font-black text-slate-800">
+            Failed to Load Recommendations
+          </h3>
+
+          <p className="text-xs text-slate-500 leading-relaxed">
+            Check your connection and try again.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => fetchRecommendations(false)}
+            className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition"
+          >
+            <FaSync />
+            Retry
+          </button>
 
         </div>
 
@@ -852,7 +965,7 @@ function Recommendations() {
             className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md transition"
           >
             <FaSync />
-            Generate Next 50 Jobs
+            Refresh Recommendations
           </button>
 
         </div>
@@ -979,31 +1092,97 @@ function Recommendations() {
       ) : (
 
         /* ===================================================
-           GRID VIEW
+           GRID VIEW WITH 6-ITEM PAGINATION
         =================================================== */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {recommendations
+              .slice((gridPage - 1) * GRID_PER_PAGE, gridPage * GRID_PER_PAGE)
+              .map((item, index) => (
+                <GridCard
+                  key={item.job?.id || index}
+                  item={item}
+                  onSwipe={handleSwipeAction}
+                  onCardClick={(jobItem) =>
+                    setSelectedJob({
+                      ...jobItem.job,
+                      ...jobItem,
+                    })
+                  }
+                  actionLoading={actionLoading}
+                />
+              ))}
+          </div>
 
-          {recommendations.map(
-            (item, index) => (
+          {Math.ceil(recommendations.length / GRID_PER_PAGE) > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 pt-2">
+              <p className="text-xs text-slate-500">
+                Showing{" "}
+                <span className="font-bold text-slate-700">
+                  {(gridPage - 1) * GRID_PER_PAGE + 1}
+                </span>
+                {" – "}
+                <span className="font-bold text-slate-700">
+                  {Math.min(gridPage * GRID_PER_PAGE, recommendations.length)}
+                </span>
+                {" of "}
+                <span className="font-bold text-slate-700">
+                  {recommendations.length}
+                </span>
+                {" recommendations"}
+              </p>
 
-              <GridCard
-                key={
-                  item.job?.id || index
-                }
-                item={item}
-                onSwipe={handleSwipeAction}
-                onCardClick={(jobItem) =>
-                  setSelectedJob({
-                    ...jobItem.job,
-                    ...jobItem,
-                  })
-                }
-                actionLoading={actionLoading}
-              />
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setGridPage((prev) => Math.max(prev - 1, 1))}
+                  disabled={gridPage === 1}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  ‹ Previous
+                </button>
 
-            )
+                <div className="flex items-center gap-1">
+                  {Array.from(
+                    { length: Math.ceil(recommendations.length / GRID_PER_PAGE) },
+                    (_, i) => i + 1
+                  ).map((page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      onClick={() => setGridPage(page)}
+                      className={`w-8 h-8 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        gridPage === page
+                          ? "bg-indigo-600 text-white shadow-xs"
+                          : "text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setGridPage((prev) =>
+                      Math.min(
+                        prev + 1,
+                        Math.ceil(recommendations.length / GRID_PER_PAGE)
+                      )
+                    )
+                  }
+                  disabled={
+                    gridPage ===
+                    Math.ceil(recommendations.length / GRID_PER_PAGE)
+                  }
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                >
+                  Next ›
+                </button>
+              </div>
+            </div>
           )}
-
         </div>
 
       )}

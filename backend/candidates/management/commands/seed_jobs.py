@@ -203,6 +203,11 @@ class Command(BaseCommand):
                         if desc.lower() == "nan":
                             desc = f"Exciting opportunity for a {title} at {company}. Join an ambitious team tackling complex problems."
 
+                        # Exclude inactive / closed jobs if closed_time exists
+                        closed_time = row.get("closed_time")
+                        if pd.notna(closed_time) and str(closed_time).strip() not in ("", "nan", "0"):
+                            continue
+
                         work_type = str(row.get("formatted_work_type", "") or "").lower()
                         remote_allowed = row.get("remote_allowed")
 
@@ -215,12 +220,16 @@ class Command(BaseCommand):
 
                         min_sal = row.get("min_salary")
                         max_sal = row.get("max_salary")
+                        pay_period = str(row.get("pay_period", "") or "").strip().upper()
+                        period_str = "yr" if pay_period in ("YEARLY", "YR", "") else "hr" if pay_period in ("HOURLY", "HR") else pay_period.lower()
                         if pd.notna(min_sal) and pd.notna(max_sal):
-                            salary = f"${int(min_sal):,} - ${int(max_sal):,} / yr"
+                            salary = f"${int(min_sal):,} - ${int(max_sal):,} / {period_str}"
                         elif pd.notna(max_sal):
-                            salary = f"Up to ${int(max_sal):,} / yr"
+                            salary = f"Up to ${int(max_sal):,} / {period_str}"
+                        elif pd.notna(min_sal):
+                            salary = f"From ${int(min_sal):,} / {period_str}"
                         else:
-                            salary = "$110,000 - $145,000 / yr"
+                            salary = ""
 
                         exp = str(row.get("formatted_experience_level", "") or "").strip()
                         if not exp or exp.lower() == "nan":

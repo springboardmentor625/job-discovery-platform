@@ -1,4 +1,4 @@
-﻿"""
+"""
 AI/NLP based resume-job matching.
 
 Uses:
@@ -36,26 +36,59 @@ from sentence_transformers import SentenceTransformer
 
 
 # =========================================================
-# MODEL LOADING
+# MODEL LOADING (Lazy loaded to avoid slow startup and checks)
 # =========================================================
 
-try:
-    NLP = spacy.load(
-        "en_core_web_sm"
-    )
-except Exception:
-    NLP = spacy.blank("en")
+_NLP = None
 
+def get_nlp():
+    global _NLP
+    if _NLP is None:
+        try:
+            _NLP = spacy.load("en_core_web_sm")
+        except Exception:
+            _NLP = spacy.blank("en")
+    return _NLP
 
-try:
-    EMBEDDING_MODEL = SentenceTransformer(
-        "all-MiniLM-L6-v2"
-    )
-except Exception as error:
-    print(
-        f"Sentence Transformer load warning: {error}"
-    )
-    EMBEDDING_MODEL = None
+NLP = get_nlp
+
+_EMBEDDING_MODEL = None
+_EMBEDDING_MODEL_TRIED = False
+
+def get_embedding_model():
+    global _EMBEDDING_MODEL, _EMBEDDING_MODEL_TRIED
+    if not _EMBEDDING_MODEL_TRIED:
+        _EMBEDDING_MODEL_TRIED = True
+        try:
+            from sentence_transformers import SentenceTransformer
+            _EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
+        except Exception as error:
+            print(f"Sentence Transformer load warning: {error}")
+            _EMBEDDING_MODEL = None
+    return _EMBEDDING_MODEL
+
+class _LazyEmbeddingModel:
+    def __getattr__(self, name):
+        m = get_embedding_model()
+        if m is None:
+            raise AttributeError(name)
+        return getattr(m, name)
+
+    def encode(self, *args, **kwargs):
+        m = get_embedding_model()
+        if m is None:
+            return None
+        return m.encode(*args, **kwargs)
+
+    def __bool__(self):
+        return get_embedding_model() is not None
+
+    def __eq__(self, other):
+        if other is None:
+            return get_embedding_model() is None
+        return get_embedding_model() == other
+
+EMBEDDING_MODEL = _LazyEmbeddingModel()
 
 
 # =========================================================

@@ -148,6 +148,7 @@ class Resume(models.Model):
 
 class Job(models.Model):
 
+    # ── Core fields ────────────────────────────────────
     title = models.CharField(
         max_length=255
     )
@@ -169,7 +170,7 @@ class Job(models.Model):
     salary = models.CharField(
         max_length=100,
         blank=True,
-        default="Competitive"
+        default=""
     )
 
     experience = models.CharField(
@@ -208,6 +209,49 @@ class Job(models.Model):
         null=True,
         blank=True
     )
+
+    # ── Live-import fields ─────────────────────────────
+    # Which source this job came from: "dataset", "jobicy", "remoteok", etc.
+    source = models.CharField(
+        max_length=30,
+        blank=True,
+        default="dataset",
+        db_index=True,
+    )
+
+    # The job's ID on the external source (used for deduplication).
+    source_id = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+    )
+
+    # Actual posting date from the external API (may be null for dataset jobs).
+    posted_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    # Expiry date provided by the source (null = no expiry given).
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+    )
+
+    # False = expired / closed; excluded from all queries.
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+    )
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["source", "source_id"],
+                name="unique_job_source_id",
+                condition=models.Q(source_id__gt=""),  # only enforce when source_id is non-empty
+            )
+        ]
 
     def __str__(self):
         return f"{self.title} at {self.company}"
@@ -317,6 +361,18 @@ class Application(models.Model):
         on_delete=models.SET_NULL,
         null=True,
         blank=True
+    )
+
+    STATUS_CHOICES = [
+        ("link_opened", "Application link opened"),
+        ("applied", "Marked as applied"),
+    ]
+
+    status = models.CharField(
+        max_length=30,
+        choices=STATUS_CHOICES,
+        default="link_opened",
+        db_index=True,
     )
 
     applied_at = models.DateTimeField(

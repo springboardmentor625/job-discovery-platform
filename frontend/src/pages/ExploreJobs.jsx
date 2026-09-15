@@ -8,10 +8,35 @@ import {
   FaCheckCircle,
   FaFilter,
   FaTimes,
+  FaExclamationCircle,
+  FaClock,
 } from "react-icons/fa";
 
 import api from "../services/api";
 import JobDetailsModal from "../components/JobDetailsModal";
+
+/* =========================================================
+   RELATIVE TIME HELPER
+   Returns "X days ago", "X hours ago", etc.
+   Returns "" when posted_at is null/undefined.
+========================================================= */
+function relativeTime(isoString) {
+  if (!isoString) return "";
+  try {
+    const diff = Date.now() - new Date(isoString).getTime();
+    if (isNaN(diff) || diff < 0) return "";
+    const mins = Math.floor(diff / 60000);
+    if (mins < 60) return mins <= 1 ? "Just now" : `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    if (days < 30) return `${days}d ago`;
+    const months = Math.floor(days / 30);
+    return `${months}mo ago`;
+  } catch {
+    return "";
+  }
+}
 
 function ExploreJobs() {
   /* =========================================================
@@ -20,6 +45,7 @@ function ExploreJobs() {
 
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [savingMap, setSavingMap] = useState({});
   const [selectedJob, setSelectedJob] = useState(null);
 
@@ -54,6 +80,7 @@ function ExploreJobs() {
   const fetchJobs = async (page = 1) => {
     try {
       setLoading(true);
+      setError(false);
 
       const params = {
         page,
@@ -108,7 +135,7 @@ function ExploreJobs() {
       console.error("Jobs fetch error:", error);
 
       toast.error("Unable to load jobs.");
-
+      setError(true);
       setJobs([]);
       setTotalJobs(0);
     } finally {
@@ -579,6 +606,35 @@ function ExploreJobs() {
         </div>
 
 
+      ) : error ? (
+
+        /* =====================================================
+           ERROR STATE
+        ===================================================== */
+        <div className="bg-white rounded-2xl p-12 border border-red-100 shadow-xs text-center">
+
+          <div className="w-16 h-16 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center mx-auto text-2xl">
+            <FaExclamationCircle />
+          </div>
+
+          <h2 className="text-lg font-bold text-slate-800 mt-4">
+            Failed to Load Jobs
+          </h2>
+
+          <p className="text-sm text-slate-500 mt-2">
+            Check your internet connection and try again.
+          </p>
+
+          <button
+            type="button"
+            onClick={() => fetchJobs(currentPage)}
+            className="mt-5 px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition"
+          >
+            Retry
+          </button>
+
+        </div>
+
       ) : jobs.length > 0 ? (
 
         <>
@@ -671,6 +727,13 @@ function ExploreJobs() {
 
                       </span>
 
+                      {relativeTime(job.posted_at) && (
+                        <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium">
+                          <FaClock className="shrink-0" />
+                          {relativeTime(job.posted_at)}
+                        </span>
+                      )}
+
                     </div>
 
 
@@ -685,7 +748,12 @@ function ExploreJobs() {
                         </p>
 
                         <p className="font-bold text-slate-800 mt-1 truncate max-w-[140px]">
-                          {job.salary || "Competitive"}
+                          {job.salary &&
+                          !["competitive", "nan", "none", "null", "not specified"].includes(
+                            String(job.salary).toLowerCase().trim()
+                          )
+                            ? job.salary
+                            : "Not specified"}
                         </p>
 
                       </div>

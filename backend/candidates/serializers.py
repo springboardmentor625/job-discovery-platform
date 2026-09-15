@@ -870,6 +870,7 @@ class JobSerializer(serializers.ModelSerializer):
     why_matches = serializers.SerializerMethodField()
     tips = serializers.SerializerMethodField()
     is_applied = serializers.SerializerMethodField()
+    application_status = serializers.SerializerMethodField()
     applied_at = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
     swipe_decision = serializers.SerializerMethodField()
@@ -891,6 +892,8 @@ class JobSerializer(serializers.ModelSerializer):
             "application_url",
             "min_ats",
             "created_at",
+            "source",
+            "posted_at",
             "ats_score",
             "skill_match_percentage",
             "matched_skills",
@@ -898,10 +901,18 @@ class JobSerializer(serializers.ModelSerializer):
             "why_matches",
             "tips",
             "is_applied",
+            "application_status",
             "applied_at",
             "is_saved",
             "swipe_decision",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        sal = str(data.get("salary") or "").strip()
+        if not sal or sal.lower() in ("competitive", "nan", "none", "null", "not specified"):
+            data["salary"] = "Not specified"
+        return data
 
     def _get_candidate(self):
 
@@ -977,11 +988,15 @@ class JobSerializer(serializers.ModelSerializer):
                     .values(
                         "job_id",
                         "applied_at",
+                        "status",
                     )
                 )
 
                 self._cached_applied_map = {
-                    a["job_id"]: a["applied_at"]
+                    a["job_id"]: {
+                        "applied_at": a["applied_at"],
+                        "status": a.get("status") or "link_opened",
+                    }
                     for a in apps
                 }
 
@@ -1060,22 +1075,23 @@ class JobSerializer(serializers.ModelSerializer):
         )["tips"]
 
     def get_is_applied(self, obj):
-        return (
-            obj.id
-            in self._get_applied_map()
-        )
+        info = self._get_applied_map().get(obj.id)
+        if not info:
+            return False
+        return info.get("status") == "applied"
+
+    def get_application_status(self, obj):
+        info = self._get_applied_map().get(obj.id)
+        if not info:
+            return "not_applied"
+        return info.get("status", "link_opened")
 
     def get_applied_at(self, obj):
-
-        dt = self._get_applied_map().get(
-            obj.id
-        )
-
-        return (
-            dt.isoformat()
-            if dt
-            else None
-        )
+        info = self._get_applied_map().get(obj.id)
+        if not info or not info.get("applied_at"):
+            return None
+        dt = info["applied_at"]
+        return dt.isoformat() if hasattr(dt, "isoformat") else str(dt)
 
     def get_is_saved(self, obj):
         return (
@@ -1113,7 +1129,16 @@ class JobMiniSerializer(serializers.ModelSerializer):
             "preferred_skills",
             "application_url",
             "min_ats",
+            "source",
+            "posted_at",
         ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        sal = str(data.get("salary") or "").strip()
+        if not sal or sal.lower() in ("competitive", "nan", "none", "null", "not specified"):
+            data["salary"] = "Not specified"
+        return data
 
 
 # =====================================
@@ -1175,6 +1200,7 @@ class ApplicationSerializer(serializers.ModelSerializer):
             "candidate",
             "job",
             "job_id",
+            "status",
             "cover_letter",
             "portfolio_url",
             "linkedin_url",

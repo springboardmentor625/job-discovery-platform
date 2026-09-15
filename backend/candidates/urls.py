@@ -11,6 +11,7 @@ from .views import (
     JobSwipeViewSet,
     ApplicationViewSet,
     RecommendationView,
+    JobsLastUpdatedView,
 )
 
 from .auth_views import EmailTokenObtainPairView
@@ -76,14 +77,20 @@ urlpatterns = [
     ),
 
     path(
-        "",
-        include(router.urls)
+        "jobs/last-updated/",
+        JobsLastUpdatedView.as_view(),
+        name="jobs-last-updated"
     ),
 
     path(
         "recommendations/",
         RecommendationView.as_view(),
         name="recommendations"
+    ),
+
+    path(
+        "",
+        include(router.urls)
     ),
 
 ]

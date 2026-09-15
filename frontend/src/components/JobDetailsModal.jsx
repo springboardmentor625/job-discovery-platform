@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, useMotionValue } from "framer-motion";
 import { toast } from "react-hot-toast";
 import {
@@ -95,9 +95,11 @@ function JobDetailsModal({
   onClose,
   onSwipe,
   onApplySuccess,
+  onUnsaveSuccess,
 }) {
   const [applied, setApplied] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [linkOpened, setLinkOpened] = useState(false);
   const [saved, setSaved] = useState(false);
   const [swiping, setSwiping] = useState(false);
 
@@ -110,6 +112,7 @@ function JobDetailsModal({
 
   useEffect(() => {
     setApplied(Boolean(job?.is_applied));
+    setLinkOpened(false);
     setSaved(Boolean(job?.is_saved));
     setSwiping(false);
     setApplying(false);
@@ -250,92 +253,95 @@ function JobDetailsModal({
 
 
   const salaryDisplay =
-    job.salary || "Competitive";
+    job.salary &&
+    !["competitive", "nan", "none", "null", "not specified"].includes(
+      String(job.salary).toLowerCase().trim()
+    )
+      ? job.salary
+      : "Not specified";
 
 
   /* =======================================================
-     APPLY ACTION
+     APPLY ACTION — Step 1: Open link and record link_opened
   ======================================================= */
 
   const handleApply = async () => {
     if (applied || applying) return;
 
+    if (!job.application_url) {
+      toast.error("Application link not available for this job.");
+      return;
+    }
+
+    // Open the external link
+    window.open(
+      job.application_url,
+      "_blank",
+      "noopener,noreferrer"
+    );
+
+    setLinkOpened(true);
+
+    // Record that the link was opened (not yet applied)
+    try {
+      await api.post("applications/", {
+        job_id: job.id,
+        status: "link_opened",
+      });
+    } catch (_) {
+      // Non-fatal — link is already open
+    }
+
+    toast("Application link opened! Click \"Mark as Applied\" once you've submitted.", {
+      icon: "🔗",
+      duration: 4000,
+    });
+  };
+
+
+  /* =======================================================
+     APPLY ACTION — Step 2: Explicit "Mark as Applied"
+  ======================================================= */
+
+  const handleMarkApplied = async () => {
+    if (applied || applying) return;
+
     try {
       setApplying(true);
 
-      /*
-        Open external application URL if available
-      */
-
-      if (job.application_url) {
-        window.open(
-          job.application_url,
-          "_blank",
-          "noopener,noreferrer"
-        );
-      }
-
-
-      /*
-        Save application in SwipeX database
-      */
-
-      await api.post(
-        "applications/",
-        {
-          job_id: job.id,
-        }
-      );
-
+      await api.post("applications/", {
+        job_id: job.id,
+        status: "applied",
+      });
 
       setApplied(true);
 
-      toast.success(
-        `Application submitted for ${job.title}!`
-      );
-
+      toast.success(`Marked as Applied for ${job.title}!`);
 
       if (onApplySuccess) {
         onApplySuccess(job.id);
       }
 
     } catch (error) {
-
-      /*
-        Already applied
-      */
-
       if (
         error.response?.status === 200 ||
         error.response?.data?.detail
           ?.toLowerCase()
           ?.includes("already applied")
       ) {
-
         setApplied(true);
-
-        toast.success(
-          "You have already applied for this job."
-        );
-
-
+        toast.success("You have already applied for this job.");
         if (onApplySuccess) {
           onApplySuccess(job.id);
         }
-
       } else {
-
         toast.error(
           error.response?.data?.detail ||
-          "Unable to submit application."
+          "Unable to record application."
         );
-
       }
-
     } finally {
-
       setApplying(false);
-
     }
   };
 
@@ -345,55 +351,72 @@ function JobDetailsModal({
   ======================================================= */
 
   const handleSave = async () => {
-    if (!job.id || swiping || saved) return;
+  if (!job.id || swiping || saved) return;
 
-    try {
+  try {
+    setSwiping(true);
 
-      setSwiping(true);
+    await api.post("swipes/", {
+      job_id: job.id,
+      decision: "saved",
+    });
 
+    setSaved(true);
 
-      await api.post(
-        "swipes/",
-        {
-          job_id: job.id,
-          decision: "saved",
-        }
-      );
+    toast.success("Job saved!");
 
-
-      setSaved(true);
-
-      toast.success(
-        "Job saved to history!"
-      );
-
-
-      if (onSwipe) {
-        onSwipe(
-          "saved",
-          job.id
-        );
-      }
-
-    } catch (error) {
-
-      console.error(
-        "Save error:",
-        error
-      );
-
-
-      toast.error(
-        error.response?.data?.detail ||
-        "Unable to save job."
-      );
-
-    } finally {
-
-      setSwiping(false);
-
+    if (onSwipe) {
+      onSwipe("saved", job.id);
     }
-  };
+  } catch (error) {
+    console.error("Save error:", error);
+    toast.error(
+      error.response?.data?.detail || "Unable to save job."
+    );
+  } finally {
+    setSwiping(false);
+  }
+};
+const handleUnsave = async () => {
+  if (!job.id || swiping || !saved) return;
+
+  try {
+    setSwiping(true);
+
+    // Find the saved swipe belonging to this job
+    const response = await api.get(`swipes/?decision=saved`);
+
+    const savedSwipes = Array.isArray(response.data)
+      ? response.data
+      : response.data?.results || [];
+
+    const savedSwipe = savedSwipes.find(
+      (swipe) => swipe.job?.id === job.id || swipe.job_id === job.id
+    );
+
+    if (!savedSwipe?.id) {
+      toast.error("Saved swipe not found.");
+      return;
+    }
+
+    await api.delete(`swipes/${savedSwipe.id}/`);
+
+    setSaved(false);
+
+    toast.success("Job unsaved.");
+
+    if (onUnsaveSuccess) {
+      onUnsaveSuccess(job.id);
+    }
+  } catch (error) {
+    console.error("Unsave error:", error);
+    toast.error(
+      error.response?.data?.detail || "Unable to unsave job."
+    );
+  } finally {
+    setSwiping(false);
+  }
+};
 
 
   /* =======================================================
@@ -700,93 +723,38 @@ function JobDetailsModal({
 
 
           {/* ===============================================
-              ATS + SKILL MATCH
-              ONE LINE
+              ATS SCORE
           =============================================== */}
 
-          <div className="
-            grid
-            grid-cols-2
-            gap-3
-            mt-5
-          ">
-
-
-            {/* ATS */}
-
+          <div className="mt-5">
             <div className="
               bg-indigo-50/80
               border border-indigo-100
               rounded-2xl
-              p-3
+              p-3.5
               text-center
+              flex items-center justify-between
+              px-6
             ">
-
               <p className="
-                text-[10px]
+                text-xs
                 font-bold
                 uppercase
                 tracking-wider
                 text-indigo-600
               ">
-
                 ATS Score
-
               </p>
-
 
               <p className="
                 text-2xl
                 font-black
                 text-indigo-700
-                mt-0.5
               ">
-
                 {atsScore}%
-
               </p>
-
             </div>
-
-
-            {/* SKILL MATCH */}
-
-            <div className="
-              bg-emerald-50/80
-              border border-emerald-100
-              rounded-2xl
-              p-3
-              text-center
-            ">
-
-              <p className="
-                text-[10px]
-                font-bold
-                uppercase
-                tracking-wider
-                text-emerald-700
-              ">
-
-                Skill Match
-
-              </p>
-
-
-              <p className="
-                text-2xl
-                font-black
-                text-emerald-700
-                mt-0.5
-              ">
-
-                {skillPct}%
-
-              </p>
-
-            </div>
-
           </div>
-
         </div>
 
 
@@ -1530,7 +1498,7 @@ function JobDetailsModal({
                   uppercase
                 ">
 
-                  Compensation
+                  Salary
 
                 </span>
 
@@ -1668,12 +1636,9 @@ function JobDetailsModal({
 
               type="button"
 
-              onClick={handleSave}
+              onClick={saved ? handleUnsave : handleSave}
 
-              disabled={
-                swiping ||
-                saved
-              }
+              disabled={swiping}
 
               className={`
                 h-11
@@ -1689,7 +1654,7 @@ function JobDetailsModal({
                 cursor-pointer
                 ${
                   saved
-                    ? "bg-amber-600 text-white"
+                    ? "bg-amber-600 hover:bg-amber-700 text-white"
                     : "bg-amber-500 hover:bg-amber-600 text-white"
                 }
               `}
@@ -1698,7 +1663,7 @@ function JobDetailsModal({
               <FaBookmark />
 
               {saved
-                ? "Saved"
+                ? "Unsave"
                 : "Save"}
 
             </button>
@@ -1725,7 +1690,8 @@ function JobDetailsModal({
 
               disabled={
                 applying ||
-                applied
+                applied ||
+                !job.application_url
               }
 
               className={`
@@ -1744,6 +1710,8 @@ function JobDetailsModal({
                 ${
                   applied
                     ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                    : !job.application_url
+                    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
                     : "bg-indigo-600 hover:bg-indigo-700 text-white"
                 }
               `}
@@ -1760,15 +1728,13 @@ function JobDetailsModal({
 
                 <>
 
-                  {job.application_url && (
-                    <FaExternalLinkAlt className="
-                      text-[10px]
-                    " />
-                  )}
+                  <FaExternalLinkAlt className="
+                    text-[10px]
+                  " />
 
                   {applying
-                    ? "Submitting..."
-                    : "Apply Now"}
+                    ? "Opening link..."
+                    : "Apply on Company Website"}
 
                 </>
 
