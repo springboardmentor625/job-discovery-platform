@@ -2437,7 +2437,7 @@ setTimeout(() => {
     handleDeleteSwipe(item.swipe_id)
   }
 >
-  Delete
+  Remove from History
 </button>
                     </div>
                   )
