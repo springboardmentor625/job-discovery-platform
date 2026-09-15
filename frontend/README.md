@@ -22,10 +22,15 @@ Main Features
 - Form validation and user interaction
 
 Frontend-Backend Communication: The frontend communicates with the FastAPI backend through REST APIs.
+
 React.js -> HTTP -> FastAPI Backend -> PostgreSQL / AI / ML Services -> API Response -> React.js UI
 
 Running the Frontend
+
 Install dependencies: npm install
+
 Start the development server: npm run dev
+
 The frontend runs by default at: http://localhost:5173
+
 The frontend is responsible for the user interface and communicates with the backend for authentication, profile, resume, job, recommendation, swipe and application operations.
