@@ -1,3 +1,4 @@
+
 import {
   useEffect,
   useState,
@@ -669,9 +670,9 @@ function RecommendedJobs() {
           </h1>
 
           <p className="form-subtitle">
-            Analyzing your resume, profile,
+            Analyzing your resume, 
             ML compatibility and swipe activity
-            to find suitable jobs...
+            to find suitable jobs
           </p>
 
         </div>
@@ -874,7 +875,7 @@ function RecommendedJobs() {
 
             <p>
               Personalized recommendations based
-              on your resume, profile, ML matching
+              on your resume
               and swipe activity.
             </p>
 
@@ -2226,10 +2227,7 @@ function RecommendedJobs() {
           }}
         >
 
-          <span>
-            Showing all {jobs.length}
-            {" "}AI-recommended jobs
-          </span>
+          
 
         </div>
 
