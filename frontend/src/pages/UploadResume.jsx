@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 import { useNavigate } from "react-router-dom";
 
@@ -135,10 +135,6 @@ function formatResumeText(text) {
 
     // -------------------------------------------------------
     // Bold labels before colon
-    //
-    // Example:
-    // Languages: Python, Java, JavaScript
-    // Databases: PostgreSQL, MongoDB
     // -------------------------------------------------------
 
     const labelMatch = trimmedLine.match(
@@ -192,6 +188,8 @@ function UploadResume() {
 
   const navigate = useNavigate();
 
+  const analysisRef = useRef(null);
+
 
   // =========================================================
   // UPLOAD STATE
@@ -213,9 +211,6 @@ function UploadResume() {
 
   const [uploadedResume, setUploadedResume] =
     useState(null);
-
-  const [showAnalysis, setShowAnalysis] =
-    useState(false);
 
 
   // =========================================================
@@ -395,14 +390,30 @@ function UploadResume() {
 
 
       // -----------------------------------------------------
-      // SHOW RESUME ANALYSIS ON SAME PAGE
+      // SAVE UPLOADED RESUME
       // -----------------------------------------------------
 
       setUploadedResume(
         response.data
       );
 
-      setShowAnalysis(true);
+
+      // -----------------------------------------------------
+      // AUTOMATICALLY SCROLL TO RESUME ANALYSIS
+      // -----------------------------------------------------
+
+      setTimeout(() => {
+
+        if (analysisRef.current) {
+
+          analysisRef.current.scrollIntoView({
+            behavior: "smooth",
+            block: "start"
+          });
+
+        }
+
+      }, 100);
 
 
     } catch (error) {
@@ -434,16 +445,57 @@ function UploadResume() {
   // UPLOAD ANOTHER RESUME
   // =========================================================
 
-  const handleUploadAnotherResume = () => {
+  const handleUploadAnotherResume = async () => {
 
-    setShowAnalysis(false);
+    setError("");
+
+
+    const resumeId =
+      uploadedResume?.resume_id ||
+      localStorage.getItem("resume_id");
+
+
+    // -------------------------------------------------------
+    // DELETE PREVIOUSLY UPLOADED RESUME
+    // -------------------------------------------------------
+
+    if (resumeId) {
+
+      try {
+
+        await api.delete(
+          `/api/resumes/${resumeId}`
+        );
+
+      } catch (error) {
+
+        console.error(
+          "Resume delete error:",
+          error
+        );
+
+      }
+
+    }
+
+
+    // -------------------------------------------------------
+    // CLEAR PREVIOUS RESUME
+    // -------------------------------------------------------
 
     setUploadedResume(null);
 
     setSelectedFile(null);
 
-    setError("");
 
+    localStorage.removeItem(
+      "resume_id"
+    );
+
+
+    // -------------------------------------------------------
+    // CLEAR FILE INPUT
+    // -------------------------------------------------------
 
     const fileInput =
       document.getElementById("resume");
@@ -453,6 +505,10 @@ function UploadResume() {
       fileInput.value = "";
     }
 
+
+    // -------------------------------------------------------
+    // SCROLL BACK TO UPLOAD SECTION
+    // -------------------------------------------------------
 
     window.scrollTo({
       top: 0,
@@ -521,214 +577,187 @@ function UploadResume() {
       >
 
         {/* ===================================================
-            HEADER
+            UPLOAD RESUME SECTION
         =================================================== */}
 
-        <div className="resume-header">
+        <div
+          style={{
+            width: "100%",
+            boxSizing: "border-box"
+          }}
+        >
 
-          <div>
+          {/* ===================================================
+              HEADER
+          =================================================== */}
 
-            <h1>
-              Upload Your Resume
-            </h1>
+          <div className="resume-header">
 
-            <p>
-              Add your latest resume so SwipeX can
-              understand your skills and find better
-              job opportunities for you.
-            </p>
+            <div>
+
+              <h1>
+                Upload Resume
+              </h1>
+
+              <p>
+                Add your resume so SwipeX can
+                find suitable
+                job opportunities.
+              </p>
+
+            </div>
 
           </div>
 
-        </div>
+
+          {/* ===================================================
+              ERROR
+          =================================================== */}
+
+          {error && (
+
+            <div className="resume-error">
+
+              <span>!</span>
+
+              <p>
+                {error}
+              </p>
+
+            </div>
+
+          )}
 
 
-        {/* ===================================================
-            ERROR
-        =================================================== */}
+          {/* ===================================================
+              UPLOAD AREA
+          =================================================== */}
 
-        {error && (
+          <form onSubmit={handleSubmit}>
 
-          <div className="resume-error">
+            <label
+              htmlFor="resume"
+              className={`resume-upload-area ${
+                selectedFile ? "has-file" : ""
+              }`}
+            >
 
-            <span>!</span>
-
-            <p>
-              {error}
-            </p>
-
-          </div>
-
-        )}
-
-
-        {/* ===================================================
-            UPLOAD AREA
-        =================================================== */}
-
-        {!showAnalysis && (
-
-          <>
-
-            <form onSubmit={handleSubmit}>
-
-              <label
-                htmlFor="resume"
-                className={`resume-upload-area ${
-                  selectedFile ? "has-file" : ""
-                }`}
-              >
-
-                <div className="upload-cloud-icon">
-                  ↑
-                </div>
-
-
-                <h2>
-
-                  {selectedFile
-                    ? "Resume selected"
-                    : "Upload your resume"}
-
-                </h2>
-
-
-                <p>
-
-                  {selectedFile
-                    ? "Your file is ready to upload."
-                    : "Click here to browse and select your resume"}
-
-                </p>
-
-
-                {!selectedFile && (
-
-                  <span className="browse-button">
-                    Choose File
-                  </span>
-
-                )}
-
-
-                <input
-                  id="resume"
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  onChange={handleFileChange}
-                  disabled={isUploading}
-                />
-
-              </label>
-
-
-              {/* =================================================
-                  FILE REQUIREMENTS
-              ================================================= */}
-
-              <div className="resume-requirements">
-
-                <div className="requirement-item">
-
-                  <span>✓</span>
-
-                  <div>
-
-                    <strong>
-                      Supported formats
-                    </strong>
-
-                    <p>
-                      PDF, DOC, DOCX
-                    </p>
-
-                  </div>
-
-                </div>
-
-
-                <div className="requirement-item">
-
-                  <span>✓</span>
-
-                  <div>
-
-                    <strong>
-                      Maximum size
-                    </strong>
-
-                    <p>
-                      5 MB
-                    </p>
-
-                  </div>
-
-                </div>
-
+              <div className="upload-cloud-icon">
+                ↑
               </div>
 
 
-              {/* =================================================
-                  SELECTED FILE
-              ================================================= */}
+              <h2>
 
-              {selectedFile && (
+                {selectedFile
+                  ? "Resume selected"
+                  : "Upload your resume"}
 
-                <div className="selected-resume-card">
-
-                  <div className="selected-resume-icon">
-                    📄
-                  </div>
+              </h2>
 
 
-                  <div className="selected-resume-details">
+              <p>
 
-                    <strong>
-                      {selectedFile.name}
-                    </strong>
+                {selectedFile
+                  ? "Your file is ready to upload."
+                  : "Click here to browse and select your resume"}
 
-                    <p>
-                      {(
-                        selectedFile.size /
-                        (1024 * 1024)
-                      ).toFixed(2)}{" "}
-                      MB
-                    </p>
-
-                  </div>
+              </p>
 
 
-                  <button
-                    type="button"
-                    className="remove-resume-button"
-                    onClick={handleRemoveFile}
-                    disabled={isUploading}
-                  >
-                    Remove
-                  </button>
+              {!selectedFile && (
 
-                </div>
+                <span className="browse-button">
+                  Choose Resume
+                </span>
 
               )}
 
 
-              {/* =================================================
-                  INFORMATION
-              ================================================= */}
+              <input
+                id="resume"
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={handleFileChange}
+                disabled={isUploading}
+              />
 
-              <div className="resume-analysis-info">
+            </label>
+
+
+            {/* =================================================
+                FILE REQUIREMENTS
+            ================================================= */}
+
+            <div
+              className="resume-requirements"
+              style={{
+                display: "grid",
+                gridTemplateColumns:
+                  "repeat(2, minmax(0, 1fr))",
+                gap: "18px",
+                marginTop: "24px",
+                marginBottom: "24px"
+              }}
+            >
+
+              {/* -------------------------------------------------
+                  SUPPORTED FORMATS
+              ------------------------------------------------- */}
+
+              <div
+                className="requirement-item"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  padding: "18px 20px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  backgroundColor: "#f8fafc",
+                  boxSizing: "border-box"
+                }}
+              >
+
+                <span
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    minWidth: "38px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#dcfce7",
+                    color: "#15803d",
+                    fontWeight: "700",
+                    fontSize: "18px"
+                  }}
+                >
+                  ✓
+                </span>
 
                 <div>
 
-                  <strong>
-                    What happens next?
+                  <strong
+                    style={{
+                      display: "block",
+                      marginBottom: "4px",
+                      color: "#111827",
+                      fontSize: "14px"
+                    }}
+                  >
+                    Supported formats
                   </strong>
 
-                  <p>
-                    SwipeX will analyze your resume,
-                    extract relevant information and
-                    use it to personalize your job
-                    recommendations.
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#1b52a0",
+                      fontSize: "13px"
+                    }}
+                  >
+                    PDF, DOC, DOCX
                   </p>
 
                 </div>
@@ -736,71 +765,164 @@ function UploadResume() {
               </div>
 
 
-              {/* =================================================
-                  SUBMIT
-              ================================================= */}
+              {/* -------------------------------------------------
+                  MAXIMUM SIZE
+              ------------------------------------------------- */}
 
-              <button
-                type="submit"
-                className="resume-submit-button"
-                disabled={isUploading}
+              <div
+                className="requirement-item"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "14px",
+                  padding: "18px 20px",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: "12px",
+                  backgroundColor: "#f8fafc",
+                  boxSizing: "border-box"
+                }}
               >
 
-                {isUploading
-                  ? "Uploading Resume..."
-                  : "Upload Resume & Continue"}
+                <span
+                  style={{
+                    width: "38px",
+                    height: "38px",
+                    minWidth: "38px",
+                    borderRadius: "50%",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    backgroundColor: "#dcfce7",
+                    color: "#15803d",
+                    fontWeight: "700",
+                    fontSize: "18px"
+                  }}
+                >
+                  ✓
+                </span>
 
-              </button>
+                <div>
 
-            </form>
+                  <strong
+                    style={{
+                      display: "block",
+                      marginBottom: "4px",
+                      color: "#111827",
+                      fontSize: "14px"
+                    }}
+                  >
+                    Maximum File Size
+                  </strong>
+
+                  <p
+                    style={{
+                      margin: 0,
+                      color: "#1b52a0",
+                      fontSize: "13px"
+                    }}
+                  >
+                    5 MB
+                  </p>
+
+                </div>
+
+              </div>
+
+            </div>
 
 
-            {/* ===================================================
-                BACK TO DASHBOARD
-            =================================================== */}
+            {/* =================================================
+                SELECTED FILE
+            ================================================= */}
+
+            {selectedFile && (
+
+              <div className="selected-resume-card">
+
+                <div className="selected-resume-icon">
+                  📄
+                </div>
+
+
+                <div className="selected-resume-details">
+
+                  <strong>
+                    {selectedFile.name}
+                  </strong>
+
+                  <p>
+                    {(
+                      selectedFile.size /
+                      (1024 * 1024)
+                    ).toFixed(2)}{" "}
+                    MB
+                  </p>
+
+                </div>
+
+
+                <button
+                  type="button"
+                  className="remove-resume-button"
+                  onClick={handleRemoveFile}
+                  disabled={isUploading}
+                >
+                  Remove Resume
+                </button>
+
+              </div>
+
+            )}
+
+
+            {/* =================================================
+                SUBMIT
+            ================================================= */}
 
             <button
-              type="button"
-              className="secondary-button"
-              onClick={handleBackToDashboard}
-              style={{
-                marginTop: "12px",
-                width: "100%"
-              }}
+              type="submit"
+              className="resume-submit-button"
+              disabled={isUploading}
             >
-              Back to Dashboard
+
+              {isUploading
+                ? "Uploading Resume..."
+                : "Analyze Resume"}
+
             </button>
 
+          </form>
 
-            {/* ===================================================
-                FOOTER
-            =================================================== */}
 
-            <p className="resume-security-note">
-              Your resume is securely processed by SwipeX.
-            </p>
+          {/* ===================================================
+              FOOTER
+          =================================================== */}
 
-          </>
+          <p className="resume-security-note">
+            Your resume is securely processed by SwipeX.
+          </p>
 
-        )}
+        </div>
 
 
         {/* =====================================================
-            RESUME ANALYSIS
-            SAME UI AS PREVIOUS ResumeAnalysis.jsx
+            RESUME ANALYSIS SECTION
+            APPEARS BELOW UPLOAD RESUME SECTION
         ===================================================== */}
 
-        {showAnalysis && uploadedResume && (
+        {uploadedResume && (
 
           <div
+            ref={analysisRef}
             className="form-container resume-analysis-container"
             style={{
               width: "100%",
               maxWidth: "none",
               minHeight: "100vh",
               boxSizing: "border-box",
-              margin: "0",
-              padding: "40px 50px"
+              margin: "60px 0 0 0",
+              padding: "40px 50px",
+              borderTop: "1px solid #e5e7eb"
             }}
           >
 
@@ -816,39 +938,6 @@ function UploadResume() {
 
 
             {/* =================================================
-                RESUME INFORMATION
-            ================================================= */}
-
-            <div className="analysis-section">
-
-              <h2>
-                Resume Information
-              </h2>
-
-
-              <div className="analysis-card">
-
-                <p>
-                  <strong>
-                    Resume Name:
-                  </strong>{" "}
-                  {uploadedResume.resume_name || "Resume"}
-                </p>
-
-
-                <p>
-                  <strong>
-                    Resume ID:
-                  </strong>{" "}
-                  {uploadedResume.resume_id || "Not available"}
-                </p>
-
-              </div>
-
-            </div>
-
-
-            {/* =================================================
                 EXTRACTED SKILLS
             ================================================= */}
 
@@ -859,9 +948,7 @@ function UploadResume() {
               </h2>
 
 
-              <p className="form-subtitle">
-                Skills automatically detected from your resume.
-              </p>
+             
 
 
               {Array.isArray(
@@ -1032,56 +1119,18 @@ function UploadResume() {
 
 
             {/* =================================================
-                ACTIONS
-            ================================================= */}
-
-            <div className="analysis-actions">
-
-              <button
-                type="button"
-                className="secondary-button"
-                onClick={handleUploadAnotherResume}
-              >
-                Upload Another Resume
-              </button>
-
-
-              <button
-                type="button"
-                className="primary-button"
-                onClick={handleContinueToRecommendations}
-              >
-                Continue to AI Recommended Jobs
-              </button>
-
-            </div>
-
-
-            {/* =================================================
-                BACK TO DASHBOARD
-            ================================================= */}
-
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={handleBackToDashboard}
-              style={{
-                marginTop: "12px",
-                width: "100%"
-              }}
-            >
-              Back to Dashboard
-            </button>
-
-
-            {/* =================================================
                 FORMATTED EXTRACTED RESUME TEXT
-                ONLY DISPLAY FORMATTING CHANGED
+                BELOW EDUCATION
             ================================================= */}
 
             {uploadedResume.resume_text && (
 
-              <details className="raw-resume-section">
+              <details
+                className="raw-resume-section"
+                style={{
+                  marginTop: "30px"
+                }}
+              >
 
                 <summary
                   style={{
@@ -1141,6 +1190,72 @@ function UploadResume() {
               </details>
 
             )}
+
+
+            {/* =================================================
+                ACTION BUTTONS
+                HORIZONTAL
+            ================================================= */}
+
+            <div
+              className="analysis-actions"
+              style={{
+                display: "flex",
+                flexDirection: "row",
+                gap: "14px",
+                width: "100%",
+                marginTop: "30px"
+              }}
+            >
+
+              {/* -------------------------------------------------
+                  BACK TO DASHBOARD
+              ------------------------------------------------- */}
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleBackToDashboard}
+                style={{
+                  flex: 1
+                }}
+              >
+                Back to Dashboard
+              </button>
+
+
+              {/* -------------------------------------------------
+                  UPLOAD ANOTHER RESUME
+              ------------------------------------------------- */}
+
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleUploadAnotherResume}
+                style={{
+                  flex: 1
+                }}
+              >
+                Upload Another Resume
+              </button>
+
+
+              {/* -------------------------------------------------
+                  CONTINUE TO AI RECOMMENDED JOBS
+              ------------------------------------------------- */}
+
+              <button
+                type="button"
+                className="primary-button"
+                onClick={handleContinueToRecommendations}
+                style={{
+                  flex: 1
+                }}
+              >
+                Get AI Recommended Jobs
+              </button>
+
+            </div>
 
           </div>
 
