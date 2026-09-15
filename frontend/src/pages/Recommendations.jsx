@@ -168,7 +168,7 @@ function Recommendations() {
 
         <p className="form-subtitle">
           Jobs personalized using your resume,
-          profile, preferences, and activity.
+          preferences, and swipe activity.
         </p>
 
 
