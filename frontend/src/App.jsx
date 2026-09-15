@@ -718,6 +718,10 @@ console.log(
           `Job ${actionText} successfully.`
         );
 
+        setTimeout(() => {
+  setMessage("");
+}, 2500);
+
         setRecommendations(
           (previous) =>
             previous.filter(
@@ -954,6 +958,14 @@ console.log(
       setMessage(
         "Swipe deleted. This job can be recommended again."
       );
+
+      setMessage(
+  "Swipe deleted. This job can be recommended again."
+);
+
+setTimeout(() => {
+  setMessage("");
+}, 2500);
     } else {
       setMessage(
         data.message ||
