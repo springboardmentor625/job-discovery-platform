@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText,
   UploadCloud,
@@ -11,17 +10,26 @@ import {
   Zap,
   Loader2,
   AlertCircle,
+  AlertTriangle,
   Plus,
-  X
+  X,
+  RotateCw,
+  Layers,
+  Sparkles,
+  ChevronDown,
+  ChevronUp,
+  Info,
+  Check
 } from "lucide-react";
 
 function Resumes() {
-  const navigate = useNavigate();
-
   const [resumes, setResumes] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [recalculatingId, setRecalculatingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [expandedSuggestions, setExpandedSuggestions] = useState({});
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -35,7 +43,7 @@ function Resumes() {
       setError("");
 
       const response = await api.get("/resumes/");
-      setResumes(response.data);
+      setResumes(response.data || []);
     } catch (err) {
       console.error(err);
       setError(
@@ -75,7 +83,7 @@ function Resumes() {
         },
       });
 
-      setSuccess("Resume uploaded and parsed successfully!");
+      setSuccess("Resume uploaded and analyzed successfully with ATS scoring!");
       e.target.reset();
       setShowForm(false);
       await fetchResumes();
@@ -88,6 +96,30 @@ function Resumes() {
       );
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleRecalculateATS = async (resumeId) => {
+    try {
+      setRecalculatingId(resumeId);
+      setError("");
+      setSuccess("");
+
+      const response = await api.post(`/resumes/${resumeId}/recalculate-ats`);
+      
+      setResumes((prev) =>
+        prev.map((r) => (r.resume_id === resumeId ? response.data : r))
+      );
+
+      setSuccess("ATS Score & breakdown recalculated successfully.");
+    } catch (err) {
+      console.error(err);
+      setError(
+        err.response?.data?.detail ||
+        "Unable to recalculate ATS score for this resume."
+      );
+    } finally {
+      setRecalculatingId(null);
     }
   };
 
@@ -116,27 +148,37 @@ function Resumes() {
     }
   };
 
-  const handleDelete = async (resumeId) => {
+  const handleDelete = async (resumeId, resumeName) => {
     const confirmed = window.confirm(
-      "Are you sure you want to delete this resume?"
+      `Are you sure you want to permanently delete "${resumeName || 'this resume'}"? This action cannot be undone.`
     );
     if (!confirmed) return;
 
     try {
+      setDeletingId(resumeId);
       setError("");
       setSuccess("");
 
       await api.delete(`/resumes/${resumeId}`);
-      setSuccess("Resume deleted successfully.");
+      setSuccess(`Resume "${resumeName || ''}" deleted successfully.`);
       await fetchResumes();
 
     } catch (err) {
       console.error(err);
       setError(
         err.response?.data?.detail ||
-        "Unable to delete resume."
+        "Unable to delete resume. Please try again."
       );
+    } finally {
+      setDeletingId(null);
     }
+  };
+
+  const toggleSuggestions = (resumeId) => {
+    setExpandedSuggestions((prev) => ({
+      ...prev,
+      [resumeId]: !prev[resumeId],
+    }));
   };
 
   const normalizeSkills = (skills) => {
@@ -146,6 +188,39 @@ function Resumes() {
       return skills.replace(";", ",").split(",").map((s) => s.trim()).filter(Boolean);
     }
     return [];
+  };
+
+  const getScoreBadgeProps = (score) => {
+    if (score >= 80) {
+      return {
+        color: "text-emerald-400",
+        bg: "bg-emerald-500/10 border-emerald-500/30",
+        label: "Excellent (ATS Ready)",
+        barColor: "bg-gradient-to-r from-emerald-500 to-teal-400"
+      };
+    }
+    if (score >= 65) {
+      return {
+        color: "text-blue-400",
+        bg: "bg-blue-500/10 border-blue-500/30",
+        label: "Good (Competitive)",
+        barColor: "bg-gradient-to-r from-blue-500 to-indigo-400"
+      };
+    }
+    if (score >= 45) {
+      return {
+        color: "text-amber-400",
+        bg: "bg-amber-500/10 border-amber-500/30",
+        label: "Fair (Needs Polish)",
+        barColor: "bg-gradient-to-r from-amber-500 to-orange-400"
+      };
+    }
+    return {
+      color: "text-rose-400",
+      bg: "bg-rose-500/10 border-rose-500/30",
+      label: "Needs Improvement",
+      barColor: "bg-gradient-to-r from-rose-500 to-red-400"
+    };
   };
 
   return (
@@ -163,7 +238,7 @@ function Resumes() {
               My Resumes & ATS Profiles
             </h1>
             <p className="text-slate-400 text-sm mt-1">
-              Upload PDF resumes, view extracted tech skills, and monitor baseline ATS readiness.
+              Upload PDF resumes, evaluate 5-dimension ATS scores, and get actionable suggestions to beat recruiter filters.
             </p>
           </div>
 
@@ -212,7 +287,7 @@ function Resumes() {
           </motion.div>
         )}
 
-        {/* Upload Form Modal/Box */}
+        {/* Upload Form Box */}
         {showForm && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -221,7 +296,7 @@ function Resumes() {
           >
             <h2 className="text-xl font-bold text-white mb-2">Upload Resume PDF</h2>
             <p className="text-slate-400 text-xs mb-6">
-              SwipeX extracts your skills, work history, and keywords to rank job compatibility automatically.
+              SwipeX automatically parses your PDF, tests standard ATS sections, scans tech skills, and computes your 0–100 ATS Score.
             </p>
 
             <form onSubmit={handleUploadResume} className="space-y-5">
@@ -258,12 +333,12 @@ function Resumes() {
                   {saving ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Analyzing Resume...</span>
+                      <span>Analyzing ATS Dimensions...</span>
                     </>
                   ) : (
                     <>
                       <UploadCloud className="w-4 h-4" />
-                      <span>Upload & Extract Skills</span>
+                      <span>Upload & Calculate ATS Score</span>
                     </>
                   )}
                 </button>
@@ -276,89 +351,297 @@ function Resumes() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
-            <p className="text-slate-400 text-sm font-medium">Loading your resumes...</p>
+            <p className="text-slate-400 text-sm font-medium">Loading your resumes & ATS profiles...</p>
           </div>
         )}
 
         {/* Resumes Grid */}
         {!loading && !error && resumes.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {resumes.map((resume) => {
               const skills = normalizeSkills(resume.extracted_skills);
               const scoreNum = parseFloat(resume.ats_score) || 0;
+              const isRecalculating = recalculatingId === resume.resume_id;
+              const breakdown = resume.ats_breakdown || {
+                structure: 0,
+                sections: 0,
+                skills: 0,
+                keywords: 0,
+                readability: 0,
+              };
+              const suggestions = Array.isArray(resume.ats_suggestions)
+                ? resume.ats_suggestions
+                : [];
+              const scoreProps = getScoreBadgeProps(scoreNum);
+              const isExpanded = !!expandedSuggestions[resume.resume_id];
 
               return (
                 <motion.div
                   key={resume.resume_id}
-                  whileHover={{ y: -3 }}
-                  className="bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-3xl p-6 shadow-xl transition-all backdrop-blur-sm flex flex-col justify-between"
+                  whileHover={{ y: -2 }}
+                  className="bg-slate-900/80 border border-slate-800 hover:border-slate-700/80 rounded-3xl p-6 shadow-xl transition-all backdrop-blur-sm flex flex-col justify-between"
                 >
                   <div>
-                    {/* Top Row */}
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <FileText className="w-5 h-5 text-blue-400" />
-                          <h3 className="text-lg font-bold text-white">
-                            {resume.resume_name}
-                          </h3>
+                    {/* Top Row: Resume Name & Score Badge */}
+                    <div className="flex items-start justify-between gap-4 mb-4">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-9 h-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
+                            <FileText className="w-4 h-4 text-blue-400" />
+                          </div>
+                          <div className="min-w-0">
+                            <h3 className="text-base font-bold text-white truncate">
+                              {resume.resume_name}
+                            </h3>
+                            <p className="text-[11px] text-slate-400">
+                              Uploaded {new Date(resume.uploaded_at).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
+
                         {resume.is_default && (
-                          <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                          <span className="inline-flex items-center gap-1 mt-2.5 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                             <Star className="w-3 h-3 fill-current" />
                             Default Application Resume
                           </span>
                         )}
                       </div>
 
-                      {/* Score Badge */}
-                      <div className="text-right bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700/60">
-                        <p className="text-[10px] uppercase font-semibold text-slate-400">
-                          ATS Score
+                      {/* Score Badge (Right Side) */}
+                      <div className={`text-right px-3.5 py-2 rounded-2xl border shrink-0 ${scoreProps.bg}`}>
+                        <div className="flex items-center justify-end gap-1.5 mb-0.5">
+                          <Sparkles className="w-3 h-3 text-blue-400" />
+                          <p className="text-[10px] uppercase font-bold tracking-wider text-slate-400">
+                            ATS Score
+                          </p>
+                        </div>
+                        <p className={`text-2xl font-black ${scoreProps.color} tracking-tight`}>
+                          {scoreNum > 0 ? scoreNum : 0}
+                          <span className="text-xs text-slate-400 font-normal"> /100</span>
                         </p>
-                        <p className="text-xl font-black text-emerald-400">
-                          {scoreNum > 0 ? scoreNum : "N/A"}
-                          {scoreNum > 0 && <span className="text-xs text-slate-400 font-normal"> /100</span>}
+                        <p className="text-[10px] font-semibold text-slate-300 mt-0.5">
+                          {scoreNum > 0 ? scoreProps.label : "Unavailable"}
                         </p>
                       </div>
                     </div>
 
                     {/* Progress Gauge */}
-                    {scoreNum > 0 && (
-                      <div className="w-full bg-slate-800 rounded-full h-2 overflow-hidden mb-5">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-emerald-400 h-full rounded-full transition-all"
-                          style={{ width: `${Math.min(scoreNum, 100)}%` }}
-                        />
+                    <div className="w-full bg-slate-800/80 rounded-full h-2 overflow-hidden mb-5">
+                      <div
+                        className={`${scoreProps.barColor} h-full rounded-full transition-all duration-500`}
+                        style={{ width: `${Math.min(scoreNum, 100)}%` }}
+                      />
+                    </div>
+
+                    {/* Unparseable / Empty Warning */}
+                    {scoreNum === 0 && (
+                      <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs mb-5 flex items-start gap-2.5">
+                        <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                        <div className="flex-1">
+                          <p className="font-semibold text-amber-200">ATS Score Unavailable</p>
+                          <p className="text-slate-300 text-[11px] mt-0.5">
+                            Resume content could not be extracted from this PDF. Please ensure your PDF contains searchable text, or click <strong>Recalculate ATS</strong> below.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 5-Dimension ATS Breakdown */}
+                    <div className="bg-slate-950/40 border border-slate-800/80 rounded-2xl p-4 mb-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+                          <Layers className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>ATS Score Breakdown</span>
+                        </div>
+                        <span className="text-[10px] text-slate-400 font-medium">5 Dimensions</span>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {/* 1. Structure & Contact */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-300 text-[11px]">Structure & Contact Info</span>
+                            <span className="font-semibold text-slate-200 text-[11px]">{breakdown.structure || 0}/20</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-blue-500 h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(((breakdown.structure || 0) / 20) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 2. Core Sections */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-300 text-[11px]">Core Sections (Edu, Exp, Proj)</span>
+                            <span className="font-semibold text-slate-200 text-[11px]">{breakdown.sections || 0}/20</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-indigo-500 h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(((breakdown.sections || 0) / 20) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 3. Skills Breadth */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-300 text-[11px]">Skills Breadth & Tech Stack</span>
+                            <span className="font-semibold text-slate-200 text-[11px]">{breakdown.skills || 0}/20</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-teal-500 h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(((breakdown.skills || 0) / 20) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 4. Action Verbs & Impact */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-300 text-[11px]">Action Verbs & Impact Metrics</span>
+                            <span className="font-semibold text-slate-200 text-[11px]">{breakdown.keywords || 0}/20</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-amber-500 h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(((breakdown.keywords || 0) / 20) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+
+                        {/* 5. Readability & Length */}
+                        <div>
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-slate-300 text-[11px]">Readability & Formatting</span>
+                            <span className="font-semibold text-slate-200 text-[11px]">{breakdown.readability || 0}/20</span>
+                          </div>
+                          <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
+                            <div
+                              className="bg-emerald-500 h-full rounded-full transition-all"
+                              style={{ width: `${Math.min(((breakdown.readability || 0) / 20) * 100, 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Suggestions Section */}
+                    {suggestions.length > 0 && (
+                      <div className="mb-4">
+                        <button
+                          type="button"
+                          onClick={() => toggleSuggestions(resume.resume_id)}
+                          className="w-full flex items-center justify-between p-3 rounded-xl bg-slate-800/40 hover:bg-slate-800/70 border border-slate-800 text-left transition cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                            <span className="text-xs font-semibold text-slate-200">
+                              ATS Optimization Checklist ({suggestions.length})
+                            </span>
+                          </div>
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                          )}
+                        </button>
+
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ opacity: 0, height: 0 }}
+                              animate={{ opacity: 1, height: "auto" }}
+                              exit={{ opacity: 0, height: 0 }}
+                              className="mt-2 space-y-2 overflow-hidden"
+                            >
+                              {suggestions.map((sugg, idx) => {
+                                const isWarning = sugg.type === "warning";
+                                const isSuccess = sugg.type === "success";
+                                const isError = sugg.type === "error";
+
+                                return (
+                                  <div
+                                    key={idx}
+                                    className={`p-2.5 rounded-xl border text-xs flex items-start gap-2.5 ${
+                                      isError
+                                        ? "bg-rose-500/10 border-rose-500/20 text-rose-300"
+                                        : isWarning
+                                        ? "bg-amber-500/10 border-amber-500/20 text-amber-300"
+                                        : isSuccess
+                                        ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-300"
+                                        : "bg-blue-500/10 border-blue-500/20 text-blue-300"
+                                    }`}
+                                  >
+                                    {isError ? (
+                                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
+                                    ) : isWarning ? (
+                                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
+                                    ) : isSuccess ? (
+                                      <Check className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+                                    ) : (
+                                      <Info className="w-4 h-4 shrink-0 mt-0.5 text-blue-400" />
+                                    )}
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-1.5 mb-0.5">
+                                        <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+                                          {sugg.category || "Recommendation"}
+                                        </span>
+                                      </div>
+                                      <p className="text-[11px] text-slate-200">
+                                        {sugg.message || sugg}
+                                      </p>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                     )}
 
                     {/* Extracted Skills */}
-                    {skills.length > 0 ? (
-                      <div>
-                        <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400 mb-2">
-                          Extracted Skills ({skills.length})
+                    <div className="mb-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-[11px] uppercase tracking-wider font-semibold text-slate-400">
+                          Extracted Tech Skills ({skills.length})
                         </p>
-                        <div className="flex flex-wrap gap-1.5 mb-4">
+                      </div>
+                      {skills.length > 0 ? (
+                        <div className="flex flex-wrap gap-1.5">
                           {skills.map((skill, idx) => (
                             <span
                               key={idx}
-                              className="px-2.5 py-1 text-xs font-medium rounded-md bg-blue-500/10 text-blue-300 border border-blue-500/20"
+                              className="px-2.5 py-1 text-[11px] font-medium rounded-lg bg-blue-500/10 text-blue-300 border border-blue-500/20"
                             >
                               {skill}
                             </span>
                           ))}
                         </div>
-                      </div>
-                    ) : (
-                      <p className="text-xs text-slate-500 italic mb-4">
-                        No parsed skills stored for this entry.
-                      </p>
-                    )}
+                      ) : (
+                        <p className="text-xs text-slate-500 italic">
+                          No tech skills recognized in this PDF.
+                        </p>
+                      )}
+                    </div>
                   </div>
 
                   {/* Actions Footer */}
-                  <div className="flex items-center gap-3 pt-4 border-t border-slate-800">
+                  <div className="flex flex-wrap items-center gap-2 pt-4 border-t border-slate-800/80">
+                    <button
+                      onClick={() => handleRecalculateATS(resume.resume_id)}
+                      disabled={isRecalculating}
+                      title="Recalculate ATS Score"
+                      className="py-2 px-3 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition border border-slate-700 flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    >
+                      <RotateCw className={`w-3.5 h-3.5 ${isRecalculating ? "animate-spin text-blue-400" : ""}`} />
+                      <span>{isRecalculating ? "Scoring..." : "Recalculate ATS"}</span>
+                    </button>
+
                     {!resume.is_default && (
                       <button
                         onClick={() => handleSetDefault(resume)}
@@ -367,12 +650,24 @@ function Resumes() {
                         Set as Default
                       </button>
                     )}
+
                     <button
-                      onClick={() => handleDelete(resume.resume_id)}
-                      className="py-2 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer"
+                      onClick={() => handleDelete(resume.resume_id, resume.resume_name)}
+                      disabled={deletingId === resume.resume_id || isRecalculating}
+                      title="Delete Resume"
+                      className="py-2 px-3 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Delete</span>
+                      {deletingId === resume.resume_id ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          <span>Deleting...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>Delete</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </motion.div>
@@ -389,7 +684,7 @@ function Resumes() {
             </div>
             <h3 className="text-xl font-bold text-white mb-2">No Resumes Uploaded</h3>
             <p className="text-slate-400 text-xs mb-6">
-              Upload your PDF resume to automatically parse your skills and enable 1-click applications.
+              Upload your PDF resume to automatically calculate your ATS readiness score and extract tech skills for 1-click applications.
             </p>
             <button
               onClick={() => setShowForm(true)}
@@ -406,4 +701,4 @@ function Resumes() {
   );
 }
 
-export default Resumes;
+export default Resumes;

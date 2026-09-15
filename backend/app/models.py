@@ -27,6 +27,9 @@ class Resume(Base):
     uploaded_at = Column(TIMESTAMP, server_default=func.current_timestamp())
     is_default = Column(Boolean, default=False)
     ats_score = Column(Integer, default=0)
+    ats_breakdown = Column(JSON, nullable=True)
+    ats_suggestions = Column(JSON, nullable=True)
+    raw_text = Column(Text, nullable=True)
 
 class CandidateProfile(Base):
     __tablename__ = "candidate_profile"
@@ -73,6 +76,7 @@ class Job(Base):
     required_skills = Column(JSON)
     posted_date = Column(TIMESTAMP, server_default=func.current_timestamp())
     status = Column(String(50))
+    recruiter_id = Column(Integer, ForeignKey("users.user_id"), nullable=True)
 
 class Application(Base):
     __tablename__ = "applications"
@@ -159,3 +163,14 @@ class ATSReport(Base):
     missing_keywords = Column(JSON)  # Array of keywords in job description not in resume
     suggestions = Column(Text)  # Improvement suggestions
     analyzed_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    token_id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.user_id"), nullable=False)
+    token_hash = Column(String(255), unique=True, nullable=False, index=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    is_used = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))

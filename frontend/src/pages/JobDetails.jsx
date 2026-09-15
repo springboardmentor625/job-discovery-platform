@@ -11,7 +11,7 @@ import {
   Building,
   ChevronLeft,
   Share2,
-  Heart,
+  Check,
 } from "lucide-react";
 
 export default function JobDetails() {
@@ -25,6 +25,7 @@ export default function JobDetails() {
   const [atsReport, setAtsReport] = useState(null);
   const [showATS, setShowATS] = useState(false);
   const [resumes, setResumes] = useState([]);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetchJobDetails();
@@ -78,9 +79,30 @@ export default function JobDetails() {
     navigate(`/apply/${jobId}`);
   };
 
-  const handleSaveJob = () => {
-    // TODO: Implement save job functionality
-    console.log("Save job for later");
+  const handleShare = async () => {
+    const shareUrl = window.location.href;
+    const shareData = {
+      title: `${job?.title || "Job Opportunity"} - SwipeX`,
+      text: `Check out this job opportunity for ${job?.title || "this role"} on SwipeX!`,
+      url: shareUrl,
+    };
+
+    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (err) {
+        if (err.name === "AbortError") return;
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 3000);
+    } catch (err) {
+      console.error("Clipboard copy failed:", err);
+    }
   };
 
   if (loading) {
@@ -130,22 +152,9 @@ export default function JobDetails() {
           className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-8 mb-8 text-white"
         >
           <h1 className="text-4xl font-bold mb-2">{job.title}</h1>
-          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-            <p className="text-xl opacity-90">
-              {company?.company_name || "Company"}
-            </p>
-            {(job.competition_level || job.applicant_count !== undefined) && (
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                job.competition_level === 'Low' || job.is_early_applicant
-                  ? 'bg-emerald-500/30 text-emerald-200 border border-emerald-400/40'
-                  : job.competition_level === 'Medium'
-                  ? 'bg-amber-500/30 text-amber-200 border border-amber-400/40'
-                  : 'bg-rose-500/30 text-rose-200 border border-rose-400/40'
-              }`}>
-                {job.competition_level === 'Low' || job.is_early_applicant ? '🔥 Early Applicant • Low Competition' : `${job.competition_level || 'Medium'} Competition`} ({job.applicant_count || 0} applicants)
-              </span>
-            )}
-          </div>
+          <p className="text-xl opacity-90 mb-3">
+            {company?.company_name || "Company"}
+          </p>
 
           {/* Key Info */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
@@ -334,28 +343,29 @@ export default function JobDetails() {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 onClick={handleApply}
-                className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold text-lg transition-colors"
+                className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-bold text-lg transition-colors cursor-pointer"
               >
                 Apply Now
               </motion.button>
 
-              {/* Save Job Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                onClick={handleSaveJob}
-                className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
-              >
-                <Heart className="w-5 h-5" />
-                Save Job
-              </motion.button>
-
               {/* Share Button */}
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleShare}
+                className="w-full px-6 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium flex items-center justify-center gap-2 transition-colors cursor-pointer"
               >
-                <Share2 className="w-5 h-5" />
-                Share
+                {copied ? (
+                  <>
+                    <Check className="w-5 h-5 text-emerald-400" />
+                    <span className="text-emerald-400 font-semibold">Job link copied to clipboard!</span>
+                  </>
+                ) : (
+                  <>
+                    <Share2 className="w-5 h-5" />
+                    <span>Share Job</span>
+                  </>
+                )}
               </motion.button>
 
               {/* Job Stats */}

@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from sqlalchemy import func
-from .models import Job, User, SwipeHistory, Resume, Application, CandidateProfile
+from .models import Job, User, SwipeHistory, Resume, Application, CandidateProfile, Company, ATSReport, Recommendation, Notification
 from .schemas import JobCreate, JobResponse, JobUpdate
 from .auth import require_role, get_current_user
 from .matching import calculate_job_match
@@ -16,7 +16,7 @@ router = APIRouter(
 
 
 def attach_competition_info(job: Job, db: Session) -> Job:
-    """Calculate applicant count and competition level for a job."""
+    """Calculate applicant count, competition level, and company name for a job."""
     count = db.query(func.count(Application.application_id)).filter(
         Application.job_id == job.job_id
     ).scalar() or 0
@@ -31,6 +31,11 @@ def attach_competition_info(job: Job, db: Session) -> Job:
     else:
         job.competition_level = "High"
         job.is_early_applicant = False
+
+    # Attach company name
+    if job.company_id:
+        company = db.query(Company).filter(Company.company_id == job.company_id).first()
+        job.company_name = company.company_name if company else None
         
     return job
 
@@ -41,17 +46,49 @@ def create_job(
     current_user: User = Depends(require_role("recruiter")),
     db: Session = Depends(get_db)
 ):
+    company_id = job.company_id
+    if not company_id and job.company_name:
+        comp = db.query(Company).filter(func.lower(Company.company_name) == func.lower(job.company_name.strip())).first()
+        if not comp:
+            comp = Company(
+                company_name=job.company_name.strip(),
+                company_type="Tech",
+                industry="Information Technology",
+                headquarters=job.location or "Global"
+            )
+            db.add(comp)
+            db.commit()
+            db.refresh(comp)
+        company_id = comp.company_id
+
+    if not company_id:
+        first_comp = db.query(Company).first()
+        if first_comp:
+            company_id = first_comp.company_id
+        else:
+            comp = Company(
+                company_name="SwipeX Partner",
+                company_type="Tech",
+                industry="Information Technology",
+                headquarters="Remote"
+            )
+            db.add(comp)
+            db.commit()
+            db.refresh(comp)
+            company_id = comp.company_id
+
     new_job = Job(
-        company_id=job.company_id,
+        company_id=company_id,
         title=job.title,
         description=job.description,
         location=job.location,
-        employment_type=job.employment_type,
+        employment_type=job.employment_type or "Full-time",
         salary_min=job.salary_min,
         salary_max=job.salary_max,
         experience_required=job.experience_required,
         required_skills=job.required_skills,
-        status=job.status
+        status=job.status or "Active",
+        recruiter_id=current_user.user_id
     )
 
     db.add(new_job)
@@ -59,6 +96,19 @@ def create_job(
     db.refresh(new_job)
 
     return attach_competition_info(new_job, db)
+
+
+@router.get("/recruiter/my-jobs", response_model=list[JobResponse])
+def get_my_posted_jobs(
+    current_user: User = Depends(require_role("recruiter")),
+    db: Session = Depends(get_db)
+):
+    """Retrieve all jobs posted exclusively by the current authenticated recruiter."""
+    jobs = db.query(Job).filter(
+        Job.recruiter_id == current_user.user_id
+    ).order_by(Job.posted_date.desc()).all()
+
+    return [attach_competition_info(j, db) for j in jobs]
 
 @router.get("/", response_model=list[JobResponse])
 def get_jobs(
@@ -196,6 +246,13 @@ def update_job(
             detail="Job not found"
         )
 
+    # Check ownership
+    if job.recruiter_id != current_user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to modify this job"
+        )
+
     update_data = job_data.model_dump(exclude_unset=True)
 
     for key, value in update_data.items():
@@ -204,7 +261,7 @@ def update_job(
     db.commit()
     db.refresh(job)
 
-    return job
+    return attach_competition_info(job, db)
 
 @router.delete("/{job_id}")
 def delete_job(
@@ -220,11 +277,33 @@ def delete_job(
             detail="Job not found"
         )
 
+    # Check ownership
+    if job.recruiter_id != current_user.user_id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not have permission to delete this job"
+        )
+
+    # Cascade cleanups
+    try:
+        db.query(Notification).filter(Notification.related_job_id == job_id).update({Notification.related_job_id: None}, synchronize_session=False)
+        db.query(ATSReport).filter(ATSReport.job_id == job_id).delete(synchronize_session=False)
+        db.query(Recommendation).filter(Recommendation.job_id == job_id).delete(synchronize_session=False)
+        db.query(SwipeHistory).filter(SwipeHistory.job_id == job_id).delete(synchronize_session=False)
+        apps = db.query(Application).filter(Application.job_id == job_id).all()
+        app_ids = [a.application_id for a in apps]
+        if app_ids:
+            db.query(Notification).filter(Notification.related_application_id.in_(app_ids)).update({Notification.related_application_id: None}, synchronize_session=False)
+            db.query(Application).filter(Application.job_id == job_id).delete(synchronize_session=False)
+    except Exception as e:
+        print(f"Error cascade deleting job dependents: {e}")
+
     db.delete(job)
     db.commit()
 
     return {
-        "message": "Job deleted successfully"
+        "message": "Job deleted successfully",
+        "job_id": job_id
     }
 
 @router.get("/{job_id}/match")

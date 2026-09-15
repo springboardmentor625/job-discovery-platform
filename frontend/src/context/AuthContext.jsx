@@ -14,15 +14,15 @@ export function AuthProvider({ children }) {
       const savedToken = localStorage.getItem("token");
       if (savedToken) {
         setToken(savedToken);
+        api.defaults.headers.common["Authorization"] = `Bearer ${savedToken}`;
         try {
-          const res = await api.get("/me", {
-            headers: { Authorization: `Bearer ${savedToken}` },
-          });
+          const res = await api.get("/me");
           setUser(res.data);
         } catch (err) {
           console.error("Token verification failed on startup:", err);
           if (err.response?.status === 401) {
             localStorage.removeItem("token");
+            delete api.defaults.headers.common["Authorization"];
             setToken(null);
             setUser(null);
           }
@@ -35,20 +35,26 @@ export function AuthProvider({ children }) {
   }, []);
 
   const login = async (accessToken) => {
+    // 1. Immediately store token in localStorage and axios headers
     localStorage.setItem("token", accessToken);
+    api.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
     setToken(accessToken);
+
+    // 2. Fetch fresh user information with the new token
     try {
-      const res = await api.get("/me", {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
+      const res = await api.get("/me");
       setUser(res.data);
+      return res.data;
     } catch (e) {
       console.error("Failed to load user info after login:", e);
+      return null;
     }
   };
 
   const logout = () => {
+    // Completely clear authentication tokens and state
     localStorage.removeItem("token");
+    delete api.defaults.headers.common["Authorization"];
     setToken(null);
     setUser(null);
   };

@@ -63,21 +63,23 @@ class CompanyResponse(BaseModel):
 # -------------------------
 
 class JobCreate(BaseModel):
-    company_id: int
+    company_id: Optional[int] = None
+    company_name: Optional[str] = None
     title: str
     description: Optional[str] = None
     location: Optional[str] = None
-    employment_type: Optional[str] = None
+    employment_type: Optional[str] = "Full-time"
     salary_min: Optional[int] = None
     salary_max: Optional[int] = None
     experience_required: Optional[str] = None
     required_skills: Optional[Any] = None
-    status: Optional[str] = None
+    status: Optional[str] = "Active"
 
 
 class JobResponse(BaseModel):
     job_id: int
     company_id: int
+    company_name: Optional[str] = None
     title: str
     description: Optional[str] = None
     location: Optional[str] = None
@@ -88,11 +90,56 @@ class JobResponse(BaseModel):
     required_skills: Optional[Any] = None
     posted_date: datetime
     status: Optional[str] = None
+    recruiter_id: Optional[int] = None
     applicant_count: Optional[int] = 0
     competition_level: Optional[str] = "Low"
     is_early_applicant: Optional[bool] = True
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class RecruiterApplicationResponse(BaseModel):
+    application_id: int
+    user_id: int
+    candidate_name: str
+    candidate_email: str
+    candidate_phone: Optional[str] = None
+    candidate_headline: Optional[str] = None
+    candidate_location: Optional[str] = None
+    candidate_summary: Optional[str] = None
+    candidate_experience_years: Optional[int] = None
+    candidate_education: Optional[Any] = None
+    candidate_projects: Optional[Any] = None
+    candidate_certifications: Optional[Any] = None
+    job_id: int
+    job_title: str
+    job_location: Optional[str] = None
+    job_employment_type: Optional[str] = None
+    job_required_skills: Optional[Any] = None
+    company_name: Optional[str] = None
+    resume_id: Optional[int] = None
+    resume_name: Optional[str] = None
+    resume_skills: Optional[Any] = None
+    resume_match_score: Optional[float] = None
+    resume_ats_score: Optional[int] = None
+    missing_skills: Optional[list] = None
+    matched_skills: Optional[list] = None
+    match_suggestions: Optional[str] = None
+    has_resume: bool = True
+    status: Optional[str] = "Applied"
+    applied_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RecruiterAnalyticsResponse(BaseModel):
+    total_jobs: int = 0
+    active_jobs: int = 0
+    total_applicants: int = 0
+    shortlisted_applicants: int = 0
+    recent_applications: list = []
+    status_distribution: list = []
+    top_skills: list = []
 
 
 # -------------------------
@@ -122,6 +169,8 @@ class ResumeResponse(BaseModel):
     uploaded_at: datetime
     is_default: bool
     ats_score: int = 0
+    ats_breakdown: Optional[Any] = None
+    ats_suggestions: Optional[Any] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -177,6 +226,9 @@ class ApplicationCreate(BaseModel):
     resume_id: int
     status: Optional[str] = "Applied"
 
+
+class ApplicationStatusUpdate(BaseModel):
+    status: str
 
 class ApplicationResponse(BaseModel):
     application_id: int
@@ -356,4 +408,33 @@ class SwipeHistoryResponse(BaseModel):
     salary_max: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# -------------------------
+# Password Reset Schemas
+# -------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ForgotPasswordResponse(BaseModel):
+    message: str
+    reset_token: Optional[str] = None
+    reset_url: Optional[str] = None
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+    confirm_password: str
+
+
+class ResetPasswordResponse(BaseModel):
+    message: str
+
+
+class VerifyResetTokenResponse(BaseModel):
+    valid: bool
+    email_masked: Optional[str] = None
 

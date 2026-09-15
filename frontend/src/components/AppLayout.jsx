@@ -1,4 +1,4 @@
-﻿import { useState } from "react";
+import { useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Sidebar from "./Sidebar";
@@ -12,7 +12,13 @@ export default function AppLayout({ children }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 
   // Pages that use the public landing header instead of sidebar
-  const isPublicPage = ["/", "/login", "/register"].includes(location.pathname);
+  const isPublicPage = [
+    "/",
+    "/login",
+    "/register",
+    "/forgot-password",
+    "/reset-password"
+  ].includes(location.pathname);
 
   if (!isAuthenticated || isPublicPage) {
     return (

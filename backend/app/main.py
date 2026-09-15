@@ -1,9 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from . import models, schemas, crud
-from .database import get_db
-from sqlalchemy.orm import Session
-from .database import SessionLocal
+from .database import get_db, SessionLocal, engine, Base
 from .schemas import UserCreate, CompanyCreate, CompanyResponse
 from .models import User, Company
 from .jobs import router as jobs_router
@@ -16,6 +14,7 @@ from .recommendations import router as recommendations_router
 from .ats_reports import router as ats_reports_router
 from .candidate_profile import router as candidate_profile_router
 from .analytics import router as analytics_router
+from .password_reset import router as password_reset_router
 from fastapi.middleware.cors import CORSMiddleware
 import os
 from dotenv import load_dotenv
@@ -23,6 +22,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
+# Create tables if not present
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(
     title = "SwipeX API"
@@ -36,6 +37,7 @@ app.include_router(recommendations_router)
 app.include_router(ats_reports_router)
 app.include_router(candidate_profile_router)
 app.include_router(analytics_router)
+app.include_router(password_reset_router)
 
 # CORS configuration from environment variables
 cors_origins = os.getenv(

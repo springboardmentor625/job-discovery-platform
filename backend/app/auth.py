@@ -91,15 +91,15 @@ def get_current_user(
         )
 
         user_id = payload.get("sub")
-
         if user_id is None:
             raise credentials_exception
 
-    except JWTError:
+        user_id_int = int(user_id)
+    except (JWTError, ValueError, TypeError, Exception):
         raise credentials_exception
 
     user = db.query(User).filter(
-        User.user_id == int(user_id)
+        User.user_id == user_id_int
     ).first()
 
     if user is None:

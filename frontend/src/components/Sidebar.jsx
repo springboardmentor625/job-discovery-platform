@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
@@ -15,7 +15,9 @@ import {
   LogOut,
   ChevronRight,
   Menu,
-  X
+  X,
+  PlusCircle,
+  Users
 } from "lucide-react";
 
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
@@ -24,23 +26,41 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const { user, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  const isActive = (path) => location.pathname === path;
+  const isActive = (path) => {
+    if (path === "/dashboard") return location.pathname === "/dashboard";
+    return location.pathname.startsWith(path);
+  };
 
   useEffect(() => {
-    api.get("/notifications/unread-count")
-      .then((res) => setUnreadCount(res.data?.unread_count || 0))
-      .catch(() => {});
-  }, [location.pathname]);
+    if (user?.role !== "recruiter") {
+      api.get("/notifications/unread-count")
+        .then((res) => setUnreadCount(res.data?.unread_count || 0))
+        .catch(() => {});
+    }
+  }, [location.pathname, user?.role]);
 
-  const navItems = [
+  // Role-based Navigation Configuration
+  const isRecruiter = user?.role === "recruiter";
+
+  const recruiterNavItems = [
+    { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+    { path: "/recruiter/jobs", label: "Manage Jobs", icon: Briefcase },
+    { path: "/recruiter/post-job", label: "Post Job", icon: PlusCircle, badge: "New" },
+    { path: "/recruiter/applications", label: "Candidates", icon: Users },
+    { path: "/companies", label: "Companies", icon: Building2 },
+  ];
+
+  const candidateNavItems = [
     { path: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
     { path: "/jobs", label: "Discover Jobs", icon: Briefcase },
     { path: "/recommendations", label: "Recommended", icon: Sparkles, badge: "AI" },
-    { path: "/resumes", label: "Resumes & ATS", icon: FileText },
+    { path: "/resumes", label: "Resumes & ATS Score", icon: FileText },
     { path: "/companies", label: "Companies", icon: Building2 },
     { path: "/notifications", label: "Notifications", icon: Bell, count: unreadCount },
     { path: "/swipe-history", label: "Swipe History", icon: History },
   ];
+
+  const navItems = isRecruiter ? recruiterNavItems : candidateNavItems;
 
   const handleLogout = () => {
     logout();
@@ -62,7 +82,11 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
             onClick={handleNavClick}
             className="flex items-center gap-2.5 font-bold text-xl text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-300 to-purple-400 hover:opacity-90 transition-opacity"
           >
-            <div className="w-8 h-8 bg-gradient-to-tr from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-md shadow-blue-500/20 text-white font-black text-sm">
+            <div className={`w-8 h-8 rounded-xl flex items-center justify-center shadow-md text-white font-black text-sm ${
+              isRecruiter
+                ? "bg-gradient-to-tr from-purple-600 to-indigo-600 shadow-purple-500/20"
+                : "bg-gradient-to-tr from-blue-600 to-purple-600 shadow-blue-500/20"
+            }`}>
               S
             </div>
             <span className="tracking-tight">SwipeX</span>
@@ -79,6 +103,17 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
           )}
         </div>
 
+        {/* Role Pill */}
+        <div className="px-3 mb-4">
+          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider border ${
+            isRecruiter
+              ? "bg-purple-500/15 text-purple-300 border-purple-500/30"
+              : "bg-blue-500/15 text-blue-300 border-blue-500/30"
+          }`}>
+            {isRecruiter ? "🏢 Recruiter Portal" : "🎯 Candidate Portal"}
+          </span>
+        </div>
+
         {/* Navigation Items */}
         <nav className="space-y-1.5">
           {navItems.map((item) => {
@@ -92,14 +127,20 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
                 onClick={handleNavClick}
                 className={`group flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all cursor-pointer ${
                   active
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/25 font-semibold"
+                    ? isRecruiter
+                      ? "bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-600/25 font-semibold"
+                      : "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-600/25 font-semibold"
                     : "text-slate-300 hover:text-white hover:bg-slate-800/70"
                 }`}
               >
                 <div className="flex items-center gap-3">
                   <Icon
                     className={`w-4 h-4 transition-colors ${
-                      active ? "text-white" : "text-slate-400 group-hover:text-blue-400"
+                      active
+                        ? "text-white"
+                        : isRecruiter
+                        ? "text-slate-400 group-hover:text-purple-400"
+                        : "text-slate-400 group-hover:text-blue-400"
                     }`}
                   />
                   <span>{item.label}</span>
@@ -136,15 +177,19 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
           }`}
           title="View profile"
         >
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-500 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0">
-            {user?.full_name ? user.full_name.charAt(0).toUpperCase() : "U"}
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0 ${
+            isRecruiter
+              ? "bg-gradient-to-tr from-purple-500 to-indigo-600"
+              : "bg-gradient-to-tr from-blue-500 to-indigo-600"
+          }`}>
+            {user?.full_name ? user.full_name.charAt(0).toUpperCase() : (isRecruiter ? "R" : "U")}
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-bold text-white truncate">
-              {user?.full_name || "Candidate"}
+              {user?.full_name || (isRecruiter ? "Recruiter" : "Candidate")}
             </p>
             <p className="text-[11px] text-slate-400 truncate">
-              {user?.email || "candidate@swipex.io"}
+              {user?.email || "user@swipex.io"}
             </p>
           </div>
           <ChevronRight className="w-4 h-4 text-slate-500" />

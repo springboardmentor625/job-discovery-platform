@@ -86,7 +86,7 @@ export default function SwipeHistory() {
               Swipe History
             </h1>
             <p className="text-slate-400 text-xs md:text-sm mt-1">
-              Review your recent 30 job discovery swipes and interactions.
+              Review your recent 50 job discovery swipes and interactions.
             </p>
           </div>
 
@@ -107,7 +107,7 @@ export default function SwipeHistory() {
             </div>
             <div>
               <p className="text-xs text-slate-400 font-medium">Total Recent Swipes</p>
-              <p className="text-xl font-extrabold text-white">{history.length} <span className="text-xs text-slate-500 font-normal">/ 30 max</span></p>
+              <p className="text-xl font-extrabold text-white">{history.length} <span className="text-xs text-slate-500 font-normal">/ 50 max</span></p>
             </div>
           </div>
 

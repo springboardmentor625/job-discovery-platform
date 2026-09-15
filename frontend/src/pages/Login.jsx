@@ -28,7 +28,7 @@ function Login() {
         password,
       });
 
-      login(response.data.access_token);
+      await login(response.data.access_token);
       navigate("/dashboard");
 
     } catch (err) {
@@ -105,9 +105,12 @@ function Login() {
               <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300">
                 Password
               </label>
-              <span className="text-xs text-blue-400 hover:text-blue-300 cursor-pointer">
+              <Link
+                to="/forgot-password"
+                className="text-xs text-blue-400 hover:text-blue-300 transition cursor-pointer font-medium"
+              >
                 Forgot password?
-              </span>
+              </Link>
             </div>
             <div className="relative">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
@@ -174,4 +177,4 @@ function Login() {
   );
 }
 
-export default Login;
+export default Login;

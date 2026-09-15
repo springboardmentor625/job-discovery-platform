@@ -14,10 +14,10 @@ router = APIRouter(
 )
 
 
-def prune_swipe_history(user_id: int, db: Session, max_limit: int = 30):
+def prune_swipe_history(user_id: int, db: Session, max_limit: int = 50):
     """
-    Database-enforced limit: retain only the latest 30 swipe records per candidate.
-    When record count exceeds 30, the oldest records are automatically deleted.
+    Database-enforced limit: retain only the latest 50 swipe records per candidate.
+    When record count exceeds 50,the oldest records are automatically deleted.
     """
     all_swipes = (
         db.query(SwipeHistory.swipe_id)
@@ -79,8 +79,8 @@ def record_swipe(
         db.commit()
         db.refresh(existing_swipe)
 
-        # Enforce 30-record limit
-        prune_swipe_history(current_user.user_id, db, 30)
+        # Enforce 50-record limit
+        prune_swipe_history(current_user.user_id, db, 50)
 
         return {
             "message": "Swipe updated successfully",
@@ -99,8 +99,8 @@ def record_swipe(
     db.commit()
     db.refresh(new_swipe)
 
-    # Enforce 30-record limit
-    prune_swipe_history(current_user.user_id, db, 30)
+    # Enforce 50-record limit
+    prune_swipe_history(current_user.user_id, db, 50)
 
     return {
         "message": "Swipe recorded successfully",
@@ -115,10 +115,10 @@ def get_swipe_history(
     db: Session = Depends(get_db)
 ):
     """
-    Returns only the authenticated candidate's own latest 30 swipe records, newest first.
+    Returns only the authenticated candidate's own latest 50 swipe records, newest first.
     """
     # Enforce limit check
-    prune_swipe_history(current_user.user_id, db, 30)
+    prune_swipe_history(current_user.user_id, db, 50)
 
     rows = (
         db.query(
@@ -139,7 +139,7 @@ def get_swipe_history(
         .outerjoin(Company, Job.company_id == Company.company_id)
         .filter(SwipeHistory.user_id == current_user.user_id)
         .order_by(SwipeHistory.swiped_at.desc(), SwipeHistory.swipe_id.desc())
-        .limit(30)
+        .limit(50)
         .all()
     )
 

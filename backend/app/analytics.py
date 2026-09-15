@@ -6,8 +6,9 @@ from datetime import datetime, timezone, timedelta
 
 from .database import get_db
 from .models import Application, SwipeHistory, Resume, Recommendation, Job, User
-from .schemas import AnalyticsDashboardResponse
-from .auth import get_current_user
+from .schemas import AnalyticsDashboardResponse, RecruiterAnalyticsResponse
+from .auth import get_current_user, require_role
+from .applications import compute_or_get_job_match_score
 
 
 router = APIRouter(
@@ -134,4 +135,85 @@ def get_analytics_dashboard(
         "skill_gaps": skill_gaps,
         "status_distribution": status_distribution,
         "application_trends": application_trends
+    }
+
+
+@router.get("/recruiter", response_model=RecruiterAnalyticsResponse)
+def get_recruiter_analytics(
+    current_user: User = Depends(require_role("recruiter")),
+    db: Session = Depends(get_db)
+):
+    """Compute recruitment statistics exclusively for the authenticated recruiter's dashboard."""
+    jobs = db.query(Job).filter(
+        Job.recruiter_id == current_user.user_id
+    ).all()
+
+    total_jobs = len(jobs)
+    active_jobs = sum(1 for j in jobs if (j.status or "").lower() in ["active", "open", "published"])
+
+    job_ids = [j.job_id for j in jobs]
+
+    applications = db.query(Application).filter(
+        Application.job_id.in_(job_ids)
+    ).all() if job_ids else []
+
+    total_applicants = len(applications)
+    shortlisted_applicants = sum(1 for a in applications if a.status in ["Shortlisted", "Selected", "Offered", "Interview"])
+
+    applied_count = sum(1 for a in applications if a.status in ["Applied", None])
+    shortlisted_count = sum(1 for a in applications if a.status == "Shortlisted")
+    interview_count = sum(1 for a in applications if a.status == "Interview")
+    selected_count = sum(1 for a in applications if a.status in ["Selected", "Offered"])
+    rejected_count = sum(1 for a in applications if a.status == "Rejected")
+
+    status_distribution = [
+        {"name": "Applied", "value": applied_count, "color": "#3b82f6"},
+        {"name": "Shortlisted", "value": shortlisted_count, "color": "#f59e0b"},
+        {"name": "Interview", "value": interview_count, "color": "#8b5cf6"},
+        {"name": "Selected", "value": selected_count, "color": "#10b981"},
+        {"name": "Rejected", "value": rejected_count, "color": "#ef4444"},
+    ]
+
+    recent_apps = db.query(Application).filter(
+        Application.job_id.in_(job_ids)
+    ).order_by(Application.applied_at.desc()).limit(6).all() if job_ids else []
+
+    recent_applications = []
+    for app in recent_apps:
+        cand = db.query(User).filter(User.user_id == app.user_id).first()
+        j = db.query(Job).filter(Job.job_id == app.job_id).first()
+        res = db.query(Resume).filter(Resume.resume_id == app.resume_id).first() if app.resume_id else None
+        
+        match_score, _, _, _, _ = compute_or_get_job_match_score(res, j, db) if res and j else (None, [], [], None, False)
+        
+        recent_applications.append({
+            "application_id": app.application_id,
+            "candidate_name": cand.full_name if cand else "Candidate",
+            "candidate_email": cand.email if cand else "",
+            "job_title": j.title if j else "Job",
+            "status": app.status or "Applied",
+            "applied_at": app.applied_at.isoformat() if app.applied_at else "",
+            "ats_score": match_score if match_score is not None else (res.ats_score if res else None),
+            "resume_match_score": match_score
+        })
+
+    skill_counts = {}
+    for j in jobs:
+        if isinstance(j.required_skills, list):
+            for s in j.required_skills:
+                skill_counts[str(s)] = skill_counts.get(str(s), 0) + 1
+
+    top_skills = [
+        {"skill": k, "count": v}
+        for k, v in sorted(skill_counts.items(), key=lambda x: x[1], reverse=True)[:6]
+    ]
+
+    return {
+        "total_jobs": total_jobs,
+        "active_jobs": active_jobs,
+        "total_applicants": total_applicants,
+        "shortlisted_applicants": shortlisted_applicants,
+        "recent_applications": recent_applications,
+        "status_distribution": status_distribution,
+        "top_skills": top_skills
     }
