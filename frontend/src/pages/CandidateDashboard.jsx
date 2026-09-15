@@ -495,7 +495,7 @@ function CandidateDashboard() {
 
           >
 
-            Candidate Portal
+            
 
           </div>
 
@@ -568,15 +568,6 @@ function CandidateDashboard() {
             label="AI Recommended Jobs"
 
             path="/recommended-jobs"
-
-          />
-
-
-          <SidebarItem
-
-            label="Swipe Jobs"
-
-            path="/swipe-jobs"
 
           />
 
@@ -862,7 +853,7 @@ function CandidateDashboard() {
 
           >
 
-            Welcome to SwipeX
+            Welcome to SwipeX!
 
           </h1>
 
@@ -925,7 +916,7 @@ function CandidateDashboard() {
 
         {/* ===================================================
             OVERVIEW CARDS
-        =================================================== */}
+        ===================================================== */}
 
 
         <div
@@ -1049,7 +1040,7 @@ function CandidateDashboard() {
 
             <div
 
-              style={{
+            style={{
 
                 fontSize: "25px",
 
@@ -1133,7 +1124,7 @@ function CandidateDashboard() {
 
         {/* ===================================================
             QUICK ACTIONS
-        =================================================== */}
+        ===================================================== */}
 
 
         <section
@@ -1190,7 +1181,7 @@ function CandidateDashboard() {
 
           >
 
-            Continue your job search from here.
+            
 
           </p>
 
@@ -1202,7 +1193,7 @@ function CandidateDashboard() {
               display: "grid",
 
               gridTemplateColumns:
-                "repeat(3, minmax(0, 1fr))",
+                "repeat(2, minmax(0, 1fr))",
 
               gap: "16px",
 
@@ -1267,68 +1258,6 @@ function CandidateDashboard() {
               >
 
                 Explore jobs matched to your profile.
-
-              </div>
-
-            </button>
-
-
-            <button
-
-              type="button"
-
-              onClick={() =>
-                navigate(
-                  "/swipe-jobs"
-                )
-              }
-
-              style={{
-
-                padding: "16px",
-
-                border:
-                  "1px solid #e5e7eb",
-
-                borderRadius: "9px",
-
-                backgroundColor:
-                  "#ffffff",
-
-                color: "#111827",
-
-                fontSize: "14px",
-
-                fontWeight: "600",
-
-                textAlign: "left",
-
-                cursor: "pointer",
-
-              }}
-
-            >
-
-              Swipe Jobs
-
-
-              <div
-
-                style={{
-
-                  marginTop: "5px",
-
-                  fontSize: "12px",
-
-                  fontWeight: "400",
-
-                  color: "#6b7280",
-
-                }}
-
-              >
-
-                Discover jobs through swipe-based matching.
 
               </div>
 
