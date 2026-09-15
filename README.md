@@ -16,27 +16,6 @@ Key Features
 - PostgreSQL database
 - Docker support
 
-Project Workflow
-Register
-   ↓
-Login
-   ↓
-Complete Profile
-   ↓
-Upload Resume
-   ↓
-Resume Parsing
-   ↓
-ATS Analysis
-   ↓
-Job Recommendations
-   ↓
-Swipe Jobs
-   ↓
-Save / Skip / Apply
-   ↓
-Application Tracking
-
 Technology Stack
 Frontend
 React.js
@@ -51,9 +30,7 @@ Uvicorn
 Database
 PostgreSQL
 
-Deployment
-Docker
-Docker Compose
+Deployment: Docker, Docker Compose
 
 Running the Project
 Backend
