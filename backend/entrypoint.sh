@@ -25,10 +25,13 @@ print('PostgreSQL is ready!')
 "
 
 echo "Running database migrations..."
-python manage.py migrate --noinput
+python manage.py migrate --noinput --verbosity 0
 
 echo "Seeding initial jobs..."
-python manage.py seed_jobs
+#python manage.py seed_jobs
+
+echo "Running database migrations..."
+python manage.py migrate --noinput --verbosity 0
 
 echo "Starting SwipeX Django API server..."
-exec python manage.py runserver 0.0.0.0:8000
+exec python manage.py runserver 0.0.0.0:${PORT:-8000}
