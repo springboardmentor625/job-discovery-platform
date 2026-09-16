@@ -56,6 +56,8 @@ function Login() {
       toast.success("Welcome back to SwipeX!");
       navigate("/recommendations");
     } catch (error) {
+      console.log("Login status:", error.response?.status);
+      console.log("Login response:", error.response?.data);
       const backendError =
         error.response?.data?.non_field_errors?.[0] ||
         error.response?.data?.detail ||
