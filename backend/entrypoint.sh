@@ -34,4 +34,8 @@ echo "Running database migrations..."
 python manage.py migrate --noinput --verbosity 0
 
 echo "Starting SwipeX Django API server..."
-exec python manage.py runserver 0.0.0.0:${PORT:-8000}
+if command -v gunicorn > /dev/null 2>&1; then
+    exec gunicorn config.wsgi:application --bind 0.0.0.0:${PORT:-8000} --workers 1 --threads 2 --timeout 120
+else
+    exec python manage.py runserver 0.0.0.0:${PORT:-8000}
+fi

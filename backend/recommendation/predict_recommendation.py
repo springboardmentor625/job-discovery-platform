@@ -8,16 +8,31 @@ POSSIBLE_MODEL_DIRS = [
 ]
 
 
+_CACHED_VECTORIZER = None
+_CACHED_MODEL = None
+_MODEL_LOAD_TRIED = False
+
+
 def load_prediction_model():
+    global _CACHED_VECTORIZER, _CACHED_MODEL, _MODEL_LOAD_TRIED
+    if _MODEL_LOAD_TRIED:
+        return _CACHED_VECTORIZER, _CACHED_MODEL
+
+    _MODEL_LOAD_TRIED = True
     for model_dir in POSSIBLE_MODEL_DIRS:
         vectorizer_path = os.path.join(model_dir, "skill_vectorizer.pkl")
         model_path = os.path.join(model_dir, "recommendation_model.pkl")
 
-        if os.path.exists(vectorizer_path) and os.path.exists(model_path):
+        if (
+            os.path.exists(vectorizer_path)
+            and os.path.exists(model_path)
+            and os.path.getsize(vectorizer_path) > 0
+            and os.path.getsize(model_path) > 0
+        ):
             try:
-                vectorizer = joblib.load(vectorizer_path)
-                model = joblib.load(model_path)
-                return vectorizer, model
+                _CACHED_VECTORIZER = joblib.load(vectorizer_path)
+                _CACHED_MODEL = joblib.load(model_path)
+                return _CACHED_VECTORIZER, _CACHED_MODEL
             except Exception:
                 pass
     return None, None

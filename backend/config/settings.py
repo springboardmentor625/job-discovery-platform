@@ -89,16 +89,32 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('DB_NAME', 'SwipeX_db'),
-        'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'Praveena$3'),
-        'HOST': os.getenv('DB_HOST', 'db'),
-        'PORT': os.getenv('DB_PORT', '5432'),
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    from urllib.parse import urlparse, unquote
+    parsed_db = urlparse(DATABASE_URL)
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': parsed_db.path.lstrip('/'),
+            'USER': unquote(parsed_db.username or ''),
+            'PASSWORD': unquote(parsed_db.password or ''),
+            'HOST': parsed_db.hostname or 'localhost',
+            'PORT': str(parsed_db.port or '5432'),
+        }
     }
-}
+else:
+    default_host = 'localhost' if not os.getenv('DB_HOST') and not os.path.exists('/.dockerenv') else os.getenv('DB_HOST', 'db')
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.getenv('DB_NAME', 'SwipeX_db'),
+            'USER': os.getenv('DB_USER', 'postgres'),
+            'PASSWORD': os.getenv('DB_PASSWORD', ''),
+            'HOST': default_host,
+            'PORT': os.getenv('DB_PORT', '5432'),
+        }
+    }
 
 
 # Password validation

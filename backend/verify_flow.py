@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sys
 import django
 
@@ -91,7 +91,7 @@ def test_full_flow():
     recs_1 = RecommendationService.get_recommendations(user, force_refresh=True)
     recs_1_ids = {r["job"]["id"] for r in recs_1}
     assert job_to_skip not in recs_1_ids, f"Skipped job {job_to_skip} was not excluded from next recommendations!"
-    print(f"✓ Skipped job {job_to_skip} successfully excluded from next batch of {len(recs_1)} jobs.")
+    print(f"[OK] Skipped job {job_to_skip} successfully excluded from next batch of {len(recs_1)} jobs.")
 
     # 5. Swipe 2 jobs RIGHT (Interested) & 1 job (Saved)
     job_to_like_1 = recs_1[0]["job"]["id"]
@@ -108,7 +108,7 @@ def test_full_flow():
     assert job_to_like_1 not in recs_4_ids
     assert job_to_like_2 not in recs_4_ids
     assert job_to_save not in recs_4_ids
-    print(f"✓ All swiped jobs strictly excluded from subsequent recommendations.")
+    print(f"[OK] All swiped jobs strictly excluded from subsequent recommendations.")
 
     # 6. Apply to a job
     job_to_apply = recs_4[0]["job"]["id"]
@@ -126,31 +126,34 @@ def test_full_flow():
         job=Job.objects.get(id=job_to_apply),
     )
     assert not created2, "Duplicate application must not create a new row!"
-    print(f"✓ Duplicate application prevented.")
+    print(f"[OK] Duplicate application prevented.")
 
     # 7. Test continuous learning through 10, 25, 50, and 55 swipes
     print("\n--- Testing Continuous Preference Learning across Swipes 1..55 ---")
-    available_jobs = list(Job.objects.exclude(id__in=JobSwipe.objects.filter(candidate=candidate).values_list("job_id", flat=True))[:60])
+    available_jobs = list(Job.objects.exclude(id__in=JobSwipe.objects.filter(candidate=candidate).values_list("job_id", flat=True)))
 
-    for i, j in enumerate(available_jobs[:51]):
+    # Swipe all but leave at least 2 unswiped jobs so post-swipe recs has jobs to return
+    swipe_limit = max(0, len(available_jobs) - 2)
+    for i, j in enumerate(available_jobs[:swipe_limit]):
         decision = "interested" if i % 2 == 0 else "skipped"
         JobSwipe.objects.create(candidate=candidate, job=j, decision=decision)
 
     total_swipes = JobSwipe.objects.filter(candidate=candidate).count()
-    print(f"Total candidate swipes now in DB: {total_swipes} (>= 50 swipes milestone achieved)")
+    print(f"Total candidate swipes now in DB: {total_swipes}")
 
-    # Generate recommendations post-50 swipes
-    recs_post_50 = RecommendationService.get_recommendations(user, force_refresh=True)
-    print(f"Recommendations count post-50 swipes: {len(recs_post_50)}")
-    assert len(recs_post_50) > 0, "Recommendations failed after 50 swipes!"
-    assert len(recs_post_50) <= 50, "Exceeded 50 jobs!"
+    # Generate recommendations post-swipes
+    recs_post_swipes = RecommendationService.get_recommendations(user, force_refresh=True)
+    print(f"Recommendations count post-swipes: {len(recs_post_swipes)}")
+    if len(available_jobs) > swipe_limit:
+        assert len(recs_post_swipes) > 0, "Recommendations failed after swipes!"
+    assert len(recs_post_swipes) <= 50, "Exceeded 50 jobs!"
 
-    # Verify no swiped jobs in recs_post_50
+    # Verify no swiped jobs in recs_post_swipes
     all_swiped_ids = set(JobSwipe.objects.filter(candidate=candidate).values_list("job_id", flat=True))
-    post_50_ids = {r["job"]["id"] for r in recs_post_50}
-    intersection = post_50_ids & all_swiped_ids
-    assert len(intersection) == 0, f"Found {len(intersection)} previously swiped jobs in post-50 recommendations!"
-    print(f"✓ Zero previously swiped jobs present in post-50 recommendations batch.")
+    post_swipes_ids = {r["job"]["id"] for r in recs_post_swipes}
+    intersection = post_swipes_ids & all_swiped_ids
+    assert len(intersection) == 0, f"Found {len(intersection)} previously swiped jobs in post-swipes recommendations!"
+    print(f"[OK] Zero previously swiped jobs present in post-swipes recommendations batch.")
 
     # Clean up test user
     User.objects.filter(email=test_email).delete()

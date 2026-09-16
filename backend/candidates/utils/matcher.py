@@ -31,64 +31,74 @@ import re
 from typing import Any
 
 import numpy as np
-import spacy
-from sentence_transformers import SentenceTransformer
+from sklearn.feature_extraction.text import HashingVectorizer
 
 
 # =========================================================
-# MODEL LOADING (Lazy loaded to avoid slow startup and checks)
+# MODEL LOADING (Lightweight scikit-learn Hashing Vectorizer)
+# Zero-disk, zero-download, ~0 MB memory footprint
 # =========================================================
 
-_NLP = None
+_VECTORIZER = None
+
+def get_vectorizer():
+    global _VECTORIZER
+    if _VECTORIZER is None:
+        _VECTORIZER = HashingVectorizer(
+            n_features=1024,
+            norm="l2",
+            alternate_sign=False,
+            lowercase=True,
+            stop_words="english",
+            ngram_range=(1, 2),
+        )
+    return _VECTORIZER
 
 def get_nlp():
-    global _NLP
-    if _NLP is None:
-        try:
-            _NLP = spacy.load("en_core_web_sm")
-        except Exception:
-            _NLP = spacy.blank("en")
-    return _NLP
+    """Lightweight NLP compatibility stub."""
+    return None
 
 NLP = get_nlp
 
-_EMBEDDING_MODEL = None
-_EMBEDDING_MODEL_TRIED = False
-
-def get_embedding_model():
-    global _EMBEDDING_MODEL, _EMBEDDING_MODEL_TRIED
-    if not _EMBEDDING_MODEL_TRIED:
-        _EMBEDDING_MODEL_TRIED = True
-        try:
-            from sentence_transformers import SentenceTransformer
-            _EMBEDDING_MODEL = SentenceTransformer("all-MiniLM-L6-v2")
-        except Exception as error:
-            print(f"Sentence Transformer load warning: {error}")
-            _EMBEDDING_MODEL = None
-    return _EMBEDDING_MODEL
 
 class _LazyEmbeddingModel:
-    def __getattr__(self, name):
-        m = get_embedding_model()
-        if m is None:
-            raise AttributeError(name)
-        return getattr(m, name)
+    """Lightweight high-speed drop-in replacement for SentenceTransformer."""
 
-    def encode(self, *args, **kwargs):
-        m = get_embedding_model()
-        if m is None:
-            return None
-        return m.encode(*args, **kwargs)
+    def encode(
+        self,
+        texts: str | list[str],
+        batch_size: int = 64,
+        normalize_embeddings: bool = True,
+        show_progress_bar: bool = False,
+    ):
+        vec = get_vectorizer()
+        is_single = isinstance(texts, str)
+        text_list = [texts] if is_single else list(texts)
+
+        if not text_list:
+            return np.empty((0, 1024), dtype=np.float32)
+
+        safe_texts = [str(t or "").strip() for t in text_list]
+        matrix = vec.transform(safe_texts).toarray().astype(np.float32)
+
+        if is_single:
+            return matrix[0]
+        return matrix
 
     def __bool__(self):
-        return get_embedding_model() is not None
+        return True
 
     def __eq__(self, other):
         if other is None:
-            return get_embedding_model() is None
-        return get_embedding_model() == other
+            return False
+        return isinstance(other, _LazyEmbeddingModel)
+
 
 EMBEDDING_MODEL = _LazyEmbeddingModel()
+
+
+def get_embedding_model():
+    return EMBEDDING_MODEL
 
 
 # =========================================================
@@ -1383,7 +1393,7 @@ def _skills_match(
 def semantic_skill_match(
     candidate_skills: list[str],
     job_skills: list[str],
-    threshold: float = 0.84,
+    threshold: float = 0.55,
 ) -> tuple[
     list[str],
     list[str],
@@ -2195,9 +2205,9 @@ def calculate_job_match(
     semantic_score_percentage = (
         (
             raw_semantic_score
-            - 0.25
+            - 0.05
         )
-        / 0.50
+        / 0.45
     ) * 100.0
 
     semantic_score_percentage = max(
