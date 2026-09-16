@@ -8,7 +8,10 @@ echo "Running database migrations..."
 python manage.py migrate --noinput --verbosity 0
 
 echo "Importing jobs..."
-python manage.py import_jobs
+python manage.py import_jobs --verbosity 1
+
+echo "Checking imported jobs..."
+python manage.py shell -c "from candidates.models import Job; print('Total jobs:', Job.objects.count())"
 
 echo "Starting SwipeX Django API server..."
 
