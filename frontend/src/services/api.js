@@ -37,20 +37,91 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
 
-  (error) => {
-    if (error.response?.status === 401) {
-      const currentPath = window.location.pathname;
+  async (error) => {
+    const originalRequest = error.config;
 
-      if (
-        currentPath !== "/" &&
-        currentPath !== "/register"
-      ) {
+    if (
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest._retry
+    ) {
+      const currentPath =
+        typeof window !== "undefined" ? window.location.pathname : "";
+      const isAuthPath =
+        currentPath === "/" ||
+        currentPath === "/register" ||
+        originalRequest.url?.includes("login/") ||
+        originalRequest.url?.includes("register/") ||
+        originalRequest.url?.includes("token/refresh/");
+
+      if (isAuthPath) {
+        return Promise.reject(error);
+      }
+
+      const refreshToken = localStorage.getItem("refresh");
+      if (!refreshToken) {
         localStorage.removeItem("access");
         localStorage.removeItem("refresh");
-        window.location.href = "/";
+        if (typeof window !== "undefined") {
+          window.location.href = "/";
+        }
+        return Promise.reject(error);
+      }
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers.Authorization = `Bearer ${token}`;
+            return api(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const response = await axios.post(`${API_BASE}token/refresh/`, {
+          refresh: refreshToken,
+        });
+
+        const newAccess = response.data?.access;
+        if (newAccess) {
+          localStorage.setItem("access", newAccess);
+          api.defaults.headers.common.Authorization = `Bearer ${newAccess}`;
+          originalRequest.headers.Authorization = `Bearer ${newAccess}`;
+          processQueue(null, newAccess);
+          return api(originalRequest);
+        }
+      } catch (refreshErr) {
+        processQueue(refreshErr, null);
+        localStorage.removeItem("access");
+        localStorage.removeItem("refresh");
+        if (typeof window !== "undefined") {
+          window.location.href = "/";
+        }
+        return Promise.reject(refreshErr);
+      } finally {
+        isRefreshing = false;
       }
     }
 

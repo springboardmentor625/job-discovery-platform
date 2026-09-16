@@ -1,4 +1,4 @@
-﻿"""
+"""
 AI/NLP based ATS and resume-job matching.
 
 Provides:
@@ -15,6 +15,14 @@ Job-specific ATS uses:
     30% Semantic Resume ↔ Job Fit
     20% Experience Compatibility
      5% Lexical Relevance
+
+Resume Completeness ATS (no job) uses:
+
+    30% Skills (proportional, capped at 30)
+    20% Experience
+    20% Education
+    15% Projects
+    15% Certifications
 
 Skill Match is:
 
@@ -574,40 +582,58 @@ class AIAtsService:
 
         score = 0
 
-        if candidate_text:
-            score += 30
-
-        if candidate_skills:
-            score += 25
+        # Skills = 30 points
+        # Proportional: min(30, num_skills * 3) so 10+ skills = full 30
+        skill_count_for_score = len(candidate_skills)
+        skills_points = min(30, skill_count_for_score * 3)
+        score += skills_points
 
         if isinstance(candidate, dict):
+            # Experience = 20 points
             if candidate.get("experience"):
-                score += 15
+                score += 20
 
+            # Education = 20 points
             if candidate.get("education"):
-                score += 15
+                score += 20
 
+            # Projects = 15 points
             if candidate.get("projects"):
                 score += 15
 
+            # Certifications = 15 points
+            if candidate.get("certifications"):
+                score += 15
+
         else:
+            # Experience = 20 points
             if getattr(
                 candidate,
                 "experience",
                 None,
             ):
-                score += 15
+                score += 20
 
+            # Education = 20 points
             if getattr(
                 candidate,
                 "education",
                 None,
             ):
-                score += 15
+                score += 20
 
+            # Projects = 15 points
             if getattr(
                 candidate,
                 "projects",
+                None,
+            ):
+                score += 15
+
+            # Certifications = 15 points
+            if getattr(
+                candidate,
+                "certifications",
                 None,
             ):
                 score += 15

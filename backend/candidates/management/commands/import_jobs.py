@@ -1,34 +1,50 @@
+import csv
 import os
+import re
 from datetime import datetime, timezone
-import pandas as pd
 
+from django.core.management import call_command
 from django.core.management.base import BaseCommand
+from django.db.models import Count, Q
 from django.utils import timezone as dj_tz
 
 from candidates.models import Job
+from candidates.utils.matcher import normalize_skills
+from candidates.utils.resume_parser import extract_skills
 
 
 def parse_ms_timestamp(val):
     """
-    Safely convert Unix timestamp in milliseconds to timezone-aware UTC datetime.
-    Handles NaN, None, 0, strings, and invalid ranges.
+    Safely convert Unix timestamp in milliseconds or ISO format to timezone-aware UTC datetime.
     """
-    if val is None or pd.isna(val):
+    if val is None:
+        return None
+    val_str = str(val).strip()
+    if not val_str or val_str.lower() in ("nan", "none", "null", "0"):
         return None
     try:
-        val_float = float(val)
+        val_float = float(val_str)
         if val_float <= 0:
             return None
+        if val_float < 1e11:
+            return datetime.fromtimestamp(val_float, tz=timezone.utc)
         return datetime.fromtimestamp(val_float / 1000.0, tz=timezone.utc)
     except (ValueError, OSError, OverflowError):
-        return None
+        pass
+
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%Y-%m-%dT%H:%M:%SZ"):
+        try:
+            return datetime.strptime(val_str, fmt).replace(tzinfo=timezone.utc)
+        except ValueError:
+            continue
+    return None
 
 
 def clean_text_field(val, max_length=None):
-    if val is None or pd.isna(val):
+    if val is None:
         return ""
     text = str(val).strip()
-    if text.lower() in ("nan", "none", "null"):
+    if text.lower() in ("nan", "none", "null", "undefined"):
         return ""
     if max_length:
         return text[:max_length]
@@ -37,16 +53,28 @@ def clean_text_field(val, max_length=None):
 
 class Command(BaseCommand):
     help = (
-        "Safely import and sync historical LinkedIn dataset jobs without deleting "
-        "existing jobs, swipe history, or applications."
+        "Safely import active and historical tech job datasets into PostgreSQL as an "
+        "additional source without deleting existing jobs, swipe history, or applications."
     )
 
     def add_arguments(self, parser):
         parser.add_argument(
+            "--path",
+            type=str,
+            default=None,
+            help="Custom path to the CSV dataset file (default: backend/dataset/postings.csv)",
+        )
+        parser.add_argument(
+            "--source",
+            type=str,
+            default="active_csv",
+            help="Source identifier for the imported jobs (default: active_csv)",
+        )
+        parser.add_argument(
             "--chunk-size",
             type=int,
-            default=5000,
-            help="Batch size for database bulk operations (default: 5000)",
+            default=1000,
+            help="Batch size for database bulk operations (default: 1000)",
         )
         parser.add_argument(
             "--limit",
@@ -54,236 +82,273 @@ class Command(BaseCommand):
             default=None,
             help="Optional limit on number of rows to process",
         )
+        parser.add_argument(
+            "--sync-apis",
+            action="store_true",
+            help="Safely trigger Jobicy and RemoteOK fetcher alongside the CSV import",
+        )
 
     def handle(self, *args, **options):
-        csv_path = "dataset/postings.csv"
-        if not os.path.exists(csv_path):
-            csv_path = "backend/dataset/postings.csv"
+        custom_path = options.get("path")
+        candidate_paths = [
+            custom_path,
+            "backend/dataset/postings.csv",
+            "dataset/postings.csv",
+            "backend/dataset/large_tech_job_dataset_india-selected-columns.csv",
+            "dataset/large_tech_job_dataset_india-selected-columns.csv",
+        ]
+        csv_path = None
+        for p in candidate_paths:
+            if p and os.path.exists(p):
+                csv_path = p
+                break
 
-        if not os.path.exists(csv_path):
-            self.stdout.write(self.style.ERROR(f"Dataset CSV not found at: {csv_path}"))
+        if not csv_path:
+            self.stdout.write(
+                self.style.ERROR(
+                    f"Dataset CSV not found. Checked: {[p for p in candidate_paths if p]}"
+                )
+            )
             return
 
-        chunk_size = options.get("chunk_size", 5000)
+        target_source = options.get("source", "active_csv").strip()
+        chunk_size = options.get("chunk_size", 1000)
         limit = options.get("limit")
-
-        self.stdout.write(f"Reading dataset from {csv_path}...")
-        df = pd.read_csv(csv_path)
-        if limit:
-            df = df.head(limit)
-
-        total_rows = len(df)
-        self.stdout.write(f"Processing {total_rows:,} job records safely...")
-
         now = dj_tz.now()
 
+        self.stdout.write(
+            self.style.MIGRATE_HEADING(
+                f"=== SwipeX Job Ingestion: {csv_path} (Source: '{target_source}') ==="
+            )
+        )
+
+        # 1. Inspect actual columns and file format
+        with open(csv_path, mode="r", encoding="utf-8", errors="replace") as f:
+            reader = csv.DictReader(f)
+            fieldnames = [fn.strip() for fn in (reader.fieldnames or [])]
+
+        self.stdout.write(f"Detected columns ({len(fieldnames)}): {', '.join(fieldnames)}")
+
+        is_10_col_india_dataset = "job_apply_link" in fieldnames and "employer_name" in fieldnames
+
+        # 2. Collect existing IDs and signatures for strict deduplication
         existing_source_ids = set(
-            Job.objects.filter(source="dataset")
+            Job.objects.filter(source=target_source)
             .exclude(source_id="")
             .values_list("source_id", flat=True)
         )
+        existing_signatures = set(
+            Job.objects.filter(is_active=True)
+            .values_list("company", "title")
+        )
+        existing_signatures_normalized = {
+            (c.strip().lower(), t.strip().lower())
+            for c, t in existing_signatures
+            if c and t
+        }
 
-        existing_db_count = Job.objects.filter(source="dataset").count()
         self.stdout.write(
-            f"Current dataset jobs in database: {existing_db_count:,} "
-            f"(with populated source_id: {len(existing_source_ids):,})"
+            f"Pre-existing '{target_source}' jobs in DB: {len(existing_source_ids):,} "
+            f"(Total active jobs in DB: {Job.objects.filter(is_active=True).count():,})"
         )
 
-        needs_in_place_update = (
-            existing_db_count == total_rows and len(existing_source_ids) == 0
-        )
-
-        if needs_in_place_update:
-            self.stdout.write(
-                "Populating timestamps, source_id, and inactive status on existing database rows..."
-            )
-            from django.db import connection
-
-            id_iterator = Job.objects.filter(source="dataset").order_by("id").values_list("id", flat=True).iterator(chunk_size=chunk_size)
-
-            updated_count = 0
-            inactive_count = 0
-
-            for start in range(0, total_rows, chunk_size):
-                end = min(start + chunk_size, total_rows)
-                batch_df = df.iloc[start:end]
-                batch_ids = [next(id_iterator) for _ in range(len(batch_df))]
-
-                params_list = []
-                for (_, row), job_id in zip(batch_df.iterrows(), batch_ids):
-                    raw_job_id = row.get("job_id")
-                    src_id = (
-                        str(int(raw_job_id))
-                        if pd.notna(raw_job_id)
-                        else str(job_id)
-                    )
-
-                    posted_at = parse_ms_timestamp(row.get("listed_time"))
-                    expires_at = parse_ms_timestamp(row.get("expiry"))
-                    closed_time_raw = row.get("closed_time")
-
-                    is_closed = (
-                        pd.notna(closed_time_raw)
-                        and float(closed_time_raw or 0) > 0
-                    )
-                    # For historical dataset jobs, only respect explicit closure.
-                    # All expiry values are from 2024 (past), so ignoring expiry
-                    # keeps the dataset available as sample data for the platform.
-                    is_active = (
-                        not is_closed
-                        and (
-                            expires_at is None
-                            or expires_at > now
-                        )
-                    )
-
-                    if not is_active:
-                        inactive_count += 1
-
-                    params_list.append((
-                        src_id,
-                        posted_at,
-                        expires_at,
-                        is_active,
-                        job_id,
-                    ))
-
-                with connection.cursor() as cursor:
-                    cursor.executemany(
-                        """
-                        UPDATE candidates_job
-                        SET source = 'dataset',
-                            source_id = %s,
-                            posted_at = %s,
-                            expires_at = %s,
-                            is_active = %s
-                        WHERE id = %s
-                        """,
-                        params_list,
-                    )
-
-                updated_count += len(params_list)
-                self.stdout.write(
-                    f"  Updated {updated_count:,}/{total_rows:,} records..."
-                )
-
-            self.stdout.write(
-                self.style.SUCCESS(
-                    f"Successfully updated {updated_count:,} dataset jobs in-place "
-                    f"({inactive_count:,} marked inactive due to closure/expiry). "
-                    f"Preserved all existing swipe history and applications."
-                )
-            )
-            return
-
-
-        new_jobs = []
-        inactive_count = 0
+        added_count = 0
         skipped_duplicates = 0
+        updated_count = 0
+        failed_count = 0
+        seen_in_batch = set()
 
-        for _, row in df.iterrows():
-            raw_job_id = row.get("job_id")
-            src_id = (
-                str(int(raw_job_id))
-                if pd.notna(raw_job_id)
-                else ""
+        jobs_to_create = []
+
+        with open(csv_path, mode="r", encoding="utf-8", errors="replace") as f:
+            reader = csv.DictReader(f)
+            for row_idx, raw_row in enumerate(reader, start=1):
+                if limit and row_idx > limit:
+                    break
+
+                try:
+                    row = {k.strip(): v for k, v in raw_row.items() if k}
+
+                    if is_10_col_india_dataset:
+                        raw_job_id = clean_text_field(row.get("job_id"), 150)
+                        title = clean_text_field(row.get("job_title"), 255) or "Software Engineer"
+                        company = clean_text_field(row.get("employer_name"), 255) or "Tech Company"
+                        apply_url = clean_text_field(row.get("job_apply_link"), 1000)
+
+                        if not raw_job_id:
+                            raw_job_id = f"india_{row_idx}"
+
+                        if raw_job_id in existing_source_ids or raw_job_id in seen_in_batch:
+                            skipped_duplicates += 1
+                            continue
+
+                        sig = (company.strip().lower(), title.strip().lower())
+                        if sig in existing_signatures_normalized and apply_url:
+                            if Job.objects.filter(company__iexact=company, title__iexact=title, application_url=apply_url).exists():
+                                skipped_duplicates += 1
+                                continue
+
+                        seen_in_batch.add(raw_job_id)
+
+                        emp_type = clean_text_field(row.get("job_employment_type"), 50)
+                        lower_title = title.lower()
+
+                        if "remote" in lower_title or "remote" in emp_type.lower():
+                            work_mode = "Remote"
+                            location = "Remote, India"
+                        elif "hybrid" in lower_title:
+                            work_mode = "Hybrid"
+                            location = "India"
+                        else:
+                            work_mode = "On-site"
+                            location = "India"
+
+                        extracted = extract_skills(title)
+                        normalized_skills = normalize_skills(extracted) if extracted else []
+                        skills_str = ", ".join(normalized_skills) if normalized_skills else ""
+
+                        if any(w in lower_title for w in ("senior", "sr.", "lead", "principal", "architect")):
+                            exp = "5+ years (Senior)"
+                        elif any(w in lower_title for w in ("junior", "jr.", "entry", "intern", "associate")):
+                            exp = "0-2 years (Entry Level)"
+                        elif any(w in lower_title for w in ("mid", "specialist", "engineer 2", "analyst")):
+                            exp = "2-5 years (Mid Level)"
+                        else:
+                            exp = "Entry to Mid Level"
+
+                        publisher = clean_text_field(row.get("job_publisher"), 100)
+                        website = clean_text_field(row.get("employer_website"), 255)
+                        desc_parts = [f"Job Opportunity: {title} at {company}."]
+                        if publisher:
+                            desc_parts.append(f"Published via {publisher}.")
+                        if emp_type:
+                            desc_parts.append(f"Employment Type: {emp_type}.")
+                        if website:
+                            desc_parts.append(f"Company Website: {website}.")
+                        description = " ".join(desc_parts)
+
+                        jobs_to_create.append(
+                            Job(
+                                title=title,
+                                company=company,
+                                location=location,
+                                work_mode=work_mode,
+                                salary="",
+                                experience=exp,
+                                description=description,
+                                required_skills=skills_str,
+                                application_url=apply_url,
+                                min_ats=50,
+                                source=target_source,
+                                source_id=raw_job_id,
+                                posted_at=now,
+                                expires_at=None,
+                                is_active=True,
+                            )
+                        )
+
+                    else:
+                        raw_job_id = clean_text_field(row.get("job_id"), 150)
+                        if not raw_job_id:
+                            raw_job_id = str(row_idx)
+
+                        if raw_job_id in existing_source_ids or raw_job_id in seen_in_batch:
+                            skipped_duplicates += 1
+                            continue
+
+                        seen_in_batch.add(raw_job_id)
+
+                        posted_at = parse_ms_timestamp(row.get("listed_time"))
+                        expires_at = parse_ms_timestamp(row.get("expiry"))
+                        closed_time = clean_text_field(row.get("closed_time"))
+                        is_closed = bool(closed_time and float(closed_time or 0) > 0)
+                        is_active = not is_closed and (expires_at is None or expires_at > now)
+
+                        app_url = clean_text_field(row.get("application_url"), 1000) or clean_text_field(row.get("job_posting_url"), 1000)
+
+                        jobs_to_create.append(
+                            Job(
+                                title=clean_text_field(row.get("title"), 255) or "Job Opportunity",
+                                company=clean_text_field(row.get("company_name"), 255) or "Company",
+                                location=clean_text_field(row.get("location"), 255) or "Remote",
+                                work_mode="On-site",
+                                salary="",
+                                experience=clean_text_field(row.get("formatted_experience_level"), 100) or "Entry to Mid Level",
+                                description=clean_text_field(row.get("description"), 4000),
+                                required_skills=clean_text_field(row.get("skills_desc"), 1000),
+                                application_url=app_url,
+                                min_ats=50,
+                                source=target_source,
+                                source_id=raw_job_id,
+                                posted_at=posted_at,
+                                expires_at=expires_at,
+                                is_active=is_active,
+                            )
+                        )
+
+                    if len(jobs_to_create) >= chunk_size:
+                        created_objs = Job.objects.bulk_create(jobs_to_create, ignore_conflicts=True)
+                        added_count += len(created_objs)
+                        jobs_to_create.clear()
+
+                except Exception:
+                    failed_count += 1
+
+            if jobs_to_create:
+                created_objs = Job.objects.bulk_create(jobs_to_create, ignore_conflicts=True)
+                added_count += len(created_objs)
+                jobs_to_create.clear()
+
+        # 3. Optional live API sync
+        if options.get("sync_apis"):
+            self.stdout.write("\nRefreshing live APIs (Jobicy & RemoteOK)...")
+            try:
+                call_command("fetch_live_jobs", source="all")
+            except Exception as api_err:
+                self.stdout.write(self.style.WARNING(f"Live API refresh encountered: {api_err}"))
+
+        # 4. Comprehensive source reporting
+        self.stdout.write("\n" + "=" * 55)
+        self.stdout.write(self.style.SUCCESS("=== DATASET INGESTION & COMBINED JOB REPORT ==="))
+        self.stdout.write("=" * 55)
+        self.stdout.write(f"Jobs Added from CSV:   {added_count:,}")
+        self.stdout.write(f"Duplicates Skipped:    {skipped_duplicates:,}")
+        self.stdout.write(f"Records Updated:       {updated_count:,}")
+        self.stdout.write(f"Failed Records:        {failed_count:,}")
+        self.stdout.write("-" * 55)
+        self.stdout.write("Database Breakdown by Source:")
+
+        sources_summary = list(
+            Job.objects.values("source")
+            .annotate(
+                total=Count("id"),
+                active=Count("id", filter=Q(is_active=True)),
+            )
+            .order_by("source")
+        )
+
+        total_db_jobs = 0
+        total_active_jobs = 0
+
+        for s in sources_summary:
+            src_name = s["source"] or "unspecified"
+            src_total = s["total"]
+            src_active = s["active"]
+            total_db_jobs += src_total
+            total_active_jobs += src_active
+            self.stdout.write(
+                f"  • {src_name.ljust(15)} : {src_active:,} active / {src_total:,} total"
             )
 
-            if src_id and src_id in existing_source_ids:
-                skipped_duplicates += 1
-                continue
-
-            posted_at = parse_ms_timestamp(row.get("listed_time"))
-            expires_at = parse_ms_timestamp(row.get("expiry"))
-            closed_time_raw = row.get("closed_time")
-
-            is_closed = (
-                pd.notna(closed_time_raw)
-                and float(closed_time_raw or 0) > 0
-            )
-            # Historical dataset: only mark inactive if explicitly closed.
-            is_active = (
-    not is_closed
-    and (
-        expires_at is None
-        or expires_at > now
-    )
-)
-
-            if not is_active:
-                inactive_count += 1
-
-            min_sal = row.get("min_salary")
-            max_sal = row.get("max_salary")
-            pay_period = clean_text_field(row.get("pay_period")).upper()
-            period_str = (
-                "yr"
-                if pay_period in ("YEARLY", "YR", "")
-                else "hr"
-                if pay_period in ("HOURLY", "HR")
-                else pay_period.lower()
-            )
-
-            if pd.notna(min_sal) and pd.notna(max_sal):
-                sal_val = f"${int(min_sal):,} - ${int(max_sal):,} / {period_str}"
-            elif pd.notna(max_sal):
-                sal_val = f"Up to ${int(max_sal):,} / {period_str}"
-            elif pd.notna(min_sal):
-                sal_val = f"From ${int(min_sal):,} / {period_str}"
-            else:
-                sal_val = ""
-
-            app_url = clean_text_field(row.get("application_url"), 1000)
-            if not app_url.startswith("http"):
-                app_url = clean_text_field(row.get("job_posting_url"), 1000)
-            if not app_url.startswith("http"):
-                app_url = ""
-
-            work_type = clean_text_field(row.get("formatted_work_type")).lower()
-            remote_allowed = row.get("remote_allowed")
-            loc_str = clean_text_field(row.get("location"), 255)
-            if remote_allowed == 1 or "remote" in work_type or "remote" in loc_str.lower():
-                w_mode = "Remote"
-            elif "hybrid" in work_type or "hybrid" in loc_str.lower():
-                w_mode = "Hybrid"
-            else:
-                w_mode = "On-site"
-
-            exp_val = clean_text_field(row.get("formatted_experience_level"), 100)
-            if not exp_val:
-                exp_val = "Entry to Mid Level"
-
-            new_jobs.append(
-                Job(
-                    title=clean_text_field(row.get("title"), 255) or "Job Opportunity",
-                    company=clean_text_field(row.get("company_name"), 255) or "Unknown",
-                    location=loc_str or "Remote",
-                    salary=sal_val[:100],
-                    work_mode=w_mode[:50],
-                    experience=exp_val,
-                    description=clean_text_field(row.get("description"), 4000),
-                    required_skills=clean_text_field(row.get("skills_desc"), 1000),
-                    application_url=app_url,
-                    min_ats=50,
-                    source="dataset",
-                    source_id=src_id,
-                    posted_at=posted_at,
-                    expires_at=expires_at,
-                    is_active=is_active,
-                )
-            )
-
-            if len(new_jobs) >= chunk_size:
-                Job.objects.bulk_create(new_jobs, ignore_conflicts=True)
-                new_jobs.clear()
-
-        if new_jobs:
-            Job.objects.bulk_create(new_jobs, ignore_conflicts=True)
-
+        self.stdout.write("-" * 55)
         self.stdout.write(
             self.style.SUCCESS(
-                f"Import complete. Total jobs in DB: {Job.objects.count():,}. "
-                f"Skipped duplicates: {skipped_duplicates:,}. "
-                f"Historical dataset safely preserved."
+                f"GRAND TOTAL: {total_active_jobs:,} active jobs / {total_db_jobs:,} total jobs in PostgreSQL."
             )
         )
+        self.stdout.write(
+            "Limitation note: Historical dataset jobs with expired dates are preserved as inactive; "
+            "new active dataset jobs with valid direct links are marked active for matching."
+        )
+        self.stdout.write("=" * 55)
+

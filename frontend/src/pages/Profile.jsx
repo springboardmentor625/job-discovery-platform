@@ -34,10 +34,6 @@ function Profile() {
   const [saving, setSaving] = useState(false);
   const [newSkill, setNewSkill] = useState("");
 
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
   // --------------------------------------------------
   // LOAD PROFILE
   // --------------------------------------------------
@@ -70,6 +66,10 @@ function Profile() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchProfile();
+  }, []);
 
   // --------------------------------------------------
   // INPUT CHANGE

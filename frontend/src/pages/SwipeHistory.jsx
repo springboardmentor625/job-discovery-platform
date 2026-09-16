@@ -2,12 +2,10 @@ import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
 import {
   FaHistory,
-  FaBuilding,
   FaMapMarkerAlt,
   FaCheck,
   FaBookmark,
   FaTimes,
-  FaCheckCircle,
   FaSync,
   FaCompass,
 } from "react-icons/fa";
@@ -22,10 +20,6 @@ function SwipeHistory() {
   const [filter, setFilter] = useState("all"); // 'all' | 'interested' | 'saved' | 'skipped'
   const [selectedJob, setSelectedJob] = useState(null);
   const [removingSwipeId, setRemovingSwipeId] = useState(null);
-
-  useEffect(() => {
-    fetchSwipes();
-  }, [filter]);
 
   const fetchSwipes = async () => {
     try {
@@ -45,6 +39,11 @@ function SwipeHistory() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchSwipes();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filter]);
 
   const handleRemoveSwipe = async (e, swipe) => {
     e.stopPropagation();
@@ -126,22 +125,6 @@ function SwipeHistory() {
     prev ? { ...prev, is_saved: false } : prev
   );
 };
-  const handleApplySuccess = (jobId) => {
-    setSwipes((prev) =>
-      prev.map((s) => {
-        if (s.job?.id === jobId) {
-          return {
-            ...s,
-            job: { ...s.job, is_applied: true },
-          };
-        }
-        return s;
-      })
-    );
-    if (selectedJob && selectedJob.id === jobId) {
-      setSelectedJob((prev) => ({ ...prev, is_applied: true }));
-    }
-  };
 
   return (
     <div className="space-y-6 pb-12">
@@ -218,7 +201,6 @@ function SwipeHistory() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {swipes.map((swipe, idx) => {
             const job = swipe.job || {};
-            const isApplied = job.is_applied;
             const swipeDate = swipe.created_at
               ? new Date(swipe.created_at).toLocaleDateString("en-US", {
                   month: "short",
@@ -233,7 +215,7 @@ function SwipeHistory() {
                 className="bg-white rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-indigo-300 transition cursor-pointer p-6 flex flex-col justify-between space-y-4 group"
               >
                 <div className="space-y-3">
-                  {/* TOP ROW: COMPANY, ROLE, APPLIED */}
+                  {/* TOP ROW: COMPANY, ROLE */}
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-start gap-3 min-w-0">
                       <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-700 font-bold flex items-center justify-center text-base shrink-0 border border-indigo-100">
@@ -248,12 +230,6 @@ function SwipeHistory() {
                         </p>
                       </div>
                     </div>
-
-                    {isApplied && (
-                      <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                        <FaCheckCircle className="text-[9px]" /> Applied
-                      </span>
-                    )}
                   </div>
 
                   {/* LOCATION & WORK MODE */}
@@ -265,6 +241,11 @@ function SwipeHistory() {
                     <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px]">
                       {job.work_mode || "On-site"}
                     </span>
+                    {job.employment_type && (
+                      <span className="px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 font-bold text-[10px]">
+                        {job.employment_type}
+                      </span>
+                    )}
                   </div>
 
                   {/* METRICS */}
@@ -348,7 +329,6 @@ function SwipeHistory() {
         <JobDetailsModal
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
-          onApplySuccess={handleApplySuccess}
           onUnsaveSuccess={handleUnsaveSuccess}
         />
       )}

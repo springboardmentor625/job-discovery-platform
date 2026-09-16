@@ -5,7 +5,7 @@ import {
   FaSearch,
   FaMapMarkerAlt,
   FaBookmark,
-  FaCheckCircle,
+  FaEye,
   FaFilter,
   FaTimes,
   FaExclamationCircle,
@@ -254,27 +254,6 @@ function ExploreJobs() {
       setSavingMap((prev) => ({
         ...prev,
         [job.id]: false,
-      }));
-    }
-  };
-
-  /* =========================================================
-     APPLY SUCCESS
-  ========================================================= */
-
-  const handleApplySuccess = (jobId) => {
-    setJobs((prev) =>
-      prev.map((j) =>
-        j.id === jobId
-          ? { ...j, is_applied: true }
-          : j
-      )
-    );
-
-    if (selectedJob?.id === jobId) {
-      setSelectedJob((prev) => ({
-        ...prev,
-        is_applied: true,
       }));
     }
   };
@@ -646,8 +625,6 @@ function ExploreJobs() {
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
 
             {jobs.map((job) => {
-
-              const isApplied = job.is_applied;
               const isSaved = job.is_saved;
 
               return (
@@ -691,20 +668,6 @@ function ExploreJobs() {
                         </div>
 
                       </div>
-
-
-                      {isApplied && (
-
-                        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-
-                          <FaCheckCircle className="text-[8px]" />
-
-                          Applied
-
-                        </span>
-
-                      )}
-
                     </div>
 
 
@@ -726,6 +689,12 @@ function ExploreJobs() {
                         {job.work_mode || "Not specified"}
 
                       </span>
+
+                      {job.employment_type && (
+                        <span className="px-2 py-1 rounded-md bg-violet-50 text-violet-700 font-bold text-[10px]">
+                          {job.employment_type}
+                        </span>
+                      )}
 
                       {relativeTime(job.posted_at) && (
                         <span className="inline-flex items-center gap-1 text-[10px] text-slate-400 font-medium">
@@ -793,7 +762,7 @@ function ExploreJobs() {
                   <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
 
 
-                    {/* APPLY */}
+                    {/* VIEW DETAILS */}
 
                     <button
                       type="button"
@@ -801,22 +770,10 @@ function ExploreJobs() {
                         e.stopPropagation();
                         setSelectedJob(job);
                       }}
-                      className={`flex-1 h-10 rounded-xl font-bold text-xs inline-flex items-center justify-center gap-1.5 transition ${
-                        isApplied
-                          ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                          : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                      }`}
+                      className="flex-1 h-10 rounded-xl font-bold text-xs inline-flex items-center justify-center gap-1.5 transition bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs cursor-pointer"
                     >
-
-                      {isApplied ? (
-                        <>
-                          <FaCheckCircle />
-                          Applied
-                        </>
-                      ) : (
-                        "Apply"
-                      )}
-
+                      <FaEye className="text-xs" />
+                      View Details
                     </button>
 
 
@@ -1009,7 +966,6 @@ function ExploreJobs() {
         <JobDetailsModal
           job={selectedJob}
           onClose={() => setSelectedJob(null)}
-          onApplySuccess={handleApplySuccess}
         />
 
       )}

@@ -5,8 +5,6 @@ import {
   FaTimes,
   FaMapMarkerAlt,
   FaBriefcase,
-  FaCheckCircle,
-  FaExternalLinkAlt,
   FaCode,
   FaGraduationCap,
   FaUsers,
@@ -58,7 +56,7 @@ const formatBullets = (text) => {
   if (!text) return [];
 
   return text
-    .split(/[•\n\-\*·]/)
+    .split(/[•\n\-*·]/)
     .map((item) => item.trim())
     .filter(
       (item) =>
@@ -94,13 +92,9 @@ function JobDetailsModal({
   job,
   onClose,
   onSwipe,
-  onApplySuccess,
   onUnsaveSuccess,
 }) {
-  const [applied, setApplied] = useState(false);
-  const [applying, setApplying] = useState(false);
-  const [linkOpened, setLinkOpened] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, setSaved] = useState(Boolean(job?.is_saved));
   const [swiping, setSwiping] = useState(false);
 
   const x = useMotionValue(0);
@@ -111,11 +105,8 @@ function JobDetailsModal({
   ======================================================= */
 
   useEffect(() => {
-    setApplied(Boolean(job?.is_applied));
-    setLinkOpened(false);
     setSaved(Boolean(job?.is_saved));
     setSwiping(false);
-    setApplying(false);
 
     x.set(0);
   }, [job, x]);
@@ -139,10 +130,6 @@ function JobDetailsModal({
 
   const atsScore = Math.round(
     Number(job.ats_score ?? 0)
-  );
-
-  const skillPct = Math.round(
-    Number(job.skill_match_percentage ?? 0)
   );
 
 
@@ -247,9 +234,19 @@ function JobDetailsModal({
 
 
   const employmentType =
+    job.employment_type ||
     description.match(
-      /Employment Type:\s*(.*?)(?=Estimated Duration|Min Hourly Rate|Job Description|$)/is
-    )?.[1]?.trim() || "Full-time";
+      /(?:Employment Type|Job Type):\s*([A-Za-z\- /]+)/i
+    )?.[1]?.trim().split("\n")[0].replace(/[.;,].*$/, "").trim() ||
+    (/\bpart[- ]time\b/i.test(`${job.title || ""} ${description.slice(0, 1000)}`)
+      ? "Part-time"
+      : /\binternship\b|\bintern\b/i.test(`${job.title || ""} ${description.slice(0, 1000)}`)
+      ? "Internship"
+      : /\bcontract(?:or)?\b|\bfreelance\b/i.test(`${job.title || ""} ${description.slice(0, 1000)}`)
+      ? "Contract"
+      : /\btemporary\b|\btemp\b/i.test(`${job.title || ""} ${description.slice(0, 1000)}`)
+      ? "Temporary"
+      : "Full-time");
 
 
   const salaryDisplay =
@@ -259,91 +256,6 @@ function JobDetailsModal({
     )
       ? job.salary
       : "Not specified";
-
-
-  /* =======================================================
-     APPLY ACTION — Step 1: Open link and record link_opened
-  ======================================================= */
-
-  const handleApply = async () => {
-    if (applied || applying) return;
-
-    if (!job.application_url) {
-      toast.error("Application link not available for this job.");
-      return;
-    }
-
-    // Open the external link
-    window.open(
-      job.application_url,
-      "_blank",
-      "noopener,noreferrer"
-    );
-
-    setLinkOpened(true);
-
-    // Record that the link was opened (not yet applied)
-    try {
-      await api.post("applications/", {
-        job_id: job.id,
-        status: "link_opened",
-      });
-    } catch (_) {
-      // Non-fatal — link is already open
-    }
-
-    toast("Application link opened! Click \"Mark as Applied\" once you've submitted.", {
-      icon: "🔗",
-      duration: 4000,
-    });
-  };
-
-
-  /* =======================================================
-     APPLY ACTION — Step 2: Explicit "Mark as Applied"
-  ======================================================= */
-
-  const handleMarkApplied = async () => {
-    if (applied || applying) return;
-
-    try {
-      setApplying(true);
-
-      await api.post("applications/", {
-        job_id: job.id,
-        status: "applied",
-      });
-
-      setApplied(true);
-
-      toast.success(`Marked as Applied for ${job.title}!`);
-
-      if (onApplySuccess) {
-        onApplySuccess(job.id);
-      }
-
-    } catch (error) {
-      if (
-        error.response?.status === 200 ||
-        error.response?.data?.detail
-          ?.toLowerCase()
-          ?.includes("already applied")
-      ) {
-        setApplied(true);
-        toast.success("You have already applied for this job.");
-        if (onApplySuccess) {
-          onApplySuccess(job.id);
-        }
-      } else {
-        toast.error(
-          error.response?.data?.detail ||
-          "Unable to record application."
-        );
-      }
-    } finally {
-      setApplying(false);
-    }
-  };
 
 
   /* =======================================================
@@ -1514,55 +1426,77 @@ const handleUnsave = async () => {
 
               </div>
 
+              {job.source && (
+                <div>
+                  <span className="
+                    text-slate-400
+                    block
+                    text-[10px]
+                    uppercase
+                  ">
+                    Job Source
+                  </span>
+
+                  <span className="
+                    font-bold
+                    text-indigo-700
+                    capitalize
+                  ">
+                    {job.source === "active_csv" ? "Active Job Postings" : job.source}
+                  </span>
+                </div>
+              )}
+
             </div>
 
           </section>
 
 
-          {/* FULL DESCRIPTION */}
+          {/* COMPLETE JOB DESCRIPTION */}
 
-          {description && (
+          <section className="
+            space-y-2
+            pt-2
+            border-t
+            border-slate-100
+          ">
 
-            <section className="
-              space-y-2
-              pt-2
-              border-t
-              border-slate-100
+            <h3 className="
+              text-xs
+              font-black
+              uppercase
+              tracking-wider
+              text-slate-400
             ">
 
-              <h3 className="
-                text-xs
-                font-black
-                uppercase
-                tracking-wider
-                text-slate-400
-              ">
+              Complete Job Description
 
-                Full Description
-
-              </h3>
+            </h3>
 
 
-              <div className="
-                text-xs
-                text-slate-600
-                leading-relaxed
-                whitespace-pre-line
-                max-h-48
-                overflow-y-auto
-                p-4
-                rounded-2xl
-                bg-slate-50
-                border border-slate-100
-              ">
+            <div className="
+              text-xs
+              text-slate-700
+              leading-relaxed
+              whitespace-pre-wrap
+              break-words
+              p-5
+              rounded-2xl
+              bg-slate-50
+              border border-slate-100
+            ">
 
-                {description}
+              {description ? (
+                description
+              ) : (
+                <p className="text-slate-400 italic text-xs">
+                  Description not available for this role.
+                </p>
+              )}
 
-              </div>
+            </div>
 
-            </section>
-
-          )}
+          </section>
 
         </div>
 
@@ -1678,70 +1612,6 @@ const handleUnsave = async () => {
             items-center
             gap-2
           ">
-
-
-            {/* APPLY */}
-
-            <button
-
-              type="button"
-
-              onClick={handleApply}
-
-              disabled={
-                applying ||
-                applied ||
-                !job.application_url
-              }
-
-              className={`
-                h-11
-                px-5
-                rounded-xl
-                font-bold
-                text-xs
-                inline-flex
-                items-center
-                gap-1.5
-                transition
-                shadow-sm
-                cursor-pointer
-                disabled:opacity-60
-                ${
-                  applied
-                    ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                    : !job.application_url
-                    ? "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed"
-                    : "bg-indigo-600 hover:bg-indigo-700 text-white"
-                }
-              `}
-            >
-
-              {applied ? (
-
-                <>
-                  <FaCheckCircle />
-                  Applied
-                </>
-
-              ) : (
-
-                <>
-
-                  <FaExternalLinkAlt className="
-                    text-[10px]
-                  " />
-
-                  {applying
-                    ? "Opening link..."
-                    : "Apply on Company Website"}
-
-                </>
-
-              )}
-
-            </button>
-
 
             {/* INTERESTED */}
 

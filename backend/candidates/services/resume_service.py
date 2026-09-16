@@ -176,56 +176,24 @@ class ResumeService:
             result.get("phone")
         )
 
-        # ----------------------------------------------
-        # Profile must already contain both fields
-        # ----------------------------------------------
-
         if not profile_name:
             raise ResumeValidationError(
                 "Please complete your full name in your profile before uploading a resume."
             )
 
-        if not profile_phone:
+        if resume_name and not ResumeService.names_match(profile_name, resume_name):
             raise ResumeValidationError(
-                "Please add a valid phone number to your profile before uploading a resume."
+                "Resume rejected: the name on the resume does not match your profile name."
             )
 
-        # ----------------------------------------------
-        # Resume must contain both fields
-        # ----------------------------------------------
-
-        if not resume_name:
-            raise ResumeValidationError(
-                "We could not detect your name in the resume. "
-                "Please upload a resume containing your name."
-            )
-
-        if not resume_phone:
-            raise ResumeValidationError(
-                "We could not detect a phone number in the resume. "
-                "Please upload a resume containing your phone number."
-            )
-
-        # ----------------------------------------------
-        # NAME MATCH
-        # ----------------------------------------------
-
-        if not ResumeService.names_match(
-    profile_name,
-    resume_name,
-):
-            raise ResumeValidationError(
-        "Resume rejected: the name on the resume does not match your profile name."
-    )
-
-        # ----------------------------------------------
-        # PHONE MATCH
-        # ----------------------------------------------
-
-        if resume_phone != profile_phone:
+        if profile_phone and resume_phone and profile_phone != resume_phone:
             raise ResumeValidationError(
                 "Resume rejected: the phone number on the resume does not match your profile phone number."
             )
+
+        if not profile_phone and resume_phone:
+            candidate.phone = result.get("phone", "")
+            candidate.save(update_fields=["phone"])
 
         return True
 
@@ -430,15 +398,7 @@ class ResumeService:
                 )
             )
 
-            keyword_score = ats.get(
-                "keyword_match_score"
-            )
-
-            resume.probability_score = (
-                keyword_score
-                if keyword_score is not None
-                else ml_score
-            )
+            resume.probability_score = ml_score
 
             resume.ats_score = ats.get(
                 "score",
@@ -489,13 +449,18 @@ class ResumeService:
             resume.save()
 
             # ------------------------------------------
-            # Update candidate skills
+            # Update candidate skills (merge safely)
             # ------------------------------------------
 
             if result.get("skills"):
-                candidate.skills = ", ".join(
-                    result["skills"]
-                )
+                existing_skills = [s.strip() for s in (candidate.skills or "").split(",") if s.strip()]
+                new_skills = [s.strip() for s in result.get("skills", []) if s.strip()]
+                seen_skills = {s.casefold() for s in existing_skills}
+                for s in new_skills:
+                    if s.casefold() not in seen_skills:
+                        existing_skills.append(s)
+                        seen_skills.add(s.casefold())
+                candidate.skills = ", ".join(existing_skills)
 
             # ------------------------------------------
             # DO NOT overwrite candidate phone

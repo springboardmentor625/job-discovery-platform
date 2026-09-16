@@ -13,7 +13,6 @@ import Resume from "./pages/Resume";
 import Recommendations from "./pages/Recommendations";
 import SwipeHistory from "./pages/SwipeHistory";
 import ExploreJobs from "./pages/ExploreJobs";
-import Applications from "./pages/Applications";
 import ProtectedRoute from "./pages/ProtectedRoute";
 import Layout from "./components/Layout";
 
@@ -59,7 +58,6 @@ function App() {
           <Route path="/view-profile" element={<Navigate to="/profile" replace />} />
           <Route path="/create-profile" element={<Navigate to="/profile" replace />} />
           <Route path="/edit-profile" element={<Navigate to="/profile" replace />} />
-          <Route path="/applications" element={<Applications />} />
         </Route>
 
         {/* FALLBACK */}

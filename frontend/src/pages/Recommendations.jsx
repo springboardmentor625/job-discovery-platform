@@ -87,13 +87,9 @@ function SwipeCard({
 }) {
   const job = item.job || {};
 
-  const atsScore = item.ats_score ?? 0;
-  const skillPct = item.skill_match_percentage ?? 0;
-
   const matchedSkills = item.matched_skills || [];
   const missingSkills = item.missing_skills || [];
 
-  const isApplied = item.is_applied || job.is_applied;
   const isSaved = item.is_saved || job.is_saved;
 
   const x = useMotionValue(0);
@@ -209,21 +205,12 @@ function SwipeCard({
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
-
-            {isApplied && (
-              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                <FaCheckCircle className="text-[9px]" />
-                Applied
-              </span>
-            )}
-
-            {isSaved && !isApplied && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                <FaBookmark className="text-[8px]" />
+            {isSaved && (
+              <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                <FaBookmark className="text-[9px]" />
                 Saved
               </span>
             )}
-
           </div>
         </div>
 
@@ -242,31 +229,25 @@ function SwipeCard({
             {job.work_mode || "On-site"}
           </span>
 
+          {job.employment_type && (
+            <span className="px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 font-bold text-[10px]">
+              {job.employment_type}
+            </span>
+          )}
+
           <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[160px]">
             💵 {job.salary && !["competitive", "nan", "none", "null", "not specified"].includes(String(job.salary).toLowerCase().trim()) ? job.salary : "Not specified"}
           </span>
 
         </div>
 
-        {/* =====================================================
-            ATS SCORE
-        ===================================================== */}
-        <div className="pt-1">
-          <div className="bg-indigo-50/70 border border-indigo-100 rounded-2xl p-2.5 text-center flex items-center justify-between px-6">
-            <p className="text-[11px] font-bold uppercase tracking-wider text-indigo-600">
-              ATS Score
-            </p>
-            <p className="text-2xl font-black text-indigo-700">
-              {atsScore}%
-            </p>
-          </div>
+        {/* ROLE SUMMARY */}
+        <div className="pt-2">
+          <p className="text-sm text-slate-700 font-normal line-clamp-3 leading-relaxed">
+            {job.description ||
+              "Tap to view complete job details, responsibilities, and qualifications."}
+          </p>
         </div>
-
-        {/* DESCRIPTION */}
-        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed h-8">
-          {job.description ||
-            "Click to view full job responsibilities and structured qualifications."}
-        </p>
 
         {/* =====================================================
             SKILLS
@@ -329,13 +310,9 @@ function GridCard({
 }) {
   const job = item.job || {};
 
-  const atsScore = item.ats_score ?? 0;
-  const skillPct = item.skill_match_percentage ?? 0;
-
   const matchedSkills = item.matched_skills || [];
   const missingSkills = item.missing_skills || [];
 
-  const isApplied = item.is_applied || job.is_applied;
   const isSaved = item.is_saved || job.is_saved;
 
   return (
@@ -369,14 +346,6 @@ function GridCard({
             </div>
 
           </div>
-
-          {isApplied && (
-            <span className="shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-              <FaCheckCircle className="text-[9px]" />
-              Applied
-            </span>
-          )}
-
         </div>
 
         {/* LOCATION */}
@@ -394,6 +363,12 @@ function GridCard({
             {job.work_mode || "On-site"}
           </span>
 
+          {job.employment_type && (
+            <span className="px-2 py-0.5 rounded-md bg-violet-50 text-violet-700 font-bold text-[10px]">
+              {job.employment_type}
+            </span>
+          )}
+
           <span className="px-2 py-0.5 rounded-md bg-slate-100 text-slate-700 font-semibold text-[10px] truncate max-w-[160px]">
             💵 {job.salary && !["competitive", "nan", "none", "null", "not specified"].includes(String(job.salary).toLowerCase().trim()) ? job.salary : "Not specified"}
           </span>
@@ -407,22 +382,13 @@ function GridCard({
 
         </div>
 
-        {/* ATS SCORE */}
-        <div className="bg-indigo-50/70 border border-indigo-100 rounded-xl p-2.5 text-center flex items-center justify-between px-5">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
-            ATS Score
-          </p>
-
-          <p className="text-xl font-black text-indigo-700">
-            {atsScore}%
+        {/* ROLE SUMMARY */}
+        <div className="pt-2">
+          <p className="text-sm text-slate-700 font-normal line-clamp-3 leading-relaxed">
+            {job.description ||
+              "Tap to view complete job details, responsibilities, and qualifications."}
           </p>
         </div>
-
-        {/* DESCRIPTION */}
-        <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed h-8">
-          {job.description ||
-            "Click to view full job responsibilities and structured qualifications."}
-        </p>
 
         {/* SKILLS */}
         <div className="space-y-2 pt-1 border-t border-slate-100">
@@ -736,50 +702,6 @@ function Recommendations() {
       setActionLoading((prev) => ({
         ...prev,
         [jobId]: false,
-      }));
-    }
-  };
-
-  /* =========================================================
-     APPLY SUCCESS
-  ========================================================= */
-  const handleApplySuccess = (jobId) => {
-    setRecommendations((prev) =>
-      prev.map((item) => {
-        if (item.job?.id === jobId) {
-          return {
-            ...item,
-            is_applied: true,
-            job: {
-              ...item.job,
-              is_applied: true,
-            },
-          };
-        }
-        return item;
-      })
-    );
-
-    setBrowseJobs((prev) =>
-      prev.map((item) => {
-        if (item.job?.id === jobId) {
-          return {
-            ...item,
-            is_applied: true,
-            job: {
-              ...item.job,
-              is_applied: true,
-            },
-          };
-        }
-        return item;
-      })
-    );
-
-    if (selectedJob?.id === jobId) {
-      setSelectedJob((prev) => ({
-        ...prev,
-        is_applied: true,
       }));
     }
   };
@@ -1205,7 +1127,6 @@ function Recommendations() {
 
             setSelectedJob(null);
           }}
-          onApplySuccess={handleApplySuccess}
         />
 
       )}

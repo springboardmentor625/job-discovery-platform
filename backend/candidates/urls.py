@@ -14,7 +14,7 @@ from .views import (
     JobsLastUpdatedView,
 )
 
-from .auth_views import EmailTokenObtainPairView
+from .auth_views import EmailTokenObtainPairView, LogoutView
 
 
 router = DefaultRouter()
@@ -62,6 +62,12 @@ urlpatterns = [
         "login/",
         EmailTokenObtainPairView.as_view(),
         name="token_obtain_pair"
+    ),
+
+    path(
+        "logout/",
+        LogoutView.as_view(),
+        name="logout"
     ),
 
     path(

@@ -6,7 +6,6 @@ import {
   FaRobot,
   FaHistory,
   FaCompass,
-  FaPaperPlane,
   FaSignOutAlt,
   FaTimes,
 } from "react-icons/fa";
@@ -114,15 +113,6 @@ function Sidebar({ mobileOpen, setMobileOpen }) {
           <NavLink to="/explore" onClick={closeMobile} className={linkClass}>
             <FaCompass className="text-base" />
             <span>Explore Jobs</span>
-          </NavLink>
-
-          <NavLink
-            to="/applications"
-            onClick={closeMobile}
-            className={linkClass}
-          >
-            <FaPaperPlane className="text-base" />
-            <span>Applications</span>
           </NavLink>
         </nav>
 

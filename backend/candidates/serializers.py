@@ -397,40 +397,21 @@ class CandidateSerializer(serializers.ModelSerializer):
                     f"Invalid skill: {skill}"
                 )
 
-            # Use the SAME skill vocabulary already used
-            # by the resume parser.
+            # Normalize technical skills if recognized, otherwise accept as free-text skill
             recognized = extract_skills(skill)
-
-            if not recognized:
-                raise serializers.ValidationError(
-                    f"'{skill}' is not recognized as a technical skill. "
-                    "Please enter a valid technical skill."
-                )
-
-            normalized = normalize_skills(
-                recognized
-            )
-
-            if normalized:
-                final_skill = str(
-                    normalized[0]
-                )
+            if recognized:
+                normalized = normalize_skills(recognized)
+                final_skill = str(normalized[0]) if normalized else str(recognized[0])
             else:
-                final_skill = str(
-                    recognized[0]
-                )
+                final_skill = skill.strip()
 
             key = final_skill.casefold()
 
             if key not in seen:
-                cleaned_skills.append(
-                    final_skill
-                )
+                cleaned_skills.append(final_skill)
                 seen.add(key)
 
-        return ", ".join(
-            cleaned_skills
-        )
+        return ", ".join(cleaned_skills)
 
     # =====================================
     # EXPERIENCE
@@ -647,6 +628,8 @@ class ResumeSerializer(serializers.ModelSerializer):
             "display_filename",
             "extracted_skills",
             "detected_skills",
+            "missing_skills",
+            "ats_suggestions",
             "ats_score",
             "probability_score",
             "uploaded_at",
@@ -660,6 +643,8 @@ class ResumeSerializer(serializers.ModelSerializer):
             "preview_pdf",
             "detected_skills",
             "display_filename",
+            "missing_skills",
+            "ats_suggestions",
             "ats_score",
             "probability_score",
             "uploaded_at",
@@ -874,6 +859,7 @@ class JobSerializer(serializers.ModelSerializer):
     applied_at = serializers.SerializerMethodField()
     is_saved = serializers.SerializerMethodField()
     swipe_decision = serializers.SerializerMethodField()
+    employment_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -905,6 +891,7 @@ class JobSerializer(serializers.ModelSerializer):
             "applied_at",
             "is_saved",
             "swipe_decision",
+            "employment_type",
         ]
 
     def to_representation(self, instance):
@@ -1106,12 +1093,40 @@ class JobSerializer(serializers.ModelSerializer):
             obj.id
         )
 
+    def get_employment_type(self, obj):
+        desc = obj.description or ""
+        title = obj.title or ""
+
+        # Check explicit employment type line
+        m = re.search(r"(?:Employment Type|Job Type):\s*([A-Za-z\- /]+)", desc, re.I)
+        if m:
+            raw = m.group(1).strip().split("\n")[0].strip()
+            raw = re.sub(r"[\.;,].*$", "", raw).strip()
+            if raw and len(raw) < 40 and raw.lower() not in ("nan", "null", "none", "", "not specified"):
+                return raw.title() if raw.isupper() or raw.islower() else raw
+
+        # Check common employment type keywords
+        combined = f"{title} {desc[:1000]}"
+        if re.search(r"\bpart[- ]time\b", combined, re.I):
+            return "Part-time"
+        if re.search(r"\binternship\b|\bintern\b", combined, re.I):
+            return "Internship"
+        if re.search(r"\bcontract(?:or)?\b|\bfreelance\b", combined, re.I):
+            return "Contract"
+        if re.search(r"\btemporary\b|\btemp\b", combined, re.I):
+            return "Temporary"
+        if re.search(r"\bfull[- ]time\b", combined, re.I):
+            return "Full-time"
+
+        return "Not specified"
+
 
 # =====================================
 # JOB MINI SERIALIZER
 # =====================================
 
 class JobMiniSerializer(serializers.ModelSerializer):
+    employment_type = serializers.SerializerMethodField()
 
     class Meta:
         model = Job
@@ -1131,7 +1146,33 @@ class JobMiniSerializer(serializers.ModelSerializer):
             "min_ats",
             "source",
             "posted_at",
+            "employment_type",
         ]
+
+    def get_employment_type(self, obj):
+        desc = obj.description or ""
+        title = obj.title or ""
+
+        m = re.search(r"(?:Employment Type|Job Type):\s*([A-Za-z\- /]+)", desc, re.I)
+        if m:
+            raw = m.group(1).strip().split("\n")[0].strip()
+            raw = re.sub(r"[\.;,].*$", "", raw).strip()
+            if raw and len(raw) < 40 and raw.lower() not in ("nan", "null", "none", "", "not specified"):
+                return raw.title() if raw.isupper() or raw.islower() else raw
+
+        combined = f"{title} {desc[:1000]}"
+        if re.search(r"\bpart[- ]time\b", combined, re.I):
+            return "Part-time"
+        if re.search(r"\binternship\b|\bintern\b", combined, re.I):
+            return "Internship"
+        if re.search(r"\bcontract(?:or)?\b|\bfreelance\b", combined, re.I):
+            return "Contract"
+        if re.search(r"\btemporary\b|\btemp\b", combined, re.I):
+            return "Temporary"
+        if re.search(r"\bfull[- ]time\b", combined, re.I):
+            return "Full-time"
+
+        return "Not specified"
 
     def to_representation(self, instance):
         data = super().to_representation(instance)

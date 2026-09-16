@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import {
   FaUpload,
@@ -25,14 +25,9 @@ function Resume() {
   const [showReplaceModal, setShowReplaceModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
-  useEffect(() => {
-    fetchResume();
-  }, []);
-
   /* =========================================================
      FETCH RESUME
   ========================================================= */
-
   const fetchResume = async () => {
     try {
       setLoading(true);
@@ -56,6 +51,10 @@ function Resume() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchResume();
+  }, []);
 
   /* =========================================================
      FILE VALIDATION
@@ -392,6 +391,8 @@ toast.error(errorMessage);
             </div>
 
           </div>
+
+
 
           {/* =================================================
               DETECTED SKILLS
