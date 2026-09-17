@@ -2,46 +2,47 @@
 
 SwipeX is a full-stack intelligent job discovery platform that helps candidates discover relevant job opportunities through a swipe-based interface.
 
-The platform combines **resume parsing, NLP-based skill extraction, semantic matching, job-specific ATS scoring, machine learning, and swipe-based personalization** to provide candidates with more relevant job recommendations.
-
----
-
-## Project Objective
-
-The main objective of SwipeX is to simplify traditional job searching by allowing candidates to:
-
-* Create and manage their profile
-* Upload and analyze their resume
-* Receive job-specific ATS and skill-match scores
-* Get personalized job recommendations
-* Discover jobs using a swipe-based interface
-* Save, skip, or show interest in jobs
-* Review swipe history
-* Explore jobs using search and filters
-* Track applications
+The platform combines candidate profiles, resume analysis, ATS scoring, machine-learning-based prediction, semantic text matching, and swipe-based personalization to provide relevant job recommendations.
 
 The project focuses on the **candidate workflow**.
 
 ---
 
+## Project Objective
+
+SwipeX aims to simplify traditional job searching by allowing candidates to:
+
+* Register and log in securely
+* Create and manage their profile
+* Upload and analyze their resume
+* View resume-related prediction results
+* Discover personalized job recommendations
+* Swipe left to skip jobs
+* Swipe right to show interest
+* Save jobs
+* Review swipe history
+* Explore jobs using search and filters
+* View complete job details
+
+---
+
 ## Key Features
 
-### 1. Candidate Registration & Authentication
+### 1. Candidate Registration and Authentication
 
-Candidates can register and log in securely.
-
+* Candidate registration and login
 * JWT-based authentication
-* Protected routes
+* Protected frontend routes
 * Candidate-specific data
-* Secure logout
+* Logout functionality
 
 ### 2. Candidate Profile
 
-Candidates can maintain information such as:
+Candidates can manage information such as:
 
-* Name
-* Contact information
-* Location
+* Full name
+* Email and phone number
+* Profile picture
 * Skills
 * Education
 * Experience
@@ -49,16 +50,17 @@ Candidates can maintain information such as:
 * Certifications
 * Career preferences
 
-Profile information contributes to personalized recommendations.
+Profile information is used during job matching and recommendation generation.
 
-### 3. Resume Upload & Analysis
+### 3. Resume Upload and Analysis
 
-Candidates can upload resumes in supported formats such as:
+Candidates can upload supported resume files, including:
 
 * PDF
+* DOC
 * DOCX
 
-The resume processing pipeline performs:
+The resume-processing workflow includes:
 
 ```text
 Resume Upload
@@ -67,82 +69,90 @@ File Validation
       ↓
 Text Extraction
       ↓
-Resume Parsing
+Resume Information Processing
       ↓
 Skill Extraction
       ↓
-Experience / Education Extraction
-      ↓
-ATS & Matching Preparation
+ATS and Recommendation Preparation
 ```
 
-Detected skills are displayed to the candidate and are used during job matching.
+The extracted resume information is used for ATS calculation, job matching, and recommendation generation.
 
 ---
 
-## AI / ML Pipeline
+## AI and Machine Learning Pipeline
 
-AI and machine-learning techniques are a core part of SwipeX.
+SwipeX uses different machine-learning techniques for different tasks.
 
-### spaCy
+### 1. Multinomial Naive Bayes
 
-spaCy is used for NLP processing and text analysis, including skill extraction and normalization.
+Multinomial Naive Bayes is used for resume-related prediction.
 
-### Sentence Transformers
+The model uses:
 
-SwipeX uses Sentence Transformers for semantic text matching.
+* TF-IDF text features
+* Resume and job-related text
+* A trained machine-learning model
+* Probability prediction during resume processing
 
-The project uses:
+The predicted probability is stored with the candidate's resume information.
 
-```text
-all-MiniLM-L6-v2
-```
+### 2. Logistic Regression
 
-Resume and job-related text are converted into embeddings so that semantically similar content can be matched even when the exact wording differs.
+Logistic Regression is used for learning candidate preferences from swipe behaviour.
 
-### scikit-learn
+The recommendation system considers positive and negative interactions, such as:
 
-scikit-learn is used for machine-learning components related to recommendation preference learning and classification.
+* Interested
+* Saved
+* Skipped
+
+The Logistic Regression preference model is trained when sufficient feedback is available, including at least:
+
+* 3 positive interactions
+* 3 negative interactions
+
+Before enough swipe data is available, SwipeX uses a cold-start recommendation strategy based on candidate and job information.
+
+### 3. HashingVectorizer
+
+SwipeX uses `HashingVectorizer` from scikit-learn for lightweight semantic text features.
+
+It converts resume and job-related text into numerical vectors that can be used for similarity calculations.
+
+The current implementation uses a lightweight vectorization approach rather than Sentence Transformers or the `all-MiniLM-L6-v2` model.
 
 ---
 
-# Job-Specific ATS Matching
+## Job-Specific ATS Matching
 
-SwipeX calculates ATS compatibility against a **specific job**, rather than providing only a generic resume-quality score.
+SwipeX calculates ATS compatibility against a specific job.
 
-The matching process considers:
-
-* Required skills
-* Semantic similarity
-* Experience fit
-* Relevant job-description content
-* Candidate resume/profile information
-
-The current ATS calculation uses:
+The job-specific ATS score considers:
 
 | Component           |   Weight |
 | ------------------- | -------: |
 | Skill Match         |      45% |
 | Semantic Similarity |      30% |
 | Experience Fit      |      20% |
-| Lexical Similarity  |       5% |
+| Lexical Relevance   |       5% |
 | **Total**           | **100%** |
 
 ### Skill Match
 
-Skill Match represents the percentage of recognized required job skills that the candidate has.
+Skill Match represents how many of the required job skills are present in the candidate's skills or resume information.
 
 For example:
 
 ```text
-Required:
+Required Skills:
 Python
 SQL
 Django
 React
 Git
 
-Candidate:
+Candidate Skills:
 Python
 SQL
 Django
@@ -150,45 +160,40 @@ Django
 Skill Match = 3 / 5 × 100 = 60%
 ```
 
-When there are no matched required skills, the Skill Match is **0%**.
+The score is based on the matching skills identified by the system.
 
 ---
 
-# Personalized Recommendation System
+## Personalized Recommendation System
 
-The recommendation system combines candidate information, job information, and behavioural feedback.
+The recommendation system combines candidate information, job information, ATS results, semantic similarity, and swipe behaviour.
 
 ```text
 Candidate Profile
        +
-Resume
+Resume Information
        +
 Extracted Skills
        +
 Job Requirements
        +
-Semantic Matching
-       +
 ATS Score
        +
-Swipe History
+Semantic Similarity
        +
-Application Signals
+Swipe History
        ↓
-Recommendation Ranking
+Recommendation Scoring
        ↓
 Recommended Jobs
 ```
 
----
+### Cold-Start Recommendations
 
-## Cold Start Recommendation
+For candidates with limited or no swipe history, SwipeX uses available information such as:
 
-For a new candidate without swipe history, SwipeX uses available candidate information such as:
-
-* Resume
-* Extracted skills
-* Profile information
+* Candidate skills
+* Resume information
 * Preferred roles
 * Preferred locations
 * Work mode
@@ -197,108 +202,99 @@ For a new candidate without swipe history, SwipeX uses available candidate infor
 * ATS compatibility
 * Semantic similarity
 
-This allows recommendations to be generated before the candidate has provided behavioural feedback.
+This allows recommendations to be generated before enough behavioural data is collected.
 
----
-
-## Continuous Learning from Swipes
+### Continuous Learning from Swipes
 
 Candidate interactions are stored as behavioural signals.
 
-The available actions are:
-
-* **Skip**
-* **Save**
-* **Interested**
-
-Application activity can also contribute as a positive signal.
-
-The recommendation system uses these interactions to improve future ranking.
+The recommendation system uses these interactions to improve future job ranking.
 
 ```text
-Candidate Action
+Candidate Swipe
       ↓
-Stored in Database
+Swipe Stored in Database
       ↓
-Recommendation Feedback
+Positive or Negative Feedback
       ↓
-Updated Candidate Preference
+Preference Learning
       ↓
-New Recommendation Ranking
+Updated Recommendation Ranking
 ```
 
-Personalization starts from the candidate's interactions rather than waiting for a fixed number of swipes.
-
-The recommendation system also uses a bounded recommendation batch so that a large number of jobs does not need to be processed on every request.
+Previously processed jobs are excluded from future recommendation results.
 
 ---
 
-# Swipe-Based Job Discovery
+## Swipe-Based Job Discovery
 
-SwipeX's main discovery experience is the **Swipe Deck**.
+The main discovery experience is the **Swipe Deck**.
 
-Each job is presented as a recommendation card.
+Each job is displayed as a recommendation card. Candidates can:
 
-Candidates can:
-
-* Drag left to skip
+* Drag left to skip a job
 * Drag right to show interest
 * Save a job
 * Open complete job details
 
-Framer Motion is used to provide the swipe interaction.
-
-Previously processed jobs are excluded from future recommendation results so the same job does not repeatedly appear.
+Framer Motion is used to support the swipe interaction.
 
 ---
 
-# Recommendation Retrieval
+## Recommendation Scoring
 
-SwipeX works with a large job dataset, so the system uses staged retrieval instead of performing expensive semantic matching against every job for every recommendation request.
+SwipeX uses different scoring strategies depending on the amount of candidate feedback.
 
-```text
-Large Job Dataset
-       ↓
-Candidate-specific retrieval
-       ↓
-Relevant Job Pool
-       ↓
-Batch Embeddings
-       ↓
-ATS + Skill + Semantic + Experience Matching
-       ↓
-Recommendation Ranking
-       ↓
-Top Jobs
-```
+### Cold-Start Scoring
 
-This approach reduces unnecessary computation and makes recommendation generation more practical for a large dataset.
+For candidates with limited swipe history, the recommendation score considers:
+
+| Component      | Weight |
+| -------------- | -----: |
+| ATS Score      |    35% |
+| Skill Match    |    30% |
+| Semantic Fit   |    20% |
+| Experience Fit |    15% |
+
+### Preference-Based Scoring
+
+When sufficient positive and negative swipe feedback is available, the recommendation system also uses learned preference information.
+
+The preference-based ranking considers:
+
+* Learned swipe preference
+* ATS compatibility
+* Skill match
+* Semantic similarity
+* Experience fit
+
+This allows recommendations to become more personalized as the candidate interacts with jobs.
 
 ---
 
-# Candidate-Facing Recommendation Information
+## Candidate-Facing Recommendation Information
 
-Each recommendation provides useful job-specific information such as:
+The recommendation interface can display information such as:
 
-* ATS Score
-* Skill Match
-* Skills You Have
-* Skills to Improve
 * Job title
 * Company
 * Location
+* ATS score
+* Skill match
+* Skills already matched
+* Skills to improve
 * Experience requirements
 * Job description
 
-The internal recommendation ranking combines multiple signals, while the UI focuses on understandable metrics for the candidate.
+The internal recommendation score combines multiple signals, while the user interface presents understandable job-related information.
 
 ---
 
-# Job Details
+## Job Details
 
-Candidates can open a detailed view of any recommendation.
+Candidates can open a detailed view of a job.
 
-The Job Details section can contain:
+Job details may include:
 
 * Job title
 * Company
@@ -311,37 +307,9 @@ The Job Details section can contain:
 * Salary information when available
 * Job description
 
-This information is also used by the matching system.
-
 ---
 
-# Applications
-
-When a candidate applies to a job, SwipeX records the application against the candidate and job.
-
-This provides:
-
-* Application history
-* Duplicate prevention
-* Application status tracking
-
-When an external application URL is available, SwipeX can redirect the candidate to the company's application page.
-
-The application flow is therefore:
-
-```text
-Candidate clicks Apply
-        ↓
-External application page
-        +
-SwipeX records application
-        ↓
-Application history
-```
-
----
-
-# Swipe History
+## Swipe History
 
 Swipe History allows candidates to review their previous job interactions.
 
@@ -352,111 +320,76 @@ Available categories include:
 * Saved
 * Skipped
 
-Swipe history is useful both for the candidate and for recommendation personalization.
+Swipe history also provides behavioural feedback for the recommendation system.
 
 ---
 
-# Explore Jobs
+## Explore Jobs
 
-SwipeX also provides an **Explore Jobs** page for candidates who prefer traditional job browsing.
+SwipeX provides an Explore Jobs page for candidates who prefer traditional job browsing.
 
 Features include:
 
-* Search
+* Job search
 * Backend-side filtering
 * Server-side pagination
 * Job details
-* Application actions
+* Job recommendations through the backend API
 
-Instead of loading the entire dataset into the browser, jobs are retrieved page by page from the backend.
+Jobs are retrieved page by page instead of loading the complete dataset into the browser.
 
 ---
 
-# Swipe Deck vs Explore Jobs
-
-Swipe Deck and Explore Jobs provide two different discovery experiences.
+## Swipe Deck vs Explore Jobs
 
 ### Swipe Deck
 
 Designed for:
 
-* Fast decisions
-* Personalized discovery
-* Swipe interaction
+* Fast job discovery
+* Personalized recommendations
+* Swipe-based interaction
 * Behavioural feedback
 
 ### Explore Jobs
 
 Designed for:
 
-* Traditional browsing
+* Traditional job browsing
 * Searching
 * Filtering
-* Comparing multiple jobs
+* Viewing multiple job listings
+* Opening job details
 
-Swipe Deck is the primary experience because swipe-based job discovery is the core concept of SwipeX.
-
----
-
-# Database
-
-SwipeX uses **PostgreSQL** as the relational database.
-
-The database documentation contains the ER diagram.
-
-### Database Summary
-
-**10 Tables | 10 Primary Keys | 13 Foreign Keys**
-
-Core entities include:
-
-```text
-users
-companies
-candidate_profile
-jobs
-resumes
-applications
-swipe_history
-ats_reports
-recommendations
-notifications
-```
-
-Main relationships include:
-
-```text
-users
- ├── candidate_profile
- ├── resumes
- ├── applications
- ├── swipe_history
- ├── recommendations
- └── notifications
-
-companies
- └── jobs
-
-jobs
- ├── applications
- ├── swipe_history
- ├── ats_reports
- └── recommendations
-
-resumes
- ├── applications
- └── ats_reports
-```
-
-Database diagram:
-
-```text
-docs/database.png
-```
+The Swipe Deck is the primary experience because swipe-based job discovery is the core concept of SwipeX.
 
 ---
 
-# Backend
+## Database
+
+SwipeX uses **PostgreSQL** as its relational database.
+
+The main database entities include:
+
+* Users
+* Candidate profiles
+* Resumes
+* Jobs
+* Companies
+* Job swipes
+* Applications
+
+The database diagram is available at:
+
+```text
+docs/SwipeX_database.png
+```
+
+The exact database structure is defined by the Django models and migrations in the backend.
+
+---
+
+## Backend
 
 The backend is built using:
 
@@ -464,19 +397,22 @@ The backend is built using:
 * Django REST Framework
 * Simple JWT
 * PostgreSQL
+* scikit-learn
+* NumPy
+* pandas
 
 The backend handles:
 
 * Authentication
 * Candidate profiles
+* Resume uploads
 * Resume processing
 * Job retrieval
 * ATS calculation
 * Skill matching
-* Recommendations
+* Recommendation generation
 * Swipe history
-* Applications
-* Notifications
+* Database operations
 
 General backend flow:
 
@@ -487,16 +423,16 @@ Django View
     ↓
 Serializer
     ↓
-Service / Utility
+Service or Utility
     ↓
-Database / AI-ML Processing
+Database or ML Processing
     ↓
 API Response
 ```
 
 ---
 
-# Frontend
+## Frontend
 
 The frontend is built using:
 
@@ -505,28 +441,30 @@ The frontend is built using:
 * Tailwind CSS
 * Framer Motion
 
-Main candidate pages include:
+The frontend includes candidate-facing pages such as:
 
-* Profile
+* Dashboard
+* Jobs
 * Resume
-* Recommendations
+* Profile
+* Edit Profile
 * Swipe History
-* Explore Jobs
+* Settings
 
 The application uses a shared authenticated layout and sidebar navigation.
 
 ---
 
-# Authentication Flow
+## Authentication Flow
 
 SwipeX uses JWT authentication.
 
 ```text
 Login
   ↓
-Credentials Validation
+Credential Validation
   ↓
-JWT Token
+JWT Access Token
   ↓
 Frontend Stores Token
   ↓
@@ -535,35 +473,42 @@ Bearer Token Added to API Requests
 Protected Backend Endpoints
 ```
 
-Only authenticated users can access protected candidate functionality.
+Only authenticated candidates can access protected functionality.
 
 ---
 
-# Resume Processing Technologies
+## Resume Processing Technologies
 
-Resume processing uses dedicated libraries for document handling and text extraction, including support for PDF and DOCX files.
+Resume processing uses libraries for document handling and text extraction, including support for PDF and DOC/DOCX files.
 
-The extracted information is then used by the matching and recommendation pipeline.
+The extracted information is used by:
+
+* Resume analysis
+* Skill matching
+* ATS calculation
+* Recommendation generation
+
+DOC/DOCX preview processing may use headless LibreOffice conversion when required.
 
 ---
 
-# Job Import
+## Job Import
 
-SwipeX supports importing job postings from the available dataset.
+SwipeX supports importing job postings from available datasets.
 
-The import process stores job information in PostgreSQL so that the jobs can be used by:
+The import process stores job information in PostgreSQL so that jobs can be used for:
 
 * Recommendations
 * Explore Jobs
 * ATS matching
 * Swipe Deck
-* Applications
+* Job details
 
-Management commands are included for importing and seeding job data.
+Django management commands are included for importing job data.
 
 ---
 
-# Docker
+## Docker
 
 SwipeX is containerized using Docker and Docker Compose.
 
@@ -577,15 +522,13 @@ Backend
 PostgreSQL
 ```
 
-Docker provides a consistent environment for running the project.
-
 Start the application with:
 
 ```bash
 docker compose up --build -d
 ```
 
-Check containers:
+Check running containers:
 
 ```bash
 docker ps
@@ -605,11 +548,11 @@ docker compose down
 
 ---
 
-# Environment Configuration
+## Environment Configuration
 
-Sensitive information is stored through environment variables.
+Sensitive information should be stored through environment variables.
 
-Example configuration files:
+Example configuration files include:
 
 ```text
 .env.example
@@ -618,20 +561,20 @@ backend/.env.example
 
 Actual `.env` files should not be committed to GitHub.
 
-Sensitive values such as:
+Sensitive values include:
 
 * Database passwords
 * Django secret keys
 * API keys
 
-must be provided through environment variables.
+These values should be configured separately for local development and deployment.
 
 ---
 
-# Project Structure
+## Project Structure
 
 ```text
-SwipeX final/
+SwipeX/
 │
 ├── backend/
 │   ├── candidates/
@@ -647,7 +590,7 @@ SwipeX final/
 │   ├── config/
 │   │   └── settings.py
 │   │
-│   ├── recommendation/
+│   ├── ml/
 │   ├── Dockerfile
 │   ├── entrypoint.sh
 │   ├── requirements.txt
@@ -661,8 +604,9 @@ SwipeX final/
 │   ├── Dockerfile
 │   └── vite.config.js
 │
+├── dataset/
 ├── docs/
-│   └── database.png
+│   └── SwipeX_database.png
 │
 ├── docker-compose.yml
 ├── .gitignore
@@ -672,118 +616,112 @@ SwipeX final/
 
 ---
 
-# End-to-End Workflow
-
-The complete candidate workflow is:
+## End-to-End Candidate Workflow
 
 ```text
 Register
    ↓
 Login
    ↓
-Create / Update Profile
+Create or Update Profile
    ↓
 Upload Resume
    ↓
-Parse Resume
+Process Resume
    ↓
-Extract Skills and Information
+Extract Resume Information
    ↓
-Match Resume with Jobs
+Calculate ATS and Matching Scores
    ↓
-Calculate ATS + Skill Match
+Generate Job Recommendations
    ↓
-Generate Recommendations
+Skip / Save / Show Interest
    ↓
-Skip / Save / Interested
+Store Swipe History
    ↓
-Learn from Candidate Behaviour
+Learn Candidate Preferences
    ↓
 Update Recommendation Ranking
    ↓
 View Job Details
    ↓
-Apply
-   ↓
-Track Application
-   ↓
-Review Swipe History / Explore Jobs
+Review Swipe History or Explore Jobs
 ```
 
 ---
 
-# Technology Stack
+## Technology Stack
 
-| Category          | Technology                                   |
-| ----------------- | -------------------------------------------- |
-| Frontend          | React                                        |
-| Build Tool        | Vite                                         |
-| Styling           | Tailwind CSS                                 |
-| Animation         | Framer Motion                                |
-| Backend           | Django                                       |
-| API               | Django REST Framework                        |
-| Authentication    | Simple JWT                                   |
-| Database          | PostgreSQL                                   |
-| NLP               | spaCy                                        |
-| Semantic Matching | Sentence Transformers                        |
-| Machine Learning  | scikit-learn                                 |
-| Data Processing   | NumPy, pandas                                |
-| Resume Processing | pdfplumber, pdfminer, pypdfium2, python-docx |
-| AI Services       | OpenAI / Groq                                |
-| Containerization  | Docker / Docker Compose                      |
-| Version Control   | Git / GitHub                                 |
+| Category           | Technology                                   |
+| ------------------ | -------------------------------------------- |
+| Frontend           | React                                        |
+| Build Tool         | Vite                                         |
+| Styling            | Tailwind CSS                                 |
+| Animation          | Framer Motion                                |
+| Backend            | Django                                       |
+| API                | Django REST Framework                        |
+| Authentication     | Simple JWT                                   |
+| Database           | PostgreSQL                                   |
+| Machine Learning   | scikit-learn                                 |
+| Data Processing    | NumPy, pandas                                |
+| Text Vectorization | TF-IDF, HashingVectorizer                    |
+| ML Models          | Multinomial Naive Bayes, Logistic Regression |
+| Resume Processing  | PDF and DOC/DOCX processing libraries        |
+| AI Services        | Groq, where configured                       |
+| Containerization   | Docker, Docker Compose                       |
+| Version Control    | Git, GitHub                                  |
 
 ---
 
-# Testing and Verification
+## Testing and Verification
 
-The project contains backend testing and verification utilities for validating important application flows.
-
-These cover areas such as:
+The project includes backend utilities and testing support for important application flows, including:
 
 * Authentication
 * Resume processing
 * Job matching
 * Recommendation generation
+* Swipe history
 * Database operations
-* Application workflow
 
-Database migrations and management commands are also included as part of the backend setup.
+Database migrations and management commands are included as part of the backend setup.
 
 ---
 
-# Security Practices
+## Security Practices
 
-The project follows basic application security practices:
+The project includes basic security practices such as:
 
 * JWT authentication
 * Protected API endpoints
 * Environment-based configuration
 * `.env` exclusion through `.gitignore`
 * Resume file validation
-* Database credentials stored through environment configuration
+* Database credentials managed through configuration
+
+Production deployments should use secure secret values and deployment-specific environment variables.
 
 ---
 
-# Future Enhancements
+## Future Enhancements
 
 Potential future improvements include:
 
 * More advanced recommendation models
-* Real-time job ingestion
-* Better duplicate-job detection
-* More advanced skill ontology
-* Explainable recommendation models
-* Additional external job sources
+* Improved duplicate-job detection
+* Better skill normalization
+* Explainable recommendation results
+* More external job sources
 * Recruiter-side functionality
-* Cloud deployment
+* Advanced candidate analytics
+* Improved resume parsing
 * Real-time notifications
 
 ---
 
-# Conclusion
+## Conclusion
 
-SwipeX combines full-stack development, NLP, semantic matching, machine learning, and behavioural personalization to create a smarter job discovery experience.
+SwipeX combines full-stack development, resume analysis, ATS matching, machine learning, semantic text processing, and behavioural personalization to create an interactive job discovery experience.
 
 The core concept is:
 
@@ -794,10 +732,10 @@ Understand the Job
         +
 Learn from Candidate Behaviour
         ↓
-Recommend Better Opportunities
+Generate Relevant Job Recommendations
 ```
 
-SwipeX transforms traditional job searching into an interactive, personalized, and data-driven job discovery experience.
+SwipeX transforms traditional job searching into an interactive and personalized job discovery platform.
 
 ---
 
@@ -805,9 +743,4 @@ SwipeX transforms traditional job searching into an interactive, personalized, a
 
 **SwipeX – Swipe-Based Intelligent Job Discovery and Career Assistance Platform**
 
-Developed as part of the **Infosys Springboard Virtual Internship**.
-
-```
-
-This version is ready to paste directly into `README.md`.
-```
+Developed as part of the **Infosys Springboard Virtual Internship 7.0**.
