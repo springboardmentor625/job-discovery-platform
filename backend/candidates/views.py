@@ -553,7 +553,6 @@ class JobViewSet(viewsets.ModelViewSet):
         now = timezone.now()
         queryset = (
             Job.objects.filter(is_active=True)
-            .filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
             .order_by("-id")
         )
         params = self.request.query_params
