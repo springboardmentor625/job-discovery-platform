@@ -177,3 +177,6 @@ SOCIALACCOUNT_PROVIDERS = {
         }
     },
 }
+LOGIN_REDIRECT_URL = "/api/auth/social-redirect/"
+SOCIALACCOUNT_LOGIN_ON_GET = True
+ACCOUNT_EMAIL_VERIFICATION = "none"

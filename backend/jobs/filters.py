@@ -1,6 +1,6 @@
 from datetime import timedelta
 
-from django.db.models import Q
+from django.db.models import Count, Q
 from django.utils import timezone
 
 from applications.models import Application
@@ -8,6 +8,16 @@ from applications.models import Application
 
 def apply_basic_filters(queryset, request):
     params = request.query_params
+
+    # Annotate applicant_count at the DATABASE level (one query via JOIN +
+    # GROUP BY) instead of the old approach of running a separate COUNT
+    # query per job in the serializer — that was a real N+1 query problem
+    # that got much worse once the dataset grew to 5,000+ jobs.
+    queryset = queryset.annotate(
+        applicant_count=Count(
+            "applications", filter=Q(applications__status=Application.Status.INTERESTED)
+        )
+    )
 
     company_type = params.get("company_type")
     if company_type:
@@ -49,10 +59,6 @@ def apply_skill_filter(jobs, request):
     return [j for j in jobs if skill in [s.lower() for s in j.skills_required]]
 
 
-def get_applicant_count(job):
-    return Application.objects.filter(job=job, status=Application.Status.APPLIED).count()
-
-
 def get_competition_level(applicant_count):
     if applicant_count < 3:
         return "low"
@@ -69,6 +75,8 @@ def apply_advanced_filters(jobs, request):
         jobs = [j for j in jobs if j.posted_at >= cutoff]
 
     if params.get("low_competition") == "true":
-        jobs = [j for j in jobs if get_competition_level(get_applicant_count(j)) == "low"]
+        # Uses the annotated applicant_count from apply_basic_filters — no
+        # extra queries needed here.
+        jobs = [j for j in jobs if get_competition_level(j.applicant_count) == "low"]
 
     return jobs

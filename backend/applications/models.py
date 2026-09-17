@@ -6,7 +6,8 @@ from jobs.models import Job
 class Application(models.Model):
     class Status(models.TextChoices):
         SAVED = "saved", "Saved"
-        APPLIED = "applied", "Applied"
+        INTERESTED = "interested", "Interested"  # was "applied" — swiping right doesn't submit a real application
+        SKIPPED = "skipped", "Skipped"  # now tracked instead of just disappearing
         INTERVIEW = "interview", "Interview"
         SHORTLISTED = "shortlisted", "Shortlisted"
         REJECTED = "rejected", "Rejected"

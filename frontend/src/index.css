@@ -3,5 +3,23 @@
 @tailwind utilities;
 
 body {
-  @apply bg-gray-50 text-gray-900;
+  @apply bg-paper text-ink font-sans;
+}
+
+h1, h2, h3, .font-display {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid #5B21B6;
+  outline-offset: 2px;
+}
+
+@keyframes pulse-skeleton {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.skeleton {
+  animation: pulse-skeleton 1.5s ease-in-out infinite;
+  background-color: #EDE9F5;
 }

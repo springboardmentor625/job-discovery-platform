@@ -5,7 +5,9 @@ import { setCredentials, logout } from "../store/authSlice";
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api";
 
 export const api = axios.create({ baseURL: BASE_URL });
+export const BACKEND_ROOT_URL = BASE_URL.replace(/\/api\/?$/, "");
 export const fetchAtsScore = (jobId) => api.get(`/jobs/${jobId}/ats-score/`);
+export const fetchJobDescription = (jobId) => api.get(`/jobs/${jobId}/description/`);
 // Attach the current access token to every request
 api.interceptors.request.use((config) => {
   const token = store.getState().auth.accessToken;
@@ -51,16 +53,21 @@ export const loginUser = (payload) => api.post("/auth/login/", payload);
 export const fetchMe = () => api.get("/auth/me/");
 export const updateProfile = (payload) => api.patch("/auth/me/", payload);
 
-export const uploadResume = (file) => {
+export const uploadResume = (file, targetRole) => {
   const formData = new FormData();
   formData.append("file", file);
-  return api.post("/resumes/", formData, {
-    headers: { "Content-Type": "multipart/form-data" },
-  });
+  if (targetRole) formData.append("target_role", targetRole);
+  return api.post("/resumes/", formData, { headers: { "Content-Type": "multipart/form-data" } });
 };
 export const fetchResumes = () => api.get("/resumes/");
+export const activateResume = (id) => api.post(`/resumes/${id}/activate/`);
+export const deleteResume = (id) => api.delete(`/resumes/${id}/`);
 
-export const fetchRecommendedJobs = () => api.get("/jobs/recommended/");
+export const fetchRecommendedJobs = (filters = {}) => api.get("/jobs/recommended/", { params: filters });
+export const fetchJobs = (filters = {}) => api.get("/jobs/", { params: filters });
+export const fetchCompanies = (companyType) =>
+  api.get("/jobs/companies/", { params: companyType ? { company_type: companyType } : {} });
+
 export const submitSwipe = (jobId, direction) =>
   api.post("/swipes/", { job: jobId, direction });
 

@@ -1,24 +1,35 @@
 import { useEffect, useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell } from "recharts";
+import { TrendingUp, Send, Layers } from "lucide-react";
 import { fetchAnalyticsSummary } from "../services/api";
+import { SkeletonCard } from "../components/Skeleton";
 
-const STATUS_LABELS = {
-  saved: "Saved", applied: "Applied", interview: "Interview",
-  shortlisted: "Shortlisted", rejected: "Rejected",
-};
-
+const STATUS_LABELS = { saved: "Saved", interested: "Interested", skipped: "Skipped", interview: "Interview", shortlisted: "Shortlisted", rejected: "Rejected" };
 const DIRECTION_LABELS = { left: "Skipped", save: "Saved", right: "Applied" };
+const VIOLET_SHADES = ["#5B21B6", "#7C3AED", "#8B5CF6", "#A78BFA", "#C4B5FD"];
 
-function BarRow({ label, count, max }) {
-  const pct = max > 0 ? Math.round((count / max) * 100) : 0;
+function BarSection({ title, data }) {
+  if (data.length === 0) {
+    return (
+      <div>
+        <h2 className="font-display font-semibold text-ink mb-4 text-sm">{title}</h2>
+        <p className="text-sm text-muted">No data yet.</p>
+      </div>
+    );
+  }
   return (
-    <div className="mb-3">
-      <div className="flex justify-between text-sm mb-1">
-        <span className="text-ink">{label}</span>
-        <span className="text-slate">{count}</span>
-      </div>
-      <div className="h-2 bg-line rounded-full overflow-hidden">
-        <div className="h-full bg-cobalt-600 rounded-full" style={{ width: `${pct}%` }} />
-      </div>
+    <div>
+      <h2 className="font-display font-semibold text-ink mb-4 text-sm">{title}</h2>
+      <ResponsiveContainer width="100%" height={Math.max(140, data.length * 44)}>
+        <BarChart data={data} layout="vertical" margin={{ left: 10, right: 20 }}>
+          <XAxis type="number" hide />
+          <YAxis type="category" dataKey="label" width={100} tick={{ fontSize: 12, fill: "#6B6478" }} axisLine={false} tickLine={false} />
+          <Tooltip cursor={{ fill: "#F3EFFB" }} contentStyle={{ borderRadius: 8, border: "1px solid #E7E3EE", fontSize: 12 }} />
+          <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={20}>
+            {data.map((_, i) => <Cell key={i} fill={VIOLET_SHADES[i % VIOLET_SHADES.length]} />)}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
     </div>
   );
 }
@@ -32,80 +43,61 @@ export default function Analytics() {
   }, []);
 
   if (loading) {
-    return <div className="flex-1 flex items-center justify-center text-slate">Loading...</div>;
+    return (
+      <div className="px-8 sm:px-12 py-12 max-w-3xl space-y-4">
+        <SkeletonCard /><SkeletonCard />
+      </div>
+    );
   }
 
   if (!data) {
-    return <div className="flex-1 flex items-center justify-center text-slate">Couldn't load analytics.</div>;
+    return <div className="px-8 sm:px-12 py-12 text-muted">Couldn't load analytics.</div>;
   }
 
-  const statusEntries = Object.entries(data.applications_by_status || {});
-  const directionEntries = Object.entries(data.swipes_by_direction || {});
-  const maxStatus = Math.max(1, ...statusEntries.map(([, c]) => c));
-  const maxDirection = Math.max(1, ...directionEntries.map(([, c]) => c));
-  const maxSkill = Math.max(1, ...(data.top_skills_in_your_applications || []).map((s) => s.count));
+  const statusData = Object.entries(data.applications_by_status || {}).map(([status, count]) => ({ label: STATUS_LABELS[status] || status, count }));
+  const directionData = Object.entries(data.swipes_by_direction || {}).map(([direction, count]) => ({ label: DIRECTION_LABELS[direction] || direction, count }));
+  const skillData = (data.top_skills_in_your_applications || []).map((s) => ({ label: s.skill, count: s.count }));
 
   return (
-    <div className="flex-1 px-6 sm:px-10 py-14 max-w-3xl mx-auto w-full">
-      <h1 className="font-display text-3xl font-semibold text-ink mb-1">Your analytics</h1>
-      <p className="text-slate mb-8">A real read on your job search so far.</p>
+    <div className="px-8 sm:px-12 py-12">
+      <h1 className="font-display text-3xl font-bold text-ink mb-1">Your analytics</h1>
+      <p className="text-muted mb-8">A real read on your job search so far.</p>
 
       <div className="grid sm:grid-cols-3 gap-4 mb-10">
-        <div className="border border-line rounded-2xl bg-white p-5">
-          <p className="text-xs text-slate mb-1">Average match score</p>
-          <p className="font-display text-3xl font-semibold text-cobalt-600">
+        <div className="bg-white border border-line rounded-xl p-5">
+          <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center mb-2">
+            <TrendingUp size={16} className="text-violet-600" />
+          </div>
+          <p className="text-xs text-muted mb-0.5">Average match score</p>
+          <p className="font-display text-2xl font-bold text-ink">
             {data.average_match_score !== null ? `${data.average_match_score}%` : "—"}
           </p>
         </div>
-        <div className="border border-line rounded-2xl bg-white p-5">
-          <p className="text-xs text-slate mb-1">Applications sent</p>
-          <p className="font-display text-3xl font-semibold text-ink">
-            {statusEntries.reduce((sum, [, c]) => sum + c, 0)}
+        <div className="bg-white border border-line rounded-xl p-5">
+          <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center mb-2">
+            <Send size={16} className="text-violet-600" />
+          </div>
+          <p className="text-xs text-muted mb-0.5">Applications sent</p>
+          <p className="font-display text-2xl font-bold text-ink">
+            {statusData.reduce((sum, s) => sum + s.count, 0)}
           </p>
         </div>
-        <div className="border border-line rounded-2xl bg-white p-5">
-          <p className="text-xs text-slate mb-1">Jobs on platform</p>
-          <p className="font-display text-3xl font-semibold text-ink">
-            {data.total_jobs_in_platform}
-          </p>
+        <div className="bg-white border border-line rounded-xl p-5">
+          <div className="w-8 h-8 rounded-lg bg-violet-50 flex items-center justify-center mb-2">
+            <Layers size={16} className="text-violet-600" />
+          </div>
+          <p className="text-xs text-muted mb-0.5">Jobs on platform</p>
+          <p className="font-display text-2xl font-bold text-ink">{data.total_jobs_in_platform}</p>
         </div>
       </div>
 
-      <div className="grid sm:grid-cols-2 gap-10">
-        <div>
-          <h2 className="font-display text-lg font-semibold text-ink mb-4">Application funnel</h2>
-          {statusEntries.length === 0 ? (
-            <p className="text-sm text-slate">No applications yet.</p>
-          ) : (
-            statusEntries.map(([status, count]) => (
-              <BarRow key={status} label={STATUS_LABELS[status] || status} count={count} max={maxStatus} />
-            ))
-          )}
-        </div>
-
-        <div>
-          <h2 className="font-display text-lg font-semibold text-ink mb-4">Swipe activity</h2>
-          {directionEntries.length === 0 ? (
-            <p className="text-sm text-slate">No swipes yet.</p>
-          ) : (
-            directionEntries.map(([direction, count]) => (
-              <BarRow key={direction} label={DIRECTION_LABELS[direction] || direction} count={count} max={maxDirection} />
-            ))
-          )}
-        </div>
+      <div className="grid sm:grid-cols-2 gap-8 bg-white border border-line rounded-xl p-6 mb-8">
+        <BarSection title="Application funnel" data={statusData} />
+        <BarSection title="Swipe activity" data={directionData} />
       </div>
 
-      <div className="mt-10">
-        <h2 className="font-display text-lg font-semibold text-ink mb-4">
-          Most common skills in jobs you've applied to
-        </h2>
-        {(!data.top_skills_in_your_applications || data.top_skills_in_your_applications.length === 0) ? (
-          <p className="text-sm text-slate">Apply to a few jobs to see this.</p>
-        ) : (
-          data.top_skills_in_your_applications.map(({ skill, count }) => (
-            <BarRow key={skill} label={skill} count={count} max={maxSkill} />
-          ))
-        )}
+      <div className="bg-white border border-line rounded-xl p-6">
+        <BarSection title="Most common skills in jobs you've applied to" data={skillData} />
       </div>
     </div>
   );

@@ -1,12 +1,13 @@
 from rest_framework import serializers
 
-from applications.models import Application
-
+from .filters import get_competition_level
 from .models import Job
 
 
 class JobSerializer(serializers.ModelSerializer):
-    applicant_count = serializers.SerializerMethodField()
+    # applicant_count comes from a DB-level annotation (see jobs/filters.py) —
+    # NOT a SerializerMethodField, so it costs zero extra queries per job.
+    applicant_count = serializers.IntegerField(read_only=True, default=0)
     competition_level = serializers.SerializerMethodField()
 
     class Meta:
@@ -17,16 +18,9 @@ class JobSerializer(serializers.ModelSerializer):
             "skills_required", "posted_at", "applicant_count", "competition_level",
         ]
 
-    def get_applicant_count(self, job):
-        return Application.objects.filter(job=job, status=Application.Status.APPLIED).count()
-
     def get_competition_level(self, job):
-        count = self.get_applicant_count(job)
-        if count < 3:
-            return "low"
-        if count < 8:
-            return "medium"
-        return "high"
+        # Reads the already-annotated count — no additional query.
+        return get_competition_level(getattr(job, "applicant_count", 0))
 
 
 class RecommendedJobSerializer(JobSerializer):

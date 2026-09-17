@@ -1,15 +1,13 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { Bell, Sparkles, RefreshCw } from "lucide-react";
 import { fetchNotifications, markNotificationRead, markAllNotificationsRead } from "../services/api";
+import { SkeletonList } from "../components/Skeleton";
+import EmptyState from "../components/EmptyState";
 
-const TYPE_STYLES = {
-  high_match: "bg-cobalt-50 text-cobalt-700",
-  status_change: "bg-gold-50 text-gold-700",
-};
-
-const TYPE_LABELS = {
-  high_match: "Strong match",
-  status_change: "Status update",
+const TYPE_CONFIG = {
+  high_match: { icon: Sparkles, style: "bg-violet-50 text-violet-700", label: "Strong match" },
+  status_change: { icon: RefreshCw, style: "bg-amber-50 text-amber-700", label: "Status update" },
 };
 
 function timeAgo(dateString) {
@@ -48,67 +46,61 @@ export default function Notifications() {
   const unreadCount = notifications.filter((n) => !n.read).length;
 
   return (
-    <div className="flex-1 px-6 sm:px-10 py-14 max-w-2xl mx-auto w-full">
+    <div className="px-8 sm:px-12 py-12">
       <div className="flex items-start justify-between mb-1">
-        <h1 className="font-display text-3xl font-semibold text-ink">Notifications</h1>
+        <h1 className="font-display text-3xl font-bold text-ink">Notifications</h1>
         {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllRead}
-            className="text-sm text-cobalt-600 font-medium hover:text-cobalt-700"
-          >
+          <button onClick={handleMarkAllRead} className="text-sm text-violet-600 font-semibold hover:text-violet-700">
             Mark all read
           </button>
         )}
       </div>
-      <p className="text-slate mb-6">Real alerts from your matches and applications.</p>
+      <p className="text-muted mb-6">Real alerts from your matches and applications.</p>
 
-      <div className="flex gap-2 mb-2">
-        <button
-          onClick={() => setFilter(false)}
-          className={`px-3.5 py-1.5 rounded-full text-sm transition-colors ${!filter ? "bg-ink text-paper" : "text-slate hover:text-ink"}`}
-        >
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setFilter(false)} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${!filter ? "bg-violet-600 text-white" : "bg-white border border-line text-muted hover:border-violet-300"}`}>
           All
         </button>
-        <button
-          onClick={() => setFilter(true)}
-          className={`px-3.5 py-1.5 rounded-full text-sm transition-colors ${filter ? "bg-ink text-paper" : "text-slate hover:text-ink"}`}
-        >
+        <button onClick={() => setFilter(true)} className={`px-3.5 py-1.5 rounded-full text-sm font-medium transition-colors ${filter ? "bg-violet-600 text-white" : "bg-white border border-line text-muted hover:border-violet-300"}`}>
           Unread{unreadCount > 0 ? ` (${unreadCount})` : ""}
         </button>
       </div>
 
       {loading ? (
-        <p className="text-slate mt-6">Loading...</p>
+        <SkeletonList count={3} />
       ) : notifications.length === 0 ? (
-        <p className="text-slate mt-6">
-          Nothing yet — notifications appear when a job scores a strong match, or when an
-          application's status changes. Try{" "}
-          <Link to="/jobs" className="text-cobalt-600 font-medium">discovering jobs</Link>.
-        </p>
+        <EmptyState
+          icon={Bell}
+          title="Nothing yet"
+          description="Notifications appear when a job scores a strong match, or when an application's status changes."
+          action={<Link to="/jobs" className="text-violet-600 font-semibold text-sm">Discover jobs →</Link>}
+        />
       ) : (
-        <div>
-          {notifications.map((n) => (
-            <div
-              key={n.id}
-              className={`flex items-start justify-between gap-4 py-4 border-t border-line last:border-b ${!n.read ? "bg-white/60 -mx-3 px-3 rounded-lg" : ""}`}
-            >
-              <div>
-                <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full mb-1.5 ${TYPE_STYLES[n.notification_type] || "bg-paper text-slate"}`}>
-                  {TYPE_LABELS[n.notification_type] || n.notification_type}
-                </span>
-                <p className="text-sm text-ink">{n.message}</p>
-                <p className="text-xs text-slate mt-1">{timeAgo(n.created_at)}</p>
+        <div className="space-y-2">
+          {notifications.map((n) => {
+            const config = TYPE_CONFIG[n.notification_type] || { icon: Bell, style: "bg-gray-50 text-muted", label: n.notification_type };
+            const Icon = config.icon;
+            return (
+              <div
+                key={n.id}
+                className={`flex items-start gap-3 p-4 rounded-xl border transition-colors ${!n.read ? "bg-violet-50/40 border-violet-100" : "bg-white border-line"}`}
+              >
+                <div className={`w-9 h-9 rounded-full ${config.style} flex items-center justify-center shrink-0`}>
+                  <Icon size={16} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-semibold text-muted mb-0.5">{config.label}</p>
+                  <p className="text-sm text-ink">{n.message}</p>
+                  <p className="text-xs text-muted mt-1">{timeAgo(n.created_at)}</p>
+                </div>
+                {!n.read && (
+                  <button onClick={() => handleMarkRead(n.id)} className="text-xs text-muted hover:text-ink shrink-0">
+                    Mark read
+                  </button>
+                )}
               </div>
-              {!n.read && (
-                <button
-                  onClick={() => handleMarkRead(n.id)}
-                  className="text-xs text-slate hover:text-ink shrink-0 mt-1"
-                >
-                  Mark read
-                </button>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

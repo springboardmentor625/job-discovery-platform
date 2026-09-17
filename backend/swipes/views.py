@@ -7,15 +7,6 @@ from .serializers import SwipeSerializer
 
 
 class SwipeCreateView(generics.CreateAPIView):
-    """
-    POST /api/swipes/  — body: {"job": <job_id>, "direction": "left" | "save" | "right"}
-
-    'Swipe Decision' in the candidate workflow:
-      - left  -> just records the skip, no Application (loop back to next job)
-      - save  -> creates/updates an Application with status="saved"  ('Save Job')
-      - right -> creates/updates an Application with status="applied" ('Apply for Job' -> End)
-    """
-
     permission_classes = [permissions.IsAuthenticated]
     serializer_class = SwipeSerializer
 
@@ -35,5 +26,10 @@ class SwipeCreateView(generics.CreateAPIView):
         elif swipe.direction == Swipe.Direction.RIGHT:
             Application.objects.update_or_create(
                 user=self.request.user, job=swipe.job,
-                defaults={"status": Application.Status.APPLIED},
+                defaults={"status": Application.Status.INTERESTED},
+            )
+        elif swipe.direction == Swipe.Direction.LEFT:
+            Application.objects.update_or_create(
+                user=self.request.user, job=swipe.job,
+                defaults={"status": Application.Status.SKIPPED},
             )

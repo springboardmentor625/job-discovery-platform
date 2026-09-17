@@ -38,6 +38,11 @@ class Job(models.Model):
     salary_max = models.PositiveIntegerField(null=True, blank=True)
     skills_required = models.JSONField(default=list, blank=True)
     posted_at = models.DateTimeField(auto_now_add=True)
+    posted_at = models.DateTimeField(auto_now_add=True)
+    # AI-reformatted version of `description`, generated on first request and
+    # cached here so we never call Groq twice for the same job. Blank until
+    # someone actually views this job's description.
+    cleaned_description = models.TextField(blank=True)
 
     def __str__(self):
         return f"{self.title} @ {self.company}"
