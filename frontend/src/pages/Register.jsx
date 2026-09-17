@@ -36,11 +36,11 @@ function Register() {
 
     try {
       await api.post("/register", {
-        full_name: formData.full_name,
-        email: formData.email,
+        full_name: formData.full_name.trim(),
+        email: formData.email.trim().toLowerCase(),
         password: formData.password,
         role: formData.role,
-        phone: formData.phone || null,
+        phone: formData.phone?.trim() || null,
         profile_picture: null,
       });
 
@@ -273,4 +273,4 @@ function Register() {
   );
 }
 
-export default Register;
+export default Register;

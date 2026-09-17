@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -7,7 +7,7 @@ import { Mail, Lock, Eye, EyeOff, ArrowRight, AlertCircle, Loader2, Sparkles } f
 
 function Login() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, logout } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -16,20 +16,34 @@ function Login() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Clear any residual session when landing on login page
+  useEffect(() => {
+    logout();
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     setError("");
     setLoading(true);
 
+    const cleanEmail = email.trim().toLowerCase();
+
     try {
+      // Ensure completely fresh request state
+      logout();
+
       const response = await api.post("/login", {
-        email,
+        email: cleanEmail,
         password,
       });
 
-      await login(response.data.access_token);
-      navigate("/dashboard");
+      const loggedInUser = await login(response.data.access_token);
+      if (loggedInUser) {
+        navigate("/dashboard");
+      } else {
+        setError("Failed to establish session. Please try logging in again.");
+      }
 
     } catch (err) {
       setError(

@@ -148,6 +148,32 @@ export default function RecruiterApplications() {
     }
   };
 
+  const handleDownloadResume = async (applicationId, filename) => {
+    try {
+      setViewingResumeAppId(applicationId);
+      setResumeViewError("");
+      const res = await api.get(`/applications/${applicationId}/resume`, {
+        responseType: "blob"
+      });
+      const blob = new Blob([res.data], { type: "application/pdf" });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename || "Candidate_Resume.pdf";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Failed to download candidate resume PDF:", err);
+      setResumeViewError(
+        "Resume PDF is currently unavailable on the server."
+      );
+    } finally {
+      setViewingResumeAppId(null);
+    }
+  };
+
   const parseSkills = (skills) => {
     if (!skills) return [];
     if (Array.isArray(skills)) return skills.filter(Boolean).map(String);
@@ -197,98 +223,6 @@ export default function RecruiterApplications() {
           icon: Clock
         };
     }
-  };
-
-  // Helper to render complex profile sections (education, projects, certs)
-  const renderProfileList = (data, emptyMessage) => {
-    if (!data) return <p className="text-xs text-slate-500 italic">{emptyMessage}</p>;
-
-    let items = data;
-    if (typeof data === "string") {
-      try {
-        const parsed = JSON.parse(data);
-        if (Array.isArray(parsed)) items = parsed;
-      } catch {
-        return (
-          <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 text-xs text-slate-300 whitespace-pre-line">
-            {data}
-          </div>
-        );
-      }
-    }
-
-    if (Array.isArray(items) && items.length > 0) {
-      return (
-        <div className="space-y-2">
-          {items.map((item, idx) => {
-            if (typeof item === "object" && item !== null) {
-              const primary =
-                item.title ||
-                item.degree ||
-                item.name ||
-                item.role ||
-                item.certificate_name ||
-                item.degree_title;
-              const secondary =
-                item.company ||
-                item.school ||
-                item.institution ||
-                item.issuer ||
-                item.year ||
-                item.graduation_year ||
-                item.date;
-              const desc = item.description || item.summary || item.details;
-              const tech = item.technologies || item.tech_stack || item.skills;
-
-              return (
-                <div
-                  key={idx}
-                  className="p-3.5 bg-slate-800/40 rounded-xl border border-slate-800/80 space-y-1.5"
-                >
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="text-xs font-bold text-white">
-                      {primary || `Entry #${idx + 1}`}
-                    </span>
-                    {secondary && (
-                      <span className="text-[11px] font-medium text-slate-400">
-                        {secondary}
-                      </span>
-                    )}
-                  </div>
-                  {desc && (
-                    <p className="text-[11px] text-slate-400 leading-relaxed">
-                      {desc}
-                    </p>
-                  )}
-                  {tech && (
-                    <div className="flex flex-wrap gap-1 pt-1">
-                      {parseSkills(tech).map((t, tidx) => (
-                        <span
-                          key={tidx}
-                          className="px-2 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700/60"
-                        >
-                          {t}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            }
-            return (
-              <div
-                key={idx}
-                className="p-2.5 bg-slate-800/40 rounded-xl border border-slate-800 text-xs text-slate-300"
-              >
-                {String(item)}
-              </div>
-            );
-          })}
-        </div>
-      );
-    }
-
-    return <p className="text-xs text-slate-500 italic">{emptyMessage}</p>;
   };
 
   // Filter applications safely
@@ -699,286 +633,7 @@ export default function RecruiterApplications() {
                 </button>
               </div>
 
-              {/* Applied Job Info Banner */}
-              <div className="p-4 bg-slate-800/60 rounded-2xl border border-slate-700/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Applied Job Position
-                  </span>
-                  <div className="text-sm font-bold text-white flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-blue-400" />
-                    <span>{selectedCandidate.job_title}</span>
-                    {selectedCandidate.company_name && (
-                      <span className="text-slate-400 font-normal">
-                        at {selectedCandidate.company_name}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400 pt-0.5">
-                    {selectedCandidate.job_location && (
-                      <span className="flex items-center gap-1">
-                        <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                        {selectedCandidate.job_location}
-                      </span>
-                    )}
-                    {selectedCandidate.job_employment_type && (
-                      <span className="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 text-[10px] font-medium border border-slate-700">
-                        {selectedCandidate.job_employment_type}
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-start sm:items-end gap-1 shrink-0">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                    Current Status
-                  </span>
-                  <span
-                    className={`inline-block px-3 py-1 rounded-full text-xs font-bold border ${
-                      getStatusBadge(selectedCandidate.status || "Applied").badge
-                    }`}
-                  >
-                    {selectedCandidate.status || "Applied"}
-                  </span>
-                </div>
-              </div>
-
-              {/* 1. Job-Specific Resume Match Score & Breakdown */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-emerald-400" />
-                    <span>Job-Specific Resume Match Analysis</span>
-                  </h4>
-                  <span className="text-[11px] text-slate-400 font-medium">
-                    Calculated against applied job requirements
-                  </span>
-                </div>
-
-                {selectedCandidate.resume_match_score !== null &&
-                selectedCandidate.resume_match_score !== undefined &&
-                selectedCandidate.resume_match_score > 0 ? (
-                  <div className="p-4 bg-gradient-to-br from-emerald-950/30 via-slate-900 to-slate-900 border border-emerald-500/30 rounded-2xl space-y-4">
-                    {/* Score Header & Progress Bar */}
-                    <div>
-                      <div className="flex items-baseline justify-between mb-1.5">
-                        <span className="text-2xl font-black text-emerald-400">
-                          {Math.round(selectedCandidate.resume_match_score)}%
-                          <span className="text-xs font-semibold text-emerald-300 ml-1.5 font-normal">
-                            Resume Match Score
-                          </span>
-                        </span>
-                        <span className="text-xs font-bold text-emerald-400">
-                          {selectedCandidate.resume_match_score >= 80
-                            ? "Strong Match"
-                            : selectedCandidate.resume_match_score >= 60
-                            ? "Moderate Match"
-                            : "Developing Match"}
-                        </span>
-                      </div>
-                      <div className="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden border border-slate-700/60">
-                        <div
-                          className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full rounded-full transition-all duration-700 shadow-sm"
-                          style={{
-                            width: `${Math.min(Math.max(selectedCandidate.resume_match_score, 5), 100)}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Matched & Missing Skills Breakdown */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                      
-                      {/* Matched Skills */}
-                      <div className="p-3 bg-slate-800/50 rounded-xl border border-emerald-500/20 space-y-2">
-                        <span className="text-[11px] font-bold text-emerald-300 flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-                          Matched Skills ({(selectedCandidate.matched_skills || []).length})
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {(selectedCandidate.matched_skills || []).length > 0 ? (
-                            selectedCandidate.matched_skills.map((s, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex items-center gap-1"
-                              >
-                                <Check className="w-3 h-3 text-emerald-400" />
-                                {s}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-slate-500 italic">
-                              No overlapping keywords detected.
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Missing Job Skills */}
-                      <div className="p-3 bg-slate-800/50 rounded-xl border border-amber-500/20 space-y-2">
-                        <span className="text-[11px] font-bold text-amber-300 flex items-center gap-1.5">
-                          <AlertCircle className="w-3.5 h-3.5 text-amber-400" />
-                          Missing Job Skills ({(selectedCandidate.missing_skills || []).length})
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          {(selectedCandidate.missing_skills || []).length > 0 ? (
-                            selectedCandidate.missing_skills.map((s, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 rounded-md text-[11px] font-medium bg-amber-500/15 text-amber-300 border border-amber-500/30"
-                              >
-                                {s}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-xs text-emerald-400 font-medium">
-                              All required job skills present!
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                    </div>
-
-                    {/* Suggestions / Insights */}
-                    {selectedCandidate.match_suggestions && (
-                      <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-700/60 text-xs text-slate-300 space-y-1">
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                          ATS Match Insights
-                        </span>
-                        <p className="text-xs text-slate-300 leading-relaxed">
-                          {selectedCandidate.match_suggestions}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 bg-slate-800/40 rounded-2xl border border-slate-800 text-center space-y-2">
-                    <p className="text-xs text-slate-400">
-                      Resume Match Score unavailable — resume could not be analyzed.
-                    </p>
-                    <p className="text-[11px] text-slate-500">
-                      The candidate's resume may be missing searchable text or no required skills were specified.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* 2. Candidate Contact & Profile Details */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-                  Candidate Information
-                </h4>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                  <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 flex items-center gap-2.5 text-slate-300">
-                    <Mail className="w-4 h-4 text-blue-400 shrink-0" />
-                    <div className="truncate">
-                      <span className="text-[10px] font-semibold text-slate-500 block">Email Address</span>
-                      {selectedCandidate.candidate_email ? (
-                        <a
-                          href={`mailto:${selectedCandidate.candidate_email}`}
-                          className="text-white hover:text-blue-400 transition underline underline-offset-2"
-                        >
-                          {selectedCandidate.candidate_email}
-                        </a>
-                      ) : (
-                        <span className="text-slate-500">Not provided</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 flex items-center gap-2.5 text-slate-300">
-                    <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <div className="truncate">
-                      <span className="text-[10px] font-semibold text-slate-500 block">Phone Number</span>
-                      {selectedCandidate.candidate_phone ? (
-                        <a
-                          href={`tel:${selectedCandidate.candidate_phone}`}
-                          className="text-white hover:text-emerald-400 transition underline underline-offset-2"
-                        >
-                          {selectedCandidate.candidate_phone}
-                        </a>
-                      ) : (
-                        <span className="text-slate-500">Not provided</span>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 flex items-center gap-2.5 text-slate-300">
-                    <MapPin className="w-4 h-4 text-purple-400 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-semibold text-slate-500 block">Location</span>
-                      <span className="text-white">
-                        {selectedCandidate.candidate_location || "Not specified"}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-slate-800/40 rounded-xl border border-slate-800 flex items-center gap-2.5 text-slate-300">
-                    <Briefcase className="w-4 h-4 text-amber-400 shrink-0" />
-                    <div>
-                      <span className="text-[10px] font-semibold text-slate-500 block">Total Experience</span>
-                      <span className="text-white">
-                        {selectedCandidate.candidate_experience_years !== null &&
-                        selectedCandidate.candidate_experience_years !== undefined
-                          ? `${selectedCandidate.candidate_experience_years} Years`
-                          : "Not specified"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Candidate Summary / Bio */}
-                {selectedCandidate.candidate_summary && (
-                  <div className="p-4 bg-slate-800/40 rounded-xl border border-slate-800 space-y-1.5">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
-                      Professional Summary / Bio
-                    </span>
-                    <p className="text-xs text-slate-300 leading-relaxed whitespace-pre-line">
-                      {selectedCandidate.candidate_summary}
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* 3. Education Details */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <GraduationCap className="w-4 h-4 text-blue-400" />
-                  <span>Education</span>
-                </h4>
-                {renderProfileList(
-                  selectedCandidate.candidate_education,
-                  "No formal education history provided in candidate profile."
-                )}
-              </div>
-
-              {/* 4. Projects & Portfolio */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <FolderGit2 className="w-4 h-4 text-indigo-400" />
-                  <span>Key Projects & Portfolio</span>
-                </h4>
-                {renderProfileList(
-                  selectedCandidate.candidate_projects,
-                  "No project portfolio details provided in candidate profile."
-                )}
-              </div>
-
-              {/* 5. Certifications */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
-                  <Award className="w-4 h-4 text-amber-400" />
-                  <span>Certifications & Licenses</span>
-                </h4>
-                {renderProfileList(
-                  selectedCandidate.candidate_certifications,
-                  "No certifications added to profile."
-                )}
-              </div>
-
-              {/* 6. Extracted Tech Skills */}
+              {/* 1. Extracted Tech Skills */}
               <div className="space-y-2">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Extracted Tech Skills
@@ -1001,7 +656,7 @@ export default function RecruiterApplications() {
                 </div>
               </div>
 
-              {/* 7. Dedicated Resume Section with View Resume Button */}
+              {/* 2. Candidate Resume Document */}
               <div className="space-y-3 pt-2">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-purple-400" />
@@ -1026,27 +681,43 @@ export default function RecruiterApplications() {
                   </div>
 
                   {selectedCandidate.has_resume && (
-                    <button
-                      onClick={() =>
-                        handleViewResume(
-                          selectedCandidate.application_id
-                        )
-                      }
-                      disabled={viewingResumeAppId === selectedCandidate.application_id}
-                      className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2 shrink-0 disabled:opacity-60"
-                    >
-                      {viewingResumeAppId === selectedCandidate.application_id ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                          <span>Opening Resume PDF...</span>
-                        </>
-                      ) : (
-                        <>
-                          <ExternalLink className="w-4 h-4" />
-                          <span>View Resume PDF</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <button
+                        onClick={() =>
+                          handleViewResume(
+                            selectedCandidate.application_id
+                          )
+                        }
+                        disabled={viewingResumeAppId === selectedCandidate.application_id}
+                        className="px-4 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-indigo-600/20 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        {viewingResumeAppId === selectedCandidate.application_id ? (
+                          <>
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                            <span>Opening Resume...</span>
+                          </>
+                        ) : (
+                          <>
+                            <ExternalLink className="w-4 h-4" />
+                            <span>View Resume PDF</span>
+                          </>
+                        )}
+                      </button>
+
+                      <button
+                        onClick={() =>
+                          handleDownloadResume(
+                            selectedCandidate.application_id,
+                            selectedCandidate.resume_name
+                          )
+                        }
+                        disabled={viewingResumeAppId === selectedCandidate.application_id}
+                        className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white rounded-xl text-xs font-bold transition border border-slate-700 hover:border-slate-600 cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                      >
+                        <Download className="w-4 h-4 text-purple-400" />
+                        <span>Download PDF</span>
+                      </button>
+                    </div>
                   )}
                 </div>
 
@@ -1058,7 +729,7 @@ export default function RecruiterApplications() {
                 )}
               </div>
 
-              {/* 8. Recruiter Action Buttons */}
+              {/* 3. Update Application Stage */}
               <div className="space-y-3 pt-3 border-t border-slate-800">
                 <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
                   Update Application Stage

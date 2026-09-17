@@ -1,0 +1,98 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: swipex-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: Amma1434
+      POSTGRES_DB: swipedb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - swipex-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+      context: ..
+      dockerfile: backend/Dockerfile.backend
+    container_name: swipex-backend
+    environment:
+      DATABASE_URL: postgresql://postgres:Amma1434@postgres:5432/swipedb
+      SECRET_KEY: ${SECRET_KEY:-swipeX-secret-key-local-dev}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
+      CORS_ORIGINS: http://localhost:5173,http://localhost:3000,http://frontend:3000
+      API_HOST: 0.0.0.0
+      API_PORT: 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app:cached
+      - ./backend/uploads:/app/uploads
+      - ../backend:/app:cached
+      - ../backend/uploads:/app/uploads
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    networks:
+      - swipex-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend (Development)
+  frontend:
+    image: node:20-alpine
+    container_name: swipex-frontend
+    working_dir: /app
+    environment:
+      VITE_API_URL: http://localhost:8000
+      NODE_ENV: development
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app:cached
+      - .:/app:cached
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+    depends_on:
+      - backend
+    networks:
+      - swipex-network
+
+  # Redis (optional, for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: swipex-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - swipex-network
+    command: redis-server --appendonly yes
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  swipex-network:
+    driver: bridge

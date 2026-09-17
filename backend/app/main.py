@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from . import models, schemas, crud
 from .database import get_db, SessionLocal, engine, Base
 from .schemas import UserCreate, CompanyCreate, CompanyResponse
@@ -99,12 +100,23 @@ def get_user_swipe_history(
 
 @app.post("/register")
 def register(user: UserCreate, db: Session = Depends(get_db)):
+    clean_email = user.email.strip().lower()
+
+    existing_user = db.query(User).filter(
+        func.lower(func.trim(User.email)) == clean_email
+    ).first()
+
+    if existing_user:
+        raise HTTPException(
+            status_code=400,
+            detail="Email already registered"
+        )
 
     new_user = User(
-        full_name=user.full_name,
-        email=user.email,
+        full_name=user.full_name.strip(),
+        email=clean_email,
         password_hash=hash_password(user.password),
-        role=user.role,
+        role=user.role.strip().lower(),
         phone=user.phone
     )
 
@@ -119,9 +131,10 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
 
 @app.post("/login", response_model=schemas.TokenResponse)
 def login(user: schemas.LoginRequest, db: Session = Depends(get_db)):
+    clean_email = user.email.strip().lower()
 
     db_user = db.query(User).filter(
-        User.email == user.email
+        func.lower(func.trim(User.email)) == clean_email
     ).first()
 
     if db_user is None:

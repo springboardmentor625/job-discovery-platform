@@ -23,7 +23,7 @@ import {
 export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, isAuthenticated } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
   const isActive = (path) => {
@@ -32,12 +32,14 @@ export default function Sidebar({ mobileOpen, setMobileOpen }) {
   };
 
   useEffect(() => {
-    if (user?.role !== "recruiter") {
+    if (isAuthenticated && user?.role === "candidate") {
       api.get("/notifications/unread-count")
         .then((res) => setUnreadCount(res.data?.unread_count || 0))
         .catch(() => {});
+    } else {
+      setUnreadCount(0);
     }
-  }, [location.pathname, user?.role]);
+  }, [isAuthenticated, location.pathname, user?.role]);
 
   // Role-based Navigation Configuration
   const isRecruiter = user?.role === "recruiter";

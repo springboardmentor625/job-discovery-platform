@@ -28,12 +28,14 @@ export default function Header() {
   const isActive = (path) => location.pathname === path;
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (isAuthenticated && user?.role === "candidate") {
       api.get("/notifications/unread-count")
         .then((res) => setUnreadCount(res.data?.unread_count || 0))
         .catch(() => {});
+    } else {
+      setUnreadCount(0);
     }
-  }, [isAuthenticated, location.pathname]);
+  }, [isAuthenticated, user?.role, location.pathname]);
 
   const isRecruiter = user?.role === "recruiter";
 

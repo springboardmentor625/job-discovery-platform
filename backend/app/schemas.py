@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator
 from typing import Optional, Any
 from datetime import datetime
 
@@ -15,6 +15,13 @@ class UserCreate(BaseModel):
     role: str
     phone: Optional[str] = None
     profile_picture: Optional[str] = None
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
 
 
 class UserResponse(BaseModel):
@@ -33,6 +40,13 @@ class UserResponse(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
 
 
 # -------------------------
@@ -244,6 +258,13 @@ class ApplicationResponse(BaseModel):
 class LoginRequest(BaseModel):
     email: str
     password: str
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, v: Any) -> Any:
+        if isinstance(v, str):
+            return v.strip().lower()
+        return v
 
 
 class TokenResponse(BaseModel):
