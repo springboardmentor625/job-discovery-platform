@@ -3,6 +3,7 @@ import Login from "./Login";
 import Dashboard from "./Dashboard";
 import VerifyEmail from "./VerifyEmail";
 import axios from "axios";
+const API_URL = import.meta.env.VITE_API_URL;
 import "./App.css";
 
 function App() {
@@ -31,7 +32,7 @@ function App() {
 
     try {
       const response = await axios.post(
-        "http://127.0.0.1:8000/api/register/",
+        `${API_URL}/api/register/`,
         {
           full_name: fullName,
           phone: phone,
