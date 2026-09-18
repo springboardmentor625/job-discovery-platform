@@ -1,0 +1,120 @@
+2026-08-20 22:18:46.492 | INFO     | __main__:cache_ai_models:11 - Initializing AI Model Cache sequence...
+2026-08-20 22:18:46.493 | INFO     | __main__:cache_ai_models:14 - Checking Vector Model: all-MiniLM-L6-v2...
+2026-08-20 22:18:56.032 | SUCCESS  | __main__:cache_ai_models:17 - [all-MiniLM-L6-v2] is cached and ready.
+2026-08-20 22:18:56.034 | INFO     | __main__:cache_ai_models:21 - Checking NLP Model: en_core_web_sm...
+2026-08-20 22:18:57.363 | SUCCESS  | __main__:cache_ai_models:24 - [en_core_web_sm] is already installed.
+2026-08-20 22:18:57.364 | SUCCESS  | __main__:cache_ai_models:31 - All ML pipelines are fully cached. Ready for production traffic.
+2026-08-20 22:22:39.963 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: can1@can.com
+2026-08-20 22:22:40.671 | SUCCESS  | app.services.auth_service:register_user:35 - User can1@can.com registered successfully.
+2026-08-20 22:24:32.742 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can1.com
+2026-08-20 22:24:32.749 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@can1.com
+2026-08-20 22:24:54.872 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-20 22:24:55.270 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-20 22:25:19.149 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-20 22:25:19.539 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-20 22:43:13.769 | INFO     | __main__:seed_database:26 - Starting database seeding process...
+2026-08-20 22:43:14.844 | SUCCESS  | __main__:seed_database:52 - Generated 5 Fake Recruiters.
+2026-08-20 22:43:14.845 | INFO     | __main__:seed_database:55 - Generating 50 jobs and calculating AI vectors. This might take a minute...
+2026-08-20 22:43:15.551 | SUCCESS  | __main__:seed_database:80 - Successfully injected 50 AI-vectorized jobs into the database!
+2026-08-20 22:59:34.657 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new recruiter: rec1@rec.com
+2026-08-20 22:59:35.166 | SUCCESS  | app.services.auth_service:register_user:35 - User rec1@rec.com registered successfully.
+2026-08-20 23:00:26.826 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: rec1@rec.com
+2026-08-20 23:00:27.218 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User rec1@rec.com logged in successfully.
+2026-08-20 23:03:22.454 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-20 23:03:22.853 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-20 23:04:56.745 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: rec1@rec.com
+2026-08-20 23:04:57.134 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User rec1@rec.com logged in successfully.
+2026-08-20 23:06:40.977 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-20 23:06:41.379 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-21 00:47:20.335 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: can2@can.com
+2026-08-21 00:47:20.919 | SUCCESS  | app.services.auth_service:register_user:35 - User can2@can.com registered successfully.
+2026-08-21 00:47:20.995 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can2@can.com
+2026-08-21 00:47:21.270 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can2@can.com logged in successfully.
+2026-08-21 17:18:49.098 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: Pratheep@pratheep.com
+2026-08-21 17:18:49.268 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: Pratheep@pratheep.com
+2026-08-21 17:19:05.500 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-21 17:19:05.961 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-24 17:03:17.147 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-24 17:03:17.822 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-24 17:05:04.965 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: rec1@rec.com
+2026-08-24 17:05:05.357 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User rec1@rec.com logged in successfully.
+2026-08-24 17:06:16.825 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new recruiter: pratheep@rec.com
+2026-08-24 17:06:17.273 | SUCCESS  | app.services.auth_service:register_user:35 - User pratheep@rec.com registered successfully.
+2026-08-24 17:06:17.278 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheep@rec.com
+2026-08-24 17:06:17.664 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User pratheep@rec.com logged in successfully.
+2026-08-24 17:16:23.460 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-24 17:16:23.889 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-25 17:25:36.250 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheep@rec.com
+2026-08-25 17:26:05.768 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: pratheep@rec.com
+2026-08-25 17:26:18.736 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: pratheep@rec.com
+2026-08-25 17:26:56.196 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: can3@gmail.com
+2026-08-25 17:51:19.230 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-25 17:51:34.253 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-25 17:55:49.210 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-25 17:55:49.659 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-25 18:00:46.134 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-25 18:00:46.403 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-25 19:45:45.303 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@gmail.com
+2026-08-25 19:45:45.384 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@gmail.com
+2026-08-25 19:45:54.315 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-25 19:45:54.615 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-25 21:08:50.901 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new recruiter: rec3@rec.com
+2026-08-25 21:08:51.206 | SUCCESS  | app.services.auth_service:register_user:35 - User rec3@rec.com registered successfully.
+2026-08-25 21:08:51.213 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: rec3@rec.com
+2026-08-25 21:08:51.483 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User rec3@rec.com logged in successfully.
+2026-08-25 21:10:51.769 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-25 21:10:52.042 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-27 17:16:48.681 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-27 17:16:49.282 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-27 17:17:37.410 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can2@can.com
+2026-08-27 17:17:37.809 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can2@can.com logged in successfully.
+2026-08-27 17:18:17.496 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: can5@can.com
+2026-08-27 17:19:24.322 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-27 17:19:24.710 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@can.com
+2026-08-27 17:19:29.405 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-08-27 17:19:29.796 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-08-31 08:19:48.253 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-01 16:13:00.953 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-01 16:15:38.049 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-01 16:15:38.489 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-09-07 15:59:36.308 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-07 15:59:36.500 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@can.com
+2026-09-07 15:59:46.003 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-07 15:59:46.008 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@can.com
+2026-09-07 15:59:59.799 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-07 15:59:59.806 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@can.com
+2026-09-07 16:00:19.692 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: pratheep@can.com
+2026-09-07 16:00:20.164 | SUCCESS  | app.services.auth_service:register_user:35 - User pratheep@can.com registered successfully.
+2026-09-07 16:00:20.208 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheep@can.com
+2026-09-07 16:00:20.596 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User pratheep@can.com logged in successfully.
+2026-09-07 17:02:49.269 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheep@can.com
+2026-09-07 17:02:49.589 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User pratheep@can.com logged in successfully.
+2026-09-07 17:12:22.286 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: pratheemyself@gmail.com
+2026-09-07 17:12:22.588 | SUCCESS  | app.services.auth_service:register_user:35 - User pratheemyself@gmail.com registered successfully.
+2026-09-07 17:12:22.592 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheemyself@gmail.com
+2026-09-07 17:12:22.885 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User pratheemyself@gmail.com logged in successfully.
+2026-09-08 14:24:48.164 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheemyself@gmail.com
+2026-09-08 14:24:48.841 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User pratheemyself@gmail.com logged in successfully.
+2026-09-08 15:06:29.674 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheemyself@gmail.com
+2026-09-08 15:06:29.822 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: pratheemyself@gmail.com
+2026-09-08 15:06:42.046 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-08 15:06:42.057 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: can1@can.com
+2026-09-08 15:06:57.177 | INFO     | app.services.auth_service:register_user:13 - Attempting to register new candidate: can1@can.com
+2026-09-08 15:06:57.641 | SUCCESS  | app.services.auth_service:register_user:35 - User can1@can.com registered successfully.
+2026-09-08 15:06:57.656 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-08 15:06:58.053 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-09-08 15:17:42.399 | INFO     | __main__:seed_database:26 - Starting database seeding process...
+2026-09-08 15:17:43.873 | SUCCESS  | __main__:seed_database:52 - Generated 5 Fake Recruiters.
+2026-09-08 15:17:43.874 | INFO     | __main__:seed_database:55 - Generating 50 jobs and calculating AI vectors. This might take a minute...
+2026-09-08 15:18:02.564 | SUCCESS  | __main__:seed_database:80 - Successfully injected 50 AI-vectorized jobs into the database!
+2026-09-08 15:24:37.794 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheemyself@gmail.com
+2026-09-08 15:24:37.807 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: pratheemyself@gmail.com
+2026-09-08 15:24:51.305 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-08 15:24:51.746 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-09-08 17:08:58.038 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-08 17:09:55.873 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-08 17:09:56.324 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
+2026-09-16 16:42:48.267 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: pratheemyself@gmail.com
+2026-09-16 16:42:48.518 | ERROR    | app.services.auth_service:authenticate_user:54 - Authentication failed for: pratheemyself@gmail.com
+2026-09-16 16:43:11.548 | INFO     | app.services.auth_service:authenticate_user:48 - Authentication attempt for: can1@can.com
+2026-09-16 16:43:11.902 | SUCCESS  | app.services.auth_service:authenticate_user:57 - User can1@can.com logged in successfully.
