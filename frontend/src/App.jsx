@@ -49,6 +49,9 @@ function App() {
   // Authentication
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [candidateName, setCandidateName] = useState(
+  localStorage.getItem("candidate_name") || ""
+);
 
   // Registration
   const [fullName, setFullName] = useState("");
@@ -69,13 +72,14 @@ function App() {
   // Resume
   const [resumeFile, setResumeFile] = useState(null);
   const [extractedSkills, setExtractedSkills] = useState([]);
-
-  // Jobs
+  const [skillsLoading, setSkillsLoading] = useState(false);
   // Jobs
 const [jobs, setJobs] = useState([]);
 const [jobsLoading, setJobsLoading] = useState(false);
 const [jobsPage, setJobsPage] = useState(1);
 const [jobsPagination, setJobsPagination] = useState(null);
+const [jobLocationFilter, setJobLocationFilter] = useState("");
+const [jobSkillsFilter, setJobSkillsFilter] = useState("");
 
   // ATS
   const [selectedJob, setSelectedJob] = useState(null);
@@ -274,13 +278,19 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
       if (response.ok) {
         localStorage.setItem(
-          "access_token",
-          data.access_token
-        );
+  "access_token",
+  data.access_token
+);
+
+localStorage.setItem(
+  "candidate_name",
+  data.full_name
+);
 
         setMessage(
           `Welcome, ${data.full_name}! Login successful.`
         );
+        setCandidateName(data.full_name);
 
         const profileResponse = await fetch(
           `${API}/api/profile`,
@@ -409,6 +419,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
     setMessage("");
     setExtractedSkills([]);
+    setSkillsLoading(true);
 
     const authToken = token();
 
@@ -424,7 +435,8 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       );
 
       setPage("login");
-
+      
+setSkillsLoading(false);
       return;
     }
 
@@ -432,6 +444,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       setMessage(
         "Please select a PDF resume."
       );
+      setSkillsLoading(false);
       return;
     }
 
@@ -442,6 +455,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       setMessage(
         "Only PDF resumes are allowed."
       );
+      setSkillsLoading(false);
       return;
     }
 
@@ -449,6 +463,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
       setMessage(
         "Resume must be smaller than 5 MB."
       );
+      setSkillsLoading(false);
       return;
     }
 
@@ -491,6 +506,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
             "Resume upload failed."
         );
       }
+      setSkillsLoading(false);
     } catch {
       setMessage(
         "Could not connect to the backend."
@@ -528,7 +544,7 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
 
   try {
     const response = await fetch(
-      `${API}/api/jobs?page=${pageNumber}&limit=20`,
+  `${API}/api/jobs?page=${pageNumber}&limit=20&location=${encodeURIComponent(jobLocationFilter)}&skills=${encodeURIComponent(jobSkillsFilter)}`,
       {
         headers: {
           Authorization: `Bearer ${authToken}`,
@@ -547,10 +563,15 @@ console.log("FIRST 10 JOBS:", data.jobs?.slice(0, 10));
     );
 
     if (response.ok) {
-      setJobs((prevJobs) => [
-  ...prevJobs,
-  ...(data.jobs || [])
-]);
+      if (pageNumber === 1) {
+        setJobs(data.jobs || []);
+      } else {
+        setJobs((prevJobs) => [
+          ...prevJobs,
+          ...(data.jobs || [])
+        ]);
+      }
+
       setJobsPage(pageNumber);
       setJobsPagination(data.pagination || null);
       setPage("jobs");
@@ -702,6 +723,10 @@ console.log(
         setMessage(
           `Job ${actionText} successfully.`
         );
+
+        setTimeout(() => {
+  setMessage("");
+}, 2500);
 
         setRecommendations(
           (previous) =>
@@ -908,7 +933,57 @@ console.log(
         );
       }
     };
+  const handleDeleteSwipe = async (swipeId) => {
+  const authToken = token();
 
+  if (!authToken) {
+    setMessage("Please login first.");
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${API}/api/swipe-history/${swipeId}`,
+      {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+        },
+      }
+    );
+
+    const data = await response.json();
+
+    if (response.ok) {
+      setSwipeHistory((currentHistory) =>
+        currentHistory.filter(
+          (item) => item.swipe_id !== swipeId
+        )
+      );
+
+      setMessage(
+        "Swipe deleted. This job can be recommended again."
+      );
+
+      setMessage(
+  "Swipe deleted. This job can be recommended again."
+);
+
+setTimeout(() => {
+  setMessage("");
+}, 2500);
+    } else {
+      setMessage(
+        data.message ||
+          "Could not delete swipe history."
+      );
+    }
+  } catch {
+    setMessage(
+      "Could not connect to the backend."
+    );
+  }
+};
   // ============================================================
   // ATS
   // ============================================================
@@ -1590,19 +1665,19 @@ console.log(
 
               <div className="sx-stat-card">
 
-                <span>
-                  PROFILE STATUS
-                </span>
+  <span>
+    WELCOME BACK
+  </span>
 
-                <strong>
-                  ACTIVE
-                </strong>
+  <strong>
+    {candidateName} 
+  </strong>
 
-                <small>
-                  Ready for job discovery
-                </small>
+  <small>
+    Ready to discover your next opportunity.
+  </small>
 
-              </div>
+</div>
 
             </div>
 
@@ -1610,9 +1685,7 @@ console.log(
 
               <div className="sx-panel sx-upload-panel">
 
-                <div className="sx-panel-icon">
-                  ↑
-                </div>
+                
 
                 <div className="sx-eyebrow">
                   RESUME ANALYSIS
@@ -1700,22 +1773,27 @@ console.log(
                     )}
 
                   </div>
-                ) : (
-                  <div className="sx-empty-state">
+                
+                
+                ) : skillsLoading ? (
+  <div className="sx-empty-state">
+    <span className="sx-skill-loader"></span>
+    <p>
+      Extracting skills...
+    </p>
+  </div>
+) : (
+  <div className="sx-empty-state">
+    
+    <p>
+      Upload a resume to see
+      your detected skills.
+    </p>
+  </div>
+)}
 
-                    <span>+</span>
 
-                    <p>
-                      Upload a resume to see
-                      your detected skills.
-                    </p>
-
-                  </div>
-                )}
-
-              </div>
-
-            </div>
+    </div>
 
             {message && (
               <div className="sx-message">
@@ -1756,6 +1834,8 @@ console.log(
               </div>
             )}
 
+            </div>
+
           </section>
         )}
 
@@ -1795,7 +1875,53 @@ console.log(
               </button>
 
             </div>
+{/* Job Filters */}
+<div className="sx-job-filters">
 
+  {/* Location */}
+  <div className="sx-filter-field">
+    <label>
+      Location
+    </label>
+
+    <input
+      type="text"
+      placeholder="Search by location..."
+      value={jobLocationFilter}
+      onChange={(e) =>
+        setJobLocationFilter(e.target.value)
+      }
+    />
+  </div>
+
+  {/* Skills */}
+  <div className="sx-filter-field">
+    <label>
+      Skills
+    </label>
+
+    <input
+      type="text"
+      placeholder="e.g. Python, SQL, Pandas"
+      value={jobSkillsFilter}
+      onChange={(e) =>
+        setJobSkillsFilter(e.target.value)
+      }
+    />
+  </div>
+
+  {/* Apply Filter */}
+  <button
+    className="sx-filter-btn"
+    onClick={() => handleViewJobs(1)}
+    disabled={jobsLoading}
+  >
+    {jobsLoading
+      ? "Loading..."
+      : "Apply Filter"}
+  </button>
+
+</div>
             {message && (
               <div className="sx-message">
                 {message}
@@ -1971,12 +2097,11 @@ console.log(
                     </div>
 
                     <div className="sx-match">
-
-                      {Math.round(
-                        recommendations[0]
-                          .recommendation_score
-                      )}
-                      %
+{Number(
+  recommendations[0]
+    .recommendation_score
+).toFixed(1)}
+%
 
                       <small>
                         MATCH
@@ -2197,11 +2322,11 @@ console.log(
                         </div>
 
                         <b>
-                          {Math.round(
-                            job.recommendation_score
-                          )}
-                          %
-                        </b>
+  {Number(
+    job.recommendation_score
+  ).toFixed(1)}
+  %
+</b>
 
                       </div>
                     ))}
@@ -2306,7 +2431,14 @@ console.log(
                           ).toLocaleString()}
                         </small>
                       )}
-
+                      <button
+  className="sx-delete-swipe-btn"
+  onClick={() =>
+    handleDeleteSwipe(item.swipe_id)
+  }
+>
+  Remove from History
+</button>
                     </div>
                   )
                 )}
