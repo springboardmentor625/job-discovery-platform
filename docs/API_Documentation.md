@@ -2,33 +2,82 @@
 
 ## 1. Overview
 
-SwipeX uses a REST API built with **Django REST Framework**.
+SwipeX provides a REST API built using **Django REST Framework (DRF)**.
 
-The API handles:
+The API supports the candidate-side job discovery workflow, including:
 
 - Candidate registration and authentication
 - Candidate profile management
 - Resume upload and processing
-- Job retrieval and filtering
-- Job-specific ATS and skill matching
-- Personalized recommendations
+- Resume viewing, downloading, and deletion
+- Job retrieval
+- Job search and filtering
+- Job-specific ATS and matching information
+- Personalized job recommendations
 - Swipe actions
 - Swipe history
-- Resume viewing and downloading
 
-All protected APIs require an authenticated user.
+The backend uses **JWT authentication** for protected APIs.
 
 ---
 
-# 2. Authentication
+# 2. API Base URLs
+
+## Local Development
+
+```text
+http://127.0.0.1:8001
+````
+
+## Production Backend
+
+```text
+https://swipex-backend-n4y5.onrender.com
+```
+
+The production frontend is deployed at:
+
+```text
+https://swipex-frontend-zeta.vercel.app/
+```
+
+---
+
+# 3. Authentication
+
+SwipeX uses **JSON Web Tokens (JWT)** for authentication.
+
+The authentication flow is:
+
+```text
+Register
+   ↓
+Login
+   ↓
+JWT Access Token
+   ↓
+Frontend Stores Token
+   ↓
+Bearer Token
+   ↓
+Protected API Requests
+```
+
+Protected requests use:
+
+```http
+Authorization: Bearer ACCESS_TOKEN
+```
+
+---
 
 ## Register
 
-Creates a new user account.
+Creates a new candidate account.
 
 ```http
 POST /api/register/
-````
+```
 
 ### Request
 
@@ -43,13 +92,13 @@ POST /api/register/
 
 ### Response
 
-Returns the newly created user information.
+Returns information related to the newly created user.
 
 ---
 
 ## Login
 
-Authenticates a candidate and returns JWT authentication tokens.
+Authenticates a candidate and returns JWT tokens.
 
 ```http
 POST /api/login/
@@ -73,7 +122,7 @@ POST /api/login/
 }
 ```
 
-The access token is sent with protected requests:
+The access token is used for protected API requests:
 
 ```http
 Authorization: Bearer ACCESS_TOKEN
@@ -81,17 +130,19 @@ Authorization: Bearer ACCESS_TOKEN
 
 ---
 
-# 3. Candidate Profile API
+# 4. Candidate Profile API
 
 ## Get Current Candidate
 
-Returns the authenticated candidate's profile.
+Returns the authenticated candidate's profile information.
 
 ```http
 GET /api/candidates/me/
 ```
 
 ### Response
+
+Example:
 
 ```json
 {
@@ -115,7 +166,7 @@ GET /api/candidates/me/
 
 ## Update Candidate Profile
 
-Updates the authenticated candidate profile.
+Updates the authenticated candidate's profile.
 
 ```http
 PATCH /api/candidates/me/
@@ -139,21 +190,23 @@ PATCH /api/candidates/me/
 }
 ```
 
-The backend validates profile information before saving it.
+The backend validates candidate profile information before saving it.
 
 ---
 
-# 4. Resume API
+# 5. Resume API
 
 ## Get Candidate Resume
 
-Returns the authenticated candidate's resume information.
+Returns resume information associated with the authenticated candidate.
 
 ```http
 GET /api/resumes/
 ```
 
 ### Response
+
+Example:
 
 ```json
 [
@@ -173,11 +226,13 @@ GET /api/resumes/
 ]
 ```
 
+The exact response fields depend on the current resume serializer.
+
 ---
 
-## Upload Resume
+# 6. Upload Resume
 
-Uploads a new PDF or DOCX resume.
+Uploads and processes a candidate resume.
 
 ```http
 POST /api/resumes/
@@ -185,64 +240,112 @@ POST /api/resumes/
 
 ### Request
 
-`multipart/form-data`
+The request uses:
+
+```text
+multipart/form-data
+```
+
+Example:
 
 ```text
 resume_file = <resume.pdf>
 ```
 
-### Validation
+---
 
-The backend checks:
+## Resume Validation
+
+The backend validates the uploaded resume.
+
+Validation includes checks such as:
 
 * File is provided
 * File is not empty
-* File is PDF or DOCX
-* File size is at most 5 MB
-* File structure is valid
-* Resume contains readable text
-* Resume contains sufficient resume-related information
-* Name on the resume matches the candidate profile
-* Phone number on the resume matches the candidate profile
+* Supported file format
+* File size
+* File structure
+* Readable text
+* Resume-related information
+* Candidate identity information
 
-### Success
+Supported resume formats include:
 
-```json
-{
-  "message": "Resume processed successfully"
-}
+```text
+PDF
+DOC
+DOCX
 ```
 
-The uploaded resume is then processed for:
+The maximum supported resume size is:
 
-* Text extraction
-* Skill extraction
-* Experience extraction
-* Education extraction
-* ATS analysis
-* Resume feedback
+```text
+5 MB
+```
 
 ---
 
-# 5. Resume File API
+## Resume Identity Validation
+
+SwipeX validates important information extracted from the resume against the candidate profile.
+
+For example:
+
+```text
+Resume Name
+     ↓
+Candidate Profile Name
+
+Resume Phone
+     ↓
+Candidate Profile Phone
+```
+
+If required identity information does not match, the resume can be rejected.
+
+---
+
+## Resume Processing Flow
+
+```text
+Resume Upload
+      ↓
+File Validation
+      ↓
+Text Extraction
+      ↓
+Resume Processing
+      ↓
+Skill Extraction
+      ↓
+ATS Processing
+      ↓
+ML Prediction
+      ↓
+Recommendation Preparation
+```
+
+---
+
+# 7. Resume File API
 
 ## View Resume
 
-Returns the uploaded resume file for viewing.
+Returns the uploaded resume file.
 
 ```http
 GET /api/resumes/{resume_id}/file/
 ```
 
-For PDF files, the browser can open the document directly.
+For PDF files, the browser can display the document directly.
 
-For DOCX files, SwipeX can use the generated PDF preview.
+For DOC/DOCX files, SwipeX can generate a PDF preview when required.
 
 ---
 
 ## Download Resume
 
-Downloads the original resume file.
+Downloads the resume file.
 
 ```http
 GET /api/resumes/{resume_id}/file/?download=true
@@ -258,9 +361,33 @@ Deletes the authenticated candidate's resume.
 DELETE /api/resumes/{resume_id}/
 ```
 
+Candidates can only operate on their own resume data.
+
 ---
 
-# 6. Jobs API
+# 8. Resume Machine Learning
+
+SwipeX uses machine learning during resume processing.
+
+## Multinomial Naive Bayes
+
+The resume-related prediction component uses:
+
+```text
+TF-IDF
+   ↓
+Multinomial Naive Bayes
+   ↓
+Prediction Probability
+```
+
+The predicted probability is stored with the candidate's resume information.
+
+This model is used for **resume-related prediction**, not for the complete recommendation system.
+
+---
+
+# 9. Job API
 
 ## Get Jobs
 
@@ -270,7 +397,7 @@ Returns jobs available to the authenticated candidate.
 GET /api/jobs/
 ```
 
-Jobs are returned using server-side pagination.
+Jobs are retrieved using server-side pagination.
 
 The current page size is:
 
@@ -280,7 +407,7 @@ The current page size is:
 
 ---
 
-## Search Jobs
+# 10. Search Jobs
 
 Jobs can be searched using the `search` query parameter.
 
@@ -288,16 +415,18 @@ Jobs can be searched using the `search` query parameter.
 GET /api/jobs/?search=python
 ```
 
-Search can consider fields such as:
+Search can consider job-related fields such as:
 
 * Job title
 * Company
 * Location
 * Required skills
 * Preferred skills
-* Description
+* Job description
 
 ---
+
+# 11. Job Filters
 
 ## Filter by Skills
 
@@ -350,11 +479,11 @@ senior
 
 ---
 
-# 7. Job-Specific Matching
+# 12. Job-Specific Matching
 
-Job information returned by the API can include candidate-specific matching information.
+SwipeX provides candidate-specific matching information for jobs.
 
-Examples include:
+Example:
 
 ```json
 {
@@ -375,29 +504,111 @@ Examples include:
 }
 ```
 
-The matching information is calculated using the authenticated candidate's profile and resume.
+The matching information is calculated using the authenticated candidate's profile and resume information.
 
 ---
 
-# 8. Recommendations API
+# 13. Job-Specific ATS
+
+SwipeX calculates ATS compatibility against a specific job.
+
+The current job-specific ATS calculation uses:
+
+| Component           |   Weight |
+| ------------------- | -------: |
+| Skill Match         |      45% |
+| Semantic Similarity |      30% |
+| Experience Fit      |      20% |
+| Lexical Relevance   |       5% |
+| **Total**           | **100%** |
+
+The ATS score combines candidate and job information.
+
+---
+
+## Skill Match
+
+Skill Match represents the percentage of required job skills matched by the candidate.
+
+Example:
+
+```text
+Required Skills:
+Python
+SQL
+Django
+React
+Git
+
+Candidate Skills:
+Python
+SQL
+Django
+```
+
+Therefore:
+
+```text
+Matched Skills = 3
+Required Skills = 5
+
+Skill Match = 3 / 5 × 100
+            = 60%
+```
+
+---
+
+# 14. Semantic Matching
+
+SwipeX uses lightweight text vectorization for semantic features.
+
+The current implementation uses:
+
+```text
+HashingVectorizer
+```
+
+Configuration includes:
+
+```text
+n_features = 1024
+norm = l2
+ngram_range = (1, 2)
+```
+
+The vectorized resume and job text are used to calculate similarity-related features.
+
+SwipeX's current implementation does **not** rely on:
+
+```text
+Sentence Transformers
+all-MiniLM-L6-v2
+```
+
+for the semantic matching pipeline.
+
+---
+
+# 15. Recommendations API
 
 ## Get Recommendations
 
-Returns personalized job recommendations.
+Returns personalized job recommendations for the authenticated candidate.
 
 ```http
 GET /api/recommendations/
 ```
 
-The recommendation system considers:
+The recommendation system can consider:
 
 * Candidate profile
 * Resume information
-* Skills
-* Preferred roles
+* Extracted skills
+* Preferred job roles
 * Preferred locations
 * Work mode
 * ATS compatibility
+* Skill matching
 * Semantic similarity
 * Experience fit
 * Swipe behaviour
@@ -412,15 +623,124 @@ Requests a fresh recommendation set.
 GET /api/recommendations/?refresh=true
 ```
 
-The recommendation system excludes jobs that the candidate has already processed.
+Previously processed jobs are excluded from recommendation results.
 
 ---
 
-# 9. Swipe API
+# 16. Recommendation System
+
+SwipeX uses different recommendation strategies depending on the available candidate feedback.
+
+The general process is:
+
+```text
+Candidate Profile
+       +
+Resume
+       +
+Job Requirements
+       +
+ATS Score
+       +
+Skill Match
+       +
+Semantic Similarity
+       +
+Swipe History
+       ↓
+Recommendation Scoring
+       ↓
+Recommended Jobs
+```
+
+---
+
+## Cold-Start Recommendation
+
+When sufficient swipe history is not available, SwipeX uses candidate and job information to generate recommendations.
+
+The cold-start scoring uses:
+
+| Component      |   Weight |
+| -------------- | -------: |
+| ATS Score      |      35% |
+| Skill Match    |      30% |
+| Semantic Fit   |      20% |
+| Experience Fit |      15% |
+| **Total**      | **100%** |
+
+This allows recommendations to be generated for new candidates.
+
+---
+
+# 17. Swipe Preference Learning
+
+Swipe behaviour is used as recommendation feedback.
+
+The available candidate actions are:
+
+```text
+Interested
+Saved
+Skipped
+```
+
+These actions are treated as behavioural signals.
+
+```text
+Interested
+    ↓
+Positive Signal
+
+Saved
+    ↓
+Positive Signal
+
+Skipped
+    ↓
+Negative Signal
+```
+
+---
+
+## Logistic Regression
+
+SwipeX uses **Logistic Regression** for preference learning when sufficient positive and negative swipe feedback is available.
+
+The preference model requires at least:
+
+```text
+3 Positive Interactions
+3 Negative Interactions
+```
+
+The model uses similarity-based features to learn the candidate's preferences.
+
+The process is:
+
+```text
+Swipe History
+      ↓
+Positive / Negative Interactions
+      ↓
+Similarity Features
+      ↓
+Logistic Regression
+      ↓
+Learned Preference
+      ↓
+Recommendation Ranking
+```
+
+Before sufficient feedback is available, the cold-start recommendation strategy is used.
+
+---
+
+# 18. Swipe API
 
 ## Create Swipe
 
-Stores the candidate's decision for a job.
+Stores a candidate's decision for a job.
 
 ```http
 POST /api/swipes/
@@ -435,7 +755,7 @@ POST /api/swipes/
 }
 ```
 
-Supported decisions are:
+Supported decisions include:
 
 ```text
 interested
@@ -443,57 +763,44 @@ saved
 skipped
 ```
 
-Legacy values `right` and `left` are normalized by the backend.
-
----
-
-## Swipe Behaviour
-
-Swipe interactions act as recommendation feedback.
+Legacy values such as:
 
 ```text
-Interested
-    ↓
-Positive signal
-
-Saved
-    ↓
-Positive signal
-
-Skipped
-    ↓
-Negative signal
+right
+left
 ```
 
-The recommendation system can use these signals to improve future ranking.
+can be normalized by the backend.
 
 ---
 
-# 10. Swipe History API
+# 19. Swipe History API
 
 ## Get Swipe History
 
-Returns the authenticated candidate's previous swipe decisions.
+Returns the authenticated candidate's previous swipe interactions.
 
 ```http
 GET /api/swipes/
 ```
 
-### Filter by Decision
+---
 
-Interested:
+## Filter by Decision
+
+### Interested
 
 ```http
 GET /api/swipes/?decision=interested
 ```
 
-Saved:
+### Saved
 
 ```http
 GET /api/swipes/?decision=saved
 ```
 
-Skipped:
+### Skipped
 
 ```http
 GET /api/swipes/?decision=skipped
@@ -501,9 +808,35 @@ GET /api/swipes/?decision=skipped
 
 ---
 
-# 11. Error Responses
+# 20. Recommendation and Swipe Workflow
 
-The API returns validation errors using standard Django REST Framework responses.
+The recommendation feedback cycle is:
+
+```text
+Get Recommendations
+        ↓
+Display Job
+        ↓
+Candidate Swipes
+        ↓
+POST /api/swipes/
+        ↓
+Swipe Stored
+        ↓
+Behavioural Feedback
+        ↓
+Preference Learning
+        ↓
+Updated Recommendation Ranking
+```
+
+This allows the recommendation system to become more personalized as candidate interactions increase.
+
+---
+
+# 21. Error Responses
+
+The API uses standard Django REST Framework validation responses.
 
 Example:
 
@@ -515,7 +848,9 @@ Example:
 }
 ```
 
-Resume validation example:
+---
+
+## Resume Format Error
 
 ```json
 {
@@ -525,7 +860,11 @@ Resume validation example:
 }
 ```
 
-Resume identity validation example:
+---
+
+## Resume Identity Validation Error
+
+Example:
 
 ```json
 {
@@ -537,7 +876,7 @@ Resume identity validation example:
 
 ---
 
-# 12. Authentication and Authorization
+# 22. Authentication and Authorization
 
 Protected endpoints require a valid JWT access token.
 
@@ -547,23 +886,22 @@ Example:
 Authorization: Bearer ACCESS_TOKEN
 ```
 
-The backend uses the authenticated user to determine which:
+The authenticated user determines which candidate-specific data can be accessed.
 
-* Profile
+Protected candidate information includes:
+
+* Candidate profile
 * Resume
 * Swipe history
 * Recommendations
-* Jobs
-
-are available to the candidate.
 
 Candidates cannot access another candidate's private resume or swipe history.
 
 ---
 
-# 13. API Workflow
+# 23. API Workflow
 
-The main API workflow is:
+The main candidate API workflow is:
 
 ```text
 Register
@@ -576,20 +914,24 @@ Upload Resume
    ↓
 Resume Processing
    ↓
-Get Recommendations
+Get Jobs / Recommendations
    ↓
 Swipe / Save / Interested
    ↓
-Get Updated Recommendations
+Swipe Stored
+   ↓
+Updated Recommendations
    ↓
 View Swipe History
    ↓
 Explore Jobs
+   ↓
+View Job Details
 ```
 
 ---
 
-# 14. API Technology
+# 24. API Technology
 
 The API layer is implemented using:
 
@@ -598,17 +940,60 @@ Django
 Django REST Framework
 Simple JWT
 PostgreSQL
+scikit-learn
+NumPy
+pandas
 ```
 
-The API communicates with the React frontend using JSON and multipart form data for file uploads.
+The API communicates with the React frontend using:
+
+```text
+JSON
+```
+
+and:
+
+```text
+multipart/form-data
+```
+
+for resume file uploads.
 
 ---
 
-# 15. Summary
+# 25. API Deployment
 
-SwipeX APIs provide the complete backend interface for the candidate job-discovery workflow.
+The SwipeX backend is deployed on Render.
 
-The main API areas are:
+Production backend:
+
+```text
+https://swipex-backend-n4y5.onrender.com
+```
+
+The frontend is deployed on Vercel:
+
+```text
+https://swipex-frontend-zeta.vercel.app/
+```
+
+The production architecture is:
+
+```text
+React Frontend
+      ↓
+Vercel
+      ↓
+Django REST API
+      ↓
+Render
+      ↓
+PostgreSQL
+```
+
+---
+
+# 26. API Summary
 
 | API Area        | Purpose                                    |
 | --------------- | ------------------------------------------ |
@@ -616,8 +1001,63 @@ The main API areas are:
 | Candidate       | Profile management                         |
 | Resume          | Upload, process, view, download and delete |
 | Jobs            | Search, filtering and pagination           |
+| Matching        | Job-specific ATS and matching information  |
 | Recommendations | Personalized job ranking                   |
 | Swipes          | Candidate job decisions                    |
 | Swipe History   | Previous candidate interactions            |
 
+---
+
+# 27. Overall Architecture
+
+```text
+                    SwipeX
+                      │
+          ┌───────────┴───────────┐
+          │                       │
+      React Frontend         Django Backend
+          │                       │
+          │                 Django REST API
+          │                       │
+          │              ┌────────┴────────┐
+          │              │                 │
+          │           PostgreSQL        AI / ML
+          │                                │
+          │                 ┌──────────────┼──────────────┐
+          │                 │              │              │
+          │              Naive Bayes  Logistic Regression HashingVectorizer
+          │
+          └────────────── API Communication
 ```
+
+---
+
+# 28. Summary
+
+SwipeX provides a REST API for the complete candidate-side job discovery workflow.
+
+The API supports:
+
+```text
+Authentication
+     ↓
+Candidate Profile
+     ↓
+Resume Processing
+     ↓
+ATS & Matching
+     ↓
+Job Discovery
+     ↓
+Recommendations
+     ↓
+Swipe Feedback
+     ↓
+Preference Learning
+     ↓
+Personalized Ranking
+```
+
+SwipeX combines traditional backend APIs with machine-learning-based prediction, text similarity, ATS matching, and behavioural personalization to create an intelligent job discovery platform.
+
+````
