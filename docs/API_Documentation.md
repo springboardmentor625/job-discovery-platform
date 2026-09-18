@@ -1059,5 +1059,3 @@ Personalized Ranking
 ```
 
 SwipeX combines traditional backend APIs with machine-learning-based prediction, text similarity, ATS matching, and behavioural personalization to create an intelligent job discovery platform.
-
-````
