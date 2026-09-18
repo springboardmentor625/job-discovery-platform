@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  db:
+    # We must use the pgvector image so your AI Embeddings work!
+    image: ankane/pgvector:latest
+    container_name: swipex_db
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: swipex_password
+      POSTGRES_DB: swipex_db
+    ports:
+      # We use 5433 on your Windows machine to avoid conflicts with your local college DB
+      - "5433:5432"
+    volumes:
+      # This ensures your database doesn't delete itself when you restart your computer
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
