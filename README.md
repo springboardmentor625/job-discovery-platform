@@ -1,4 +1,3 @@
-````markdown
 # SwipeX – Swipe-Based Intelligent Job Discovery and Career Assistance Platform
 
 SwipeX is a full-stack intelligent job discovery platform that helps candidates discover relevant job opportunities through a swipe-based interface.
@@ -477,23 +476,6 @@ Job information can include:
 
 ---
 
-# Applications
-
-The backend contains application-related functionality for recording candidate applications against jobs.
-
-Application records can contain information such as:
-
-* Candidate
-* Job
-* Resume
-* Application status
-* Application date
-* External application URL
-
-The application functionality is handled through the backend API.
-
----
-
 # Swipe History
 
 Swipe History allows candidates to review previous job interactions.
@@ -587,7 +569,7 @@ The Entity Relationship Diagram is available at:
 docs/SwipeX_database.png
 ```
 
-The diagram represents the major entities and relationships used by the SwipeX backend.
+The diagram shows the relationships between the major entities used by the SwipeX backend.
 
 ---
 
@@ -614,7 +596,6 @@ The backend handles:
 * Skill matching
 * Recommendation generation
 * Swipe history
-* Application-related operations
 * Database operations
 
 General backend flow:
