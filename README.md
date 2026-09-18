@@ -1,88 +1,71 @@
 # SwipeX - Intelligent Job Discovery Platform
 
-SwipeX helps candidates discover relevant jobs through profile and resume matching, swipe-based personalization, ATS analysis, and saved-job management.
+SwipeX is a full-stack job discovery platform built to help candidates discover relevant opportunities using profile matching, resume parsing, ATS scoring, recommendation ranking, and swipe-based personalization.
 
-## Current features
+## Overview
 
-### Authentication and candidate profile
+The platform combines:
 
-- User registration and JWT login
-- Protected candidate routes
-- Candidate profile with headline, bio, location, education, skills, experience, preferred role/location, and expected salary
-- Persistent candidate dashboard with Dashboard, Discover, Saved Jobs, Resume, AI Recommendations, and Settings sections
+- Candidate authentication and profile management
+- Resume upload and profile extraction
+- Job discovery through swipe interactions
+- AI-powered recommendation ranking
+- Saved jobs and candidate dashboard workflows
+- ATS scoring to evaluate how well a candidate matches a job requirement
 
-### Resume management
+## Features
 
-- Upload and manage a candidate resume
-- Extract resume text, skills, experience, and profile information
-- Optional Groq-powered resume skill extraction when `GROQ_API_KEY` is configured
+### Candidate experience
 
-### Discover and recommendations
+- User registration and login with JWT-based authentication
+- Protected routes for authenticated candidate flows
+- Candidate profile with headline, bio, location, skills, education, work experience, preferred role, and salary expectations
+- Dashboard pages for Discover, Saved Jobs, Resume, AI Recommendations, and Settings
 
-- Ranked swipe deck of jobs matched to the candidate
-- Right swipe to like, left swipe to reject, and deliberate downward gesture to save
-- Bookmark save action independent of swipe history
-- Mouse and touch pointer interactions
-- Already-swiped jobs are excluded from future discovery
-- Live search bar on the Discover page (filters by title, company, location, and skills in real time)
-- AI Recommendations with match percentage, score breakdown, semantic similarity, swipe fit, missing skills, save/unsave, and inline job details
-- Job details open in the current dashboard section for Discover, Recommendations, and Saved Jobs
-- Swipe ML model activates after 10 swipes (logistic regression)
+### Resume and profile intelligence
 
-### ATS analysis
+- Resume upload and parsing
+- Extraction of skills, experience, and candidate summary data
+- Normalized profile-skills matching with job requirements
+- Optional Groq-based enrichment for resume skill extraction when configured
 
-Per-job ATS scoring is available through `GET /api/ats/{job_id}`. The current weights are:
+### Job discovery and recommendations
 
-| Factor | Weight |
-| --- | ---: |
-| Required skills | 35% |
-| Preferred skills | 15% |
-| Experience fit | 20% |
-| Semantic match | 20% |
-| Education match | 10% |
+- Ranked job card deck for matching opportunities
+- Like, reject, and save interactions
+- Swipe history tracking and exclusion of already reviewed jobs
+- Real-time search on the Discover page
+- Recommendation views with score breakdowns, match percentages, missing skills, and detailed job context
+- Saved jobs management separate from swipe activity
 
-The response includes the overall score, factor breakdown, missing skills, and an optional improvement suggestion.
+### ATS and matching
 
-## Matching and personalization
+- Per-job ATS score evaluation based on required skills, preferred skills, experience fit, semantic match, and education fit
+- Explainable candidate-to-job match score combining key skill, experience, and role relevance signals
+- Personalization signal from swipe behavior, without replacing the core match score logic
 
-The displayed candidate/job Match % uses a fixed, explainable score:
-
-```text
-Skill match          70%
-Experience match     20%
-Role relevance        10%
-Total                100%
-```
-
-Profile and primary-resume skills are normalized together. Experience is parsed from the candidate data and job requirement, while role relevance uses broad career categories with graduated related-role scores.
-
-Swipe behavior is a separate personalization signal. Likes and rejected jobs provide behavioral data for rule-based or trained swipe classification. Personalization changes ranking, not the displayed 70/20/10 Match %.
-
-The swipe ML model (logistic regression) activates once the user has at least **10** swipes in history.
-
-## Performance design
-
-- Candidate derived text and skills are cached during recommendation requests.
-- Swiped jobs are excluded through a database query.
-- Cheap deterministic scoring runs before semantic and ML enrichment.
-- Semantic and ML work is limited to a bounded top candidate set (80/120/200 jobs depending on pool size).
-- Job embeddings are cached by job ID.
-- Only returned jobs receive full recommendation enrichment.
-- Recommendation results use a short-lived per-candidate cache and are invalidated only when profile or resume data changes — not on every swipe.
-- Job matching pool is capped at the 3,000 most recent active jobs to prevent unbounded scans.
-
-## Technology stack
+## Tech stack
 
 ### Frontend
 
-- React 19, Vite, Tailwind CSS
-- React Router DOM, Axios, React Icons
+- React
+- Vite
+- React Router
+- Axios
+- React Icons
 
 ### Backend
 
-- Python, FastAPI, SQLAlchemy, PostgreSQL
-- JWT authentication, scikit-learn, sentence-transformers, spaCy
-- pandas, NumPy, pypdf, python-docx, Groq API, joblib
+- Python
+- FastAPI
+- SQLAlchemy
+- PostgreSQL
+- JWT authentication
+- scikit-learn
+- sentence-transformers
+- spaCy
+- pandas, NumPy, pypdf, python-docx
+- Groq API integration
 
 ## Project structure
 
@@ -90,61 +73,60 @@ The swipe ML model (logistic regression) activates once the user has at least **
 job-discovery-platform/
 ├── backend/
 │   ├── app/
-│   │   ├── routes/       # Authentication, candidate, jobs, resume, ATS, recommendations, saved jobs
-│   │   ├── services/     # Candidate data, matching helpers, embeddings, resume parsing, ATS
-│   │   ├── ml_models/    # Trained swipe_classifier.joblib (see "Data and maintenance scripts" below)
+│   │   ├── ml_models/
+│   │   ├── routes/
+│   │   ├── services/
+│   │   ├── auth.py
+│   │   ├── database.py
+│   │   ├── main.py
 │   │   ├── migrations.py
 │   │   ├── models.py
-│   │   ├── schemas.py    # Includes RegisterRequest (JSON request body for /api/auth/register)
-│   │   └── main.py
-│   ├── scripts/          # Import, repair, and model-training utilities
-│   ├── tests/            # Backend smoke tests
+│   │   └── schemas.py
+│   ├── scripts/
+│   ├── tests/
 │   ├── naukri_jobs.csv
-│   ├── .env.example
 │   ├── requirements.txt
-│   └── Dockerfile
+│   ├── Dockerfile
+│   └── README.md
 ├── frontend/
+│   ├── public/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── ProtectedRoute.jsx   # Auth guard for the candidate route tree
-│   │   │   └── ...
-│   │   ├── hooks/
-│   │   │   ├── useCurrentUser.js    # Shared /api/auth/me cache (Header + CandidateDashboard)
-│   │   │   └── ...                  # Jobs, recommendations, and saved-job data hooks
-│   │   └── pages/
-│   │       ├── NotFound.jsx         # Catch-all 404 route
-│   │       └── ...
 │   ├── package.json
-│   └── Dockerfile
-├── docs/                 # Logic and project reference documents
+│   ├── vite.config.js
+│   ├── Dockerfile
+│   └── README.md
+├── docs/
 ├── docker-compose.yml
-└── README.md
+├── LICENSE
+├── README.md
+└── .gitignore
 ```
 
-## API endpoints
+## API highlights
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
-| `/api/auth/register` | POST | Register a user (JSON body: `full_name`, `email`, `password`, `phone`) |
-| `/api/auth/login` | POST | Authenticate a user |
-| `/api/auth/me` | GET | Get the current user |
-| `/api/candidate/profile` | GET / POST / PUT | Manage the candidate profile |
-| `/api/candidate/resume` | GET / POST | Manage the candidate resume |
-| `/api/jobs/{job_id}` | GET | Get one job |
-| `/api/jobs/discovery-status` | GET | View discovery diagnostics |
-| `/api/jobs/reset-swipes` | DELETE | Clear candidate swipe history |
-| `/api/recommendations/{user_id}` | GET | Get ranked recommendations |
-| `/api/recommendations/{user_id}/trend` | GET | Get recommendation trend data |
-| `/api/swipes` | POST | Record a like or rejection |
-| `/api/swipes/history` | GET | View swipe history |
+| `/api/auth/register` | POST | Register a new candidate |
+| `/api/auth/login` | POST | Log in and receive tokens |
+| `/api/auth/me` | GET | Fetch current authenticated user |
+| `/api/candidate/profile` | GET / POST / PUT | View or update candidate profile |
+| `/api/candidate/resume` | GET / POST | Manage uploaded resume data |
+| `/api/jobs/{job_id}` | GET | Fetch a single job |
+| `/api/jobs/discovery-status` | GET | View discovery and filter diagnostics |
+| `/api/jobs/reset-swipes` | DELETE | Clear swipe history |
+| `/api/recommendations/{user_id}` | GET | Fetch ranked job recommendations |
+| `/api/swipes` | POST | Record swipe decisions |
+| `/api/swipes/history` | GET | Fetch swipe history |
 | `/api/saved-jobs` | GET / POST / DELETE | Manage saved jobs |
-| `/api/ats/{job_id}` | GET | Calculate a job ATS score |
+| `/api/ats/{job_id}` | GET | Calculate ATS score for a job |
 
-## Setup and running
+## Environment setup
 
 ### Backend
 
-Copy `backend/.env.example` to `backend/.env`, then configure the database, JWT, CORS, and optional Groq settings.
+1. Copy `backend/.env.example` to `backend/.env`.
+2. Configure database, JWT, CORS, and optional Groq settings.
+3. Install dependencies.
 
 ```powershell
 cd backend
@@ -152,7 +134,10 @@ pip install -r requirements.txt
 uvicorn app.main:app --reload
 ```
 
-The API runs at `http://127.0.0.1:8000` and its documentation is at `http://127.0.0.1:8000/docs`.
+The API is available at:
+
+- http://127.0.0.1:8000
+- http://127.0.0.1:8000/docs
 
 ### Frontend
 
@@ -162,19 +147,23 @@ npm install
 npm run dev
 ```
 
-Vite prints the frontend development URL in the terminal.
+The Vite development server will show the local frontend URL in the terminal.
 
 ### Docker
 
-The repository includes `docker-compose.yml` and Dockerfiles for the backend and frontend. Docker Compose can be used to run the application services together.
+The repository includes Docker configuration for both backend and frontend services.
 
-## Data and maintenance scripts
+```powershell
+docker-compose up --build
+```
 
-- `backend/scripts/import_jobs.py` imports jobs from `backend/naukri_jobs.csv`.
-- `backend/scripts/fix_job_skills.py` normalizes and repairs imported job skills.
-- `backend/scripts/train_swipe_model.py` trains the swipe-personalization model.
-- `backend/app/migrations.py` applies the candidate-data migration when the API starts.
-- `backend/tests/test_matching_smoke.py` contains the matching-engine smoke test.
+## Data and utility scripts
+
+- `backend/scripts/import_jobs.py` imports job records from the dataset
+- `backend/scripts/fix_job_skills.py` fixes and normalizes imported skill data
+- `backend/scripts/train_swipe_model.py` trains the swipe personalization model
+- `backend/app/migrations.py` applies startup migration logic for candidate data
+- `backend/tests/test_matching_smoke.py` validates the core matching pipeline
 
 ## Validation
 
@@ -187,27 +176,8 @@ cd ..\backend
 python -m pytest tests
 ```
 
-## Recent fixes
+## Notes
 
-This delivery includes a review pass that fixed the following, on top of the previous state of the project:
-
-- `/api/auth/register` now takes a JSON request body instead of query parameters, so the password no longer appears in the request URL.
-- `SECRET_KEY` is no longer a weak, hardcoded value — rotate it again yourself before any real deployment (see the comment above it in `.env` / `docker-compose.yml`).
-- Removed the unused `components/recommendations/Recommended.jsx` (dead code, not imported anywhere) and the unused `framer-motion` dependency.
-- Consolidated two independently-drifting semantic-similarity implementations (`embeddings.py`, `ats_service.py`) into one shared function.
-- Fixed an asymmetric role-relevance category mapping in `job_routes.py`.
-- Deduplicated the `GET /api/auth/me` request that both `Header.jsx` and `CandidateDashboard.jsx` used to fire independently on the same page load — see `hooks/useCurrentUser.js`.
-- `frontend/Dockerfile` now builds and serves a production bundle instead of running the Vite dev server.
-- `backend/Dockerfile` now downloads the spaCy model and sentence-transformers weights at build time, so the NLP-based matching paths work out of the box instead of silently falling back.
-- Pinned `scikit-learn`/`joblib` to the versions the shipped `app/ml_models/swipe_classifier.joblib` was actually trained with, removed the unused `passlib` dependency, and fixed an invalid `pandas` version pin.
-- Added a client-side `ProtectedRoute` auth guard and a catch-all 404 page (`pages/NotFound.jsx`) to `App.jsx`.
-- Fixed a `Toast.jsx` timer bug and a `useSavedJobs.js` issue where a freshly saved job briefly had no title/company data.
-- Added a live client-side search bar to the Discover page (filters by title, company, location, and skills).
-- Lowered the swipe ML model activation threshold from 30 swipes to 10.
-- Capped the job matching pool to the 3,000 most recent active jobs to prevent unbounded scans on large datasets.
-- Removed `invalidate_recommendation_cache()` from the swipe endpoint — it was forcing a full recommendation pipeline recompute (up to 40 seconds) after every card swipe. Cache now persists for its full TTL and is only invalidated by profile or resume changes.
-- Fixed swipe animation timing: `removeJob()` now fires at animation START so `jobs[0]` is already the next card when the 1-second exit animation completes — the next card appears with 0 delay. The exiting card's content is held stable by `exitingJobRef` so the card does not swap content mid-flight.
-- Toast notifications now fire only after the card has fully left the screen, not during the exit animation.
-- Code audit: removed `Depends()` from `get_matched_jobs` (not a route handler), removed duplicate profile/resume DB check from `get_recommendations` (2 fewer DB queries per request), removed dead constants `RECOMMENDATION_CANDIDATE_LIMIT_MEDIUM/LARGE`, removed an unused `base_match_score` alias field, added PEP 8 blank lines between model class definitions in `models.py`, and removed unused imports from `recommendation_routes.py`.
-
-Do not commit `backend/.env`, uploaded resumes, generated model files, or other secrets to version control — only `.env.example` belongs there.
+- Do not commit secrets or generated local artifacts such as `backend/.env`, uploaded resumes, or model files.
+- Keep environment configuration in `.env.example` and update it when new settings are introduced.
+- The app is designed for a candidate-first job discovery workflow with explainable recommendation logic and a modular backend API structure.
