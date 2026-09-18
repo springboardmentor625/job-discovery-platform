@@ -4,9 +4,11 @@ from .embeddings import (
     EMBEDDINGS_AVAILABLE,
     get_embedding,
     get_cached_job_embedding,
-    cosine_similarity
+    cosine_similarity,
+    word_overlap_similarity
 )
 from .skill_utils import split_skills
+from .candidate_data import experience_match_score, experience_range_match_score
 
 # ==========================================
 # ATS SCORING SERVICE
@@ -40,73 +42,33 @@ PREFERRED_SKILL_SHARE = 0.30
 _GROQ_SUGGESTIONS_DISABLED = False
 
 
-# ==========================================
-# CANDIDATE EXPERIENCE LEVEL -> APPROX YEARS
-# Maps the CandidateProfile.experience enum
-# (see schemas.EXPERIENCE_LEVELS) onto a rough
-# numeric years figure so it can be compared
-# against a job's free-text experience_required
-# (e.g. "1-3 years"), which is parsed with the
-# same regex helper job_routes.py already uses.
-# ==========================================
-
-EXPERIENCE_LEVEL_YEARS = {
-    "fresher / entry-level": 0,
-    "intern": 0,
-    "trainee": 0,
-    "junior / associate": 1,
-    "mid-level": 3,
-    "senior-level": 6,
-    "lead": 8,
-    "manager": 10,
-    "experienced professional": 5,
-}
-
-
-def _extract_years_from_text(text):
-    """
-    Reuses the same pattern as job_routes.
-    extract_experience_years — duplicated here
-    (rather than imported) to avoid a routes ->
-    services import, which would invert the
-    normal dependency direction in this codebase.
-    """
-
-    if not text:
-        return []
-
-    text = str(text).lower()
-
-    matches = re.findall(
-        r"(\d+(?:\.\d+)?)\s*(?:\+?\s*)?(?:years?|yrs?)",
-        text
-    )
-
-    years = [float(match) for match in matches]
-
-    if not years:
-        number = re.search(r"(\d+(?:\.\d+)?)", text)
-        if number:
-            years.append(float(number.group(1)))
-
-    return years
-
-
 def guess_job_category(title, description=""):
     """Classify a job into a stable broad category for recommendation features."""
     text = f"{title or ''} {description or ''}".lower()
     categories = {
-        "software": ("software", "developer", "engineer", "programmer", "full stack", "backend", "frontend", "web", "mobile", "devops", "cloud"),
-        "data": ("data scientist", "data analyst", "data engineer", "machine learning", "artificial intelligence", "analytics", "bi developer"),
+        # Checked in this order deliberately: "software"'s keywords
+        # include generic single words ("engineer", "developer") that
+        # would false-match "Data Engineer", "ML Engineer", and "AI
+        # Engineer" before ever reaching "data"'s more specific
+        # phrases if "software" were checked first. Specific
+        # categories are listed before the generic fallback.
+        "data": ("data scientist", "data analyst", "data engineer", "machine learning", "artificial intelligence", "ml engineer", "ai engineer", "analytics", "bi developer", "data science"),
         "design": ("designer", "ui", "ux", "product design", "graphic design"),
         "marketing": ("marketing", "seo", "content", "social media", "brand"),
         "sales": ("sales", "business development", "account executive", "relationship manager"),
         "finance": ("finance", "accountant", "accounting", "audit", "banking", "tax"),
         "hr": ("human resources", "hr", "recruiter", "talent acquisition"),
         "operations": ("operations", "supply chain", "logistics", "procurement"),
+        # Checked LAST — deliberately: these are the most generic,
+        # highest-collision terms and would false-match every
+        # category above if checked first.
+        "software": ("software", "developer", "engineer", "programmer", "full stack", "backend", "frontend", "web", "mobile", "devops", "cloud"),
     }
     for category, keywords in categories.items():
-        if any(keyword in text for keyword in keywords):
+        if any(
+            re.search(rf"(?<!\w){re.escape(keyword)}(?!\w)", text)
+            for keyword in keywords
+        ):
             return category
     return "other"
 
@@ -154,31 +116,14 @@ def preferred_skills_score(candidate_skills, job_preferred_skills):
 # EXPERIENCE FIT (20%)
 # ==========================================
 
-def experience_fit_score(candidate_experience_level, job_experience_required):
-
-    job_years_list = _extract_years_from_text(job_experience_required)
-
-    if not job_years_list:
-        # Job doesn't specify a parseable experience
-        # requirement — don't penalize for it.
-        return 100.0
-
-    job_years = min(job_years_list)
-
-    candidate_years = EXPERIENCE_LEVEL_YEARS.get(
-        (candidate_experience_level or "").strip().lower(),
-        0
+def experience_fit_score(candidate_years, job_experience_required):
+    return round(
+        experience_match_score(
+            candidate_years,
+            job_experience_required,
+        ),
+        2,
     )
-
-    if candidate_years >= job_years:
-        return 100.0
-
-    # Partial credit the closer the candidate is
-    # to the requirement, floor at 0.
-    gap = job_years - candidate_years
-    score = max(0.0, 100.0 - (gap * 20))
-
-    return round(score, 2)
 
 
 # ==========================================
@@ -200,29 +145,12 @@ def semantic_similarity_score(job_id, job_description, candidate_text):
         if job_embedding and candidate_embedding:
             return cosine_similarity(job_embedding, candidate_embedding)
 
-    # Fallback: word overlap
-    stopwords = {
-        "the", "and", "for", "with", "you", "are", "our", "will",
-        "have", "has", "this", "that", "your", "from", "job", "role",
-    }
-
-    def words(text):
-        if not text:
-            return set()
-        return {
-            w for w in re.findall(r"[a-zA-Z]{3,}", text.lower())
-            if w not in stopwords
-        }
-
-    job_words = words(job_description)
-    candidate_words = words(candidate_text)
-
-    if not job_words or not candidate_words:
-        return 0.0
-
-    overlap = job_words.intersection(candidate_words)
-
-    return round(min((len(overlap) / len(job_words)) * 100, 100), 2)
+    # Fallback: shared word-overlap heuristic (see embeddings.py) — this
+    # used to be a second, independently-maintained copy of the same
+    # logic with its own stopword list, which could silently disagree
+    # with the recommendation engine's own fallback score for the same
+    # text. Now both call the one shared implementation.
+    return word_overlap_similarity(candidate_text, job_description)
 
 
 # ==========================================
@@ -279,7 +207,7 @@ def calculate_ats_score(resume_data, job_data):
     """
     resume_data: {
         skills: str (comma-separated),
-        experience_level: str,
+        experience_years: float | None,
         education: str,
         resume_text: str,
     }
@@ -304,8 +232,14 @@ def calculate_ats_score(resume_data, job_data):
         candidate_skills, job_preferred_skills
     )
 
-    experience_score = experience_fit_score(
-        resume_data.get("experience_level"),
+    candidate_min = resume_data.get("experience_years")
+    candidate_max = candidate_min
+    if candidate_min is None:
+        candidate_min = resume_data.get("experience_min_years")
+        candidate_max = resume_data.get("experience_max_years")
+    experience_score = experience_range_match_score(
+        candidate_min,
+        candidate_max,
         job_data.get("experience_required")
     )
 

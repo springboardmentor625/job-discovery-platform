@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..database import get_db
 from ..models import User
+from ..schemas import RegisterRequest
 from ..auth import (
     hash_password,
     verify_password,
@@ -101,10 +102,7 @@ def validate_password(password: str):
 
 @router.post("/register")
 def register(
-    full_name: str,
-    email: str,
-    password: str,
-    phone: str,
+    data: RegisterRequest,
     db: Session = Depends(get_db)
 ):
 
@@ -112,9 +110,10 @@ def register(
     # Clean input
     # --------------------------------------
 
-    full_name = full_name.strip()
-    email = email.strip().lower()
-    phone = phone.strip()
+    full_name = data.full_name.strip()
+    email = data.email.strip().lower()
+    phone = data.phone.strip()
+    password = data.password
 
     # --------------------------------------
     # Validate email

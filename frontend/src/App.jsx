@@ -16,6 +16,8 @@ import Settings from "./pages/Settings";
 import ProfileSettings from "./components/settings/ProfileSettings";
 import SwipeHistory from "./components/settings/SwipeHistory";
 import Layout from "./components/Layout";
+import ProtectedRoute from "./components/ProtectedRoute";
+import NotFound from "./pages/NotFound";
 
 function App() {
   return (
@@ -26,10 +28,19 @@ function App() {
         <Route path="/" element={<Navigate to="/login" />} />
 
         {/* ==========================================
-            CANDIDATE AREA — persistent sidebar layout
+            CANDIDATE AREA — persistent sidebar layout,
+            gated behind ProtectedRoute so an unauthenticated
+            visit redirects to /login immediately instead of
+            rendering the shell and waiting on a 401.
         =========================================== */}
 
-        <Route element={<Layout />}>
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="/candidate" element={<CandidateDashboard />} />
           <Route path="/candidate/jobs" element={<Discover />} />
           <Route path="/candidate/saved-jobs" element={<SavedJobs />} />
@@ -42,6 +53,10 @@ function App() {
             element={<AIRecommendations />}
           />
         </Route>
+
+        {/* Catch-all — previously missing, so any unmatched URL
+            rendered a blank page instead of a real 404. */}
+        <Route path="*" element={<NotFound />} />
       </Routes>
     </BrowserRouter>
   );

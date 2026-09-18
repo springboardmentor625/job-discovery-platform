@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   FaRegBookmark,
@@ -6,10 +6,13 @@ import {
   FaBriefcase,
   FaMapMarkerAlt,
   FaMoneyBillWave,
+  FaHeart,
+  FaTimes,
 } from "react-icons/fa";
-import api from "../api";
+import useSavedJobs from "../hooks/useSavedJobs";
 import Toast from "../components/Toast";
 import JobDetailsModal from "../components/JobDetailsModal";
+import api, { clearAuth } from "../api";
 
 function SavedJobs() {
   const navigate = useNavigate();
@@ -18,11 +21,13 @@ function SavedJobs() {
   // STATE
   // ==========================================
 
-  const [savedJobs, setSavedJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const { savedJobs, loading, error, removeJob } = useSavedJobs();
   const [removingId, setRemovingId] = useState(null);
   const [selectedJob, setSelectedJob] = useState(null);
+  // Job pending a like/reject decision. Taking a saved job out of this list
+  // means finally deciding on it, so instead of a plain "remove", we ask
+  // whether it should count as a like or a reject.
+  const [confirmJob, setConfirmJob] = useState(null);
 
   // ==========================================
   // SWIPEX TOAST
@@ -50,83 +55,55 @@ function SavedJobs() {
   };
 
   // ==========================================
-  // LOAD SAVED JOBS
+  // REMOVE = FINAL LIKE/REJECT DECISION
   // ==========================================
+  // Taking a job out of Saved isn't a neutral delete — it means the
+  // candidate is done deciding on it. So instead of just unsaving it, we
+  // record the actual swipe decision (like or reject) via the same
+  // endpoint the swipe deck uses, then take it out of the saved list.
 
-  useEffect(() => {
-    const loadSavedJobs = async () => {
-      try {
-        const response = await api.get("/api/saved-jobs");
-        setSavedJobs(response.data || []);
-      } catch (err) {
-        console.error("SwipeX saved jobs loading error:", err);
-
-        // ======================================
-        // AUTH ERROR
-        // ======================================
-
-        if (err.response?.status === 401) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("user_id");
-          localStorage.removeItem("role");
-          navigate("/login");
-          return;
-        }
-
-        setError(
-          err.response?.data?.detail || "Unable to load saved jobs."
-        );
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadSavedJobs();
-  }, [navigate]);
-
-  // ==========================================
-  // REMOVE SAVED JOB
-  // ==========================================
-
-  const handleRemove = async (jobId) => {
+  const decideJob = async (jobId, direction) => {
     if (removingId !== null) {
       return;
     }
 
     setRemovingId(jobId);
-    setError("");
-
     try {
       // ======================================
-      // DELETE FROM BACKEND
+      // RECORD THE LIKE/REJECT SWIPE
       // ======================================
 
-      await api.delete(`/api/saved-jobs/${jobId}`);
+      await api.post("/api/swipes", {
+        job_id: jobId,
+        action: direction, // "right" = like, "left" = reject
+        calculate_match_score: false,
+      });
 
       // ======================================
-      // UPDATE FRONTEND
+      // TAKE IT OUT OF SAVED JOBS
       // ======================================
 
-      setSavedJobs((previousJobs) =>
-        previousJobs.filter((job) => job.job_id !== jobId)
-      );
+      await removeJob(jobId);
 
       // ======================================
       // SWIPEX SUCCESS NOTIFICATION
       // ======================================
 
-      showToast("Job removed from saved jobs.", "info");
+      showToast(
+        direction === "right"
+          ? "Marked as liked and moved out of saved jobs."
+          : "Marked as rejected and moved out of saved jobs.",
+        direction === "right" ? "success" : "info"
+      );
     } catch (err) {
-      console.error("SwipeX remove saved job error:", err);
+      console.error("SwipeX saved job decision error:", err);
 
       // ======================================
       // AUTH ERROR
       // ======================================
 
       if (err.response?.status === 401) {
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("user_id");
-        localStorage.removeItem("role");
+        clearAuth();
         navigate("/login");
         return;
       }
@@ -136,9 +113,7 @@ function SavedJobs() {
       // ======================================
 
       const errorMessage =
-        err.response?.data?.detail || "Unable to remove saved job.";
-
-      setError(errorMessage);
+        err.response?.data?.detail || "Unable to update this job.";
 
       // ======================================
       // SWIPEX ERROR NOTIFICATION
@@ -148,6 +123,26 @@ function SavedJobs() {
     } finally {
       setRemovingId(null);
     }
+  };
+
+  // ==========================================
+  // DECISION CONFIRMATION
+  // ==========================================
+  // "Remove" opens a confirmation dialog asking whether the job should
+  // be marked liked or rejected, instead of deleting it silently.
+
+  const requestRemove = (job) => {
+    if (removingId !== null) return;
+    setConfirmJob(job);
+  };
+
+  const cancelRemove = () => setConfirmJob(null);
+
+  const confirmDecision = async (direction) => {
+    if (!confirmJob) return;
+    const jobId = confirmJob.job_id;
+    setConfirmJob(null);
+    await decideJob(jobId, direction);
   };
 
   // ==========================================
@@ -167,7 +162,7 @@ function SavedJobs() {
   // ==========================================
 
   return (
-    <div className="px-6 py-10">
+    <div className="px-8 py-10">
       {/* =====================================
           SWIPEX TOAST
       ====================================== */}
@@ -179,12 +174,22 @@ function SavedJobs() {
         {/* HEADER */}
         {/* ================================= */}
 
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-sx-text">Saved Jobs</h1>
+        <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-sx-text">Saved Jobs</h1>
+            <p className="mt-1 text-sm text-sx-text-secondary">
+              Jobs you've saved for later.
+            </p>
+          </div>
 
-          <p className="text-sm text-sx-text-secondary">
-            Jobs you've saved for later.
-          </p>
+          <div className="flex items-center gap-1.5 rounded-md border border-sx-border bg-sx-card px-2 py-1 shadow-sm sm:ml-auto">
+            <div className="text-sm font-extrabold leading-none text-sx-primary-dark">
+              {savedJobs.length}
+            </div>
+            <div className="text-[8px] font-bold uppercase tracking-wide text-sx-text-muted">
+              Total Saved Jobs
+            </div>
+          </div>
         </div>
 
         {/* ================================= */}
@@ -335,7 +340,7 @@ function SavedJobs() {
 
                   <button
                     type="button"
-                    onClick={() => handleRemove(job.job_id)}
+                    onClick={() => requestRemove(job)}
                     disabled={removingId === job.job_id}
                     className="rounded-lg border border-sx-danger-border px-3 py-2 text-sm font-semibold text-sx-danger transition hover:bg-sx-danger-bg disabled:cursor-not-allowed disabled:opacity-60"
                   >
@@ -360,9 +365,66 @@ function SavedJobs() {
       </div>
 
       <JobDetailsModal
+        key={selectedJob?.job_id || "empty"}
         job={selectedJob}
         onClose={() => setSelectedJob(null)}
       />
+
+      {/* =====================================
+          LIKE / REJECT DECISION DIALOG
+      ====================================== */}
+
+      {confirmJob && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+          onClick={cancelRemove}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-sx-border bg-sx-card p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-base font-bold text-sx-text">
+              Like or reject this job?
+            </h3>
+            <p className="mt-2 text-sm leading-relaxed text-sx-text-secondary">
+              <strong className="text-sx-text">
+                {confirmJob.title || "This job"}
+              </strong>
+              {confirmJob.company ? ` at ${confirmJob.company}` : ""} will be
+              taken off your saved list either way — pick whether it counts
+              as a like or a reject.
+            </p>
+
+            <div className="mt-5 flex gap-3">
+              <button
+                type="button"
+                onClick={() => confirmDecision("left")}
+                disabled={removingId === confirmJob.job_id}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-sx-danger-border bg-sx-danger-bg px-3 py-2.5 text-sm font-semibold text-sx-danger transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <FaTimes className="text-xs" /> Reject
+              </button>
+              <button
+                type="button"
+                onClick={() => confirmDecision("right")}
+                disabled={removingId === confirmJob.job_id}
+                className="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-sx-success px-3 py-2.5 text-sm font-semibold text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <FaHeart className="text-xs" /> Like
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={cancelRemove}
+              disabled={removingId === confirmJob.job_id}
+              className="mt-3 w-full rounded-lg px-3 py-2 text-xs font-semibold text-sx-text-secondary transition hover:text-sx-text disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

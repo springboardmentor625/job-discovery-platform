@@ -1,29 +1,27 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import api from "../api";
+import api, { clearAuth } from "../api";
+import useCurrentUser from "../hooks/useCurrentUser";
 
 function CandidateDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const { user } = useCurrentUser();
   const [profile, setProfile] = useState(null);
-  const [fullName, setFullName] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  const fullName = user?.full_name || "";
+
   // ==========================================
-  // LOAD USER + CANDIDATE PROFILE
+  // LOAD CANDIDATE PROFILE
+  // (user info now comes from the shared useCurrentUser hook above,
+  // instead of a second independent GET /api/auth/me call here)
   // ==========================================
 
   useEffect(() => {
     const fetchData = async () => {
-      try {
-        const userResponse = await api.get("/api/auth/me");
-        setFullName(userResponse.data.full_name || "");
-      } catch (err) {
-        console.error(err);
-      }
-
       try {
         const response = await api.get("/api/candidate/profile");
         setProfile(response.data);
@@ -31,9 +29,7 @@ function CandidateDashboard() {
         console.error(error);
 
         if (error.response?.status === 401) {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("user_id");
-          localStorage.removeItem("role");
+          clearAuth();
           navigate("/login");
           return;
         }
@@ -69,7 +65,7 @@ function CandidateDashboard() {
     : "C";
 
   return (
-    <div className="px-10 py-8">
+    <div className="px-8 py-10">
       {/* =================================
           HEADER
       ================================== */}
@@ -189,7 +185,9 @@ function CandidateDashboard() {
                   Experience
                 </span>
                 <p className="mt-1 text-sm text-sx-text">
-                  {profile.experience || "Not added"}
+                  {profile.experience_years != null
+                    ? `${profile.experience_years} years`
+                    : "Not added"}
                 </p>
               </div>
 

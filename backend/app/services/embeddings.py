@@ -1,5 +1,6 @@
 import math
 import re
+from functools import lru_cache
 
 # ==========================================
 # EMBEDDINGS SERVICE
@@ -17,11 +18,12 @@ import re
 
 EMBEDDINGS_AVAILABLE = False
 _model = None
+EMBEDDING_MAX_CHARS = 2000
 
 try:
     from sentence_transformers import SentenceTransformer
 
-    _model = SentenceTransformer("all-MiniLM-L6-v2")
+    _model = SentenceTransformer("all-MiniLM-L6-v2", local_files_only=True)
     EMBEDDINGS_AVAILABLE = True
 
 except Exception as import_error:  # noqa: BLE001
@@ -33,16 +35,40 @@ except Exception as import_error:  # noqa: BLE001
     )
 
 
+def _truncate_embedding_text(text):
+    """Trim oversized content to a bounded length before building embeddings.
+
+    Long resumes and full job descriptions can make the sentence-transformers
+    encoder spend a disproportionate amount of time processing text that is far
+    beyond what is useful for recommendation scoring. The recommendation engine
+    already ranks jobs by a cheap rule-based score before it reaches the slower
+    semantic pass, so a bounded embedding input keeps the expensive stage fast
+    without materially affecting ranking quality.
+    """
+    if not text:
+        return ""
+
+    normalized = " ".join(str(text).split())
+    if len(normalized) <= EMBEDDING_MAX_CHARS:
+        return normalized
+
+    return normalized[:EMBEDDING_MAX_CHARS]
+
+
 def get_embedding(text):
     """
     Returns a list[float] embedding for the given text,
     or None if the embedding model isn't available.
     """
 
-    if not EMBEDDINGS_AVAILABLE or not text:
+    if not EMBEDDINGS_AVAILABLE:
         return None
 
-    return _model.encode(text).tolist()
+    trimmed = _truncate_embedding_text(text)
+    if not trimmed:
+        return None
+
+    return _model.encode(trimmed).tolist()
 
 
 def cosine_similarity(vec_a, vec_b):
@@ -77,38 +103,34 @@ def cosine_similarity(vec_a, vec_b):
 # on every request that scores it.
 # ==========================================
 
-_job_embedding_cache = {}
-
-
+@lru_cache(maxsize=4096)
 def get_cached_job_embedding(job_id, description):
-
-    if job_id in _job_embedding_cache:
-        return _job_embedding_cache[job_id]
-
-    embedding = get_embedding(description)
-    _job_embedding_cache[job_id] = embedding
-
-    return embedding
+    return get_embedding((description or "").strip())
 
 
+@lru_cache(maxsize=4096)
 def get_cached_text_embedding(text: str):
-    """Return a cached embedding for arbitrary text, reusing the shared embedding model."""
-    if not text or not text.strip():
+    """Return a cached embedding for arbitrary text."""
+    normalized = _truncate_embedding_text(text)
+    if not normalized:
         return None
-    return get_text_embedding(text)
+    return get_embedding(normalized)
 
-def semantic_similarity(text_a, text_b):
-    """Return semantic similarity as a 0-100 score using the loaded embedding model."""
+def word_overlap_similarity(text_a, text_b):
+    """
+    Fallback similarity heuristic used whenever the embedding model isn't
+    available: normalized word overlap between two texts, scaled 0-100.
+
+    This is the single shared implementation — it used to be duplicated
+    (with its own, separately-drifting stopword list) inside
+    ats_service.semantic_similarity_score(). Both callers now share this
+    one implementation so the two "similarity" scores in the app can't
+    silently disagree due to code drift.
+    """
+
     if not text_a or not text_b:
         return 0.0
 
-    embedding_a = get_cached_text_embedding(text_a)
-    embedding_b = get_cached_text_embedding(text_b)
-
-    if embedding_a and embedding_b:
-        return cosine_similarity(embedding_a, embedding_b)
-
-    # Graceful fallback when sentence-transformers is unavailable.
     stopwords = {
         "the", "and", "for", "with", "you", "are", "our", "will",
         "have", "has", "this", "that", "your", "from", "job", "role",
@@ -130,3 +152,40 @@ def semantic_similarity(text_a, text_b):
         return 0.0
 
     return round(min(len(words_a & words_b) / len(words_b) * 100, 100), 2)
+
+
+@lru_cache(maxsize=100000)
+def semantic_similarity(text_a, text_b):
+    """Return semantic similarity as a 0-100 score using the loaded embedding model.
+
+    This is intentionally cached and short-circuited: repeated recommendation
+    scoring often compares identical candidate/job text pairs, and unrelated
+    text comparisons should never trigger the expensive embedding path.
+    """
+    if not text_a or not text_b:
+        return 0.0
+
+    text_a = (text_a or "").strip()
+    text_b = (text_b or "").strip()
+    if not text_a or not text_b:
+        return 0.0
+
+    overlap_words = {
+        word for word in re.findall(r"[a-zA-Z0-9]{3,}", text_a.lower())
+        if word
+    } & {
+        word for word in re.findall(r"[a-zA-Z0-9]{3,}", text_b.lower())
+        if word
+    }
+
+    if not overlap_words:
+        return 0.0
+
+    embedding_a = get_cached_text_embedding(text_a)
+    embedding_b = get_cached_text_embedding(text_b)
+
+    if embedding_a and embedding_b:
+        return cosine_similarity(embedding_a, embedding_b)
+
+    # Graceful fallback when sentence-transformers is unavailable.
+    return word_overlap_similarity(text_a, text_b)

@@ -1,21 +1,8 @@
-import { useEffect, useState } from "react";
-import api from "../api";
+import useCurrentUser from "../hooks/useCurrentUser";
 
 function Header() {
-  const [name, setName] = useState("");
-
-  useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const response = await api.get("/api/auth/me");
-        setName(response.data.full_name || "");
-      } catch (err) {
-        console.error("Header user load error:", err);
-      }
-    };
-
-    loadUser();
-  }, []);
+  const { user } = useCurrentUser();
+  const name = user?.full_name || "";
 
   const firstLetter = name ? name.trim().charAt(0).toUpperCase() : "C";
 

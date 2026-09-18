@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import SavedJob, Job
 from ..auth import get_current_user
+from .job_routes import invalidate_recommendation_cache
 
 
 router = APIRouter(
@@ -88,6 +89,7 @@ def save_job(
     db.add(saved_job)
 
     db.commit()
+    invalidate_recommendation_cache(user_id)
 
     db.refresh(saved_job)
 
@@ -214,6 +216,7 @@ def remove_saved_job(
     db.delete(saved_job)
 
     db.commit()
+    invalidate_recommendation_cache(user_id)
 
 
     return {

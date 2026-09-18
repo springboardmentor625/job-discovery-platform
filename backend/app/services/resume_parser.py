@@ -3,6 +3,7 @@ import re
 from pypdf import PdfReader
 from docx import Document
 from dotenv import load_dotenv
+from .skill_utils import COMMON_SKILLS, SKILL_ALIASES, categorize_skills, normalize_skill, normalize_skills
 
 load_dotenv()
 
@@ -25,173 +26,10 @@ _GROQ_SKILL_EXTRACTION_DISABLED = False
 # fallback vocabulary when it isn't.
 # ==========================================
 
-COMMON_SKILLS = [
-    # Programming Languages
-    "python", "java", "javascript", "typescript", "c", "c++", "c#",
-    "go", "rust", "php", "kotlin", "swift", "ruby", "scala", "r",
-    "matlab", "perl", "dart",
-
-    # Frontend
-    "react", "angular", "vue", "html", "css", "tailwind", "bootstrap",
-    "sass", "next.js", "redux", "jquery", "webpack",
-
-    # Backend
-    "node.js", "node", "express", "fastapi", "django", "flask",
-    "spring boot", "spring", "laravel", "ruby on rails", "asp.net",
-    "graphql", "rest api", "rest", "api", "microservices",
-
-    # Databases
-    "mysql", "postgresql", "mongodb", "redis", "sql", "sqlite",
-    "oracle", "cassandra", "dynamodb", "elasticsearch", "firebase",
-
-    # Cloud / DevOps
-    "aws", "azure", "gcp", "docker", "kubernetes", "git", "github",
-    "gitlab", "jenkins", "ci/cd", "terraform", "ansible", "linux",
-    "nginx", "bash", "shell scripting",
-
-    # Data / ML / AI
-    "machine learning", "deep learning", "artificial intelligence",
-    "data science", "data analysis", "data engineering", "pandas",
-    "numpy", "scikit-learn", "tensorflow", "pytorch", "keras", "nlp",
-    "computer vision", "opencv", "spacy", "sentence-transformers",
-    "power bi", "tableau", "excel",
-
-    # Mobile
-    "android", "ios", "react native", "flutter", "swiftui",
-
-    # Testing / QA
-    "selenium", "pytest", "jest", "junit", "cypress", "postman",
-
-    # Design / Product
-    "figma", "sketch", "adobe xd", "ui/ux", "photoshop", "illustrator",
-
-    # Project / Collaboration
-    "jira", "confluence", "agile", "scrum", "kanban",
-
-    # Marketing / Business (non-tech roles in this dataset)
-    "seo", "digital marketing", "content writing", "market research",
-    "negotiation", "salesforce", "google analytics", "social media",
-    "video editing", "email marketing"
-]
-
-
-SKILL_ALIASES = {
-    'angular.js': 'angular',
-    'angularjs': 'angular',
-    'artificial intelligence': 'artificial intelligence',
-    'c sharp': 'c#',
-    'ci cd': 'ci/cd',
-    'ci-cd': 'ci/cd',
-    'cpp': 'c++',
-    'express.js': 'express',
-    'fast api': 'fastapi',
-    'fast-api': 'fastapi',
-    'golang': 'go',
-    'js': 'javascript',
-    'k8s': 'kubernetes',
-    'ml': 'machine learning',
-    'mongo': 'mongodb',
-    'mongo db': 'mongodb',
-    'mysql db': 'mysql',
-    'natural language processing': 'nlp',
-    'nextjs': 'next.js',
-    'node': 'node.js',
-    'node.js': 'node.js',
-    'nodejs': 'node.js',
-    'opencv-python': 'opencv',
-    'postgres': 'postgresql',
-    'postgres db': 'postgresql',
-    'postgres dbms': 'postgresql',
-    'powerbi': 'power bi',
-    'py': 'python',
-    'pytorch': 'pytorch',
-    'react.js': 'react',
-    'reactjs': 'react',
-    'restful': 'rest api',
-    'restful api': 'rest api',
-    'scikit learn': 'scikit-learn',
-    'sklearn': 'scikit-learn',
-    'tableau': 'tableau',
-    'tailwindcss': 'tailwind',
-    'tf': 'tensorflow',
-    'ts': 'typescript',
-    'ui ux': 'ui/ux',
-    'ui/ux design': 'ui/ux',
-    'vue.js': 'vue',
-    'vuejs': 'vue',
-}
-
-
-def normalize_skill(raw_skill: str) -> str:
-    cleaned = raw_skill.strip().lower()
-    return SKILL_ALIASES.get(cleaned, cleaned)
-
-
 SKILL_MATCH_TERMS = sorted(
     set(COMMON_SKILLS) | set(SKILL_ALIASES),
     key=lambda skill: (-len(skill), skill.lower())
 )
-
-SKILL_CATEGORIES = {
-    "programming": {
-        "python", "java", "javascript", "typescript", "c", "c++", "c#",
-        "go", "rust", "php", "kotlin", "swift", "ruby", "scala", "r",
-        "matlab", "perl", "dart"
-    },
-    "frontend": {
-        "react", "angular", "vue", "html", "css", "tailwind", "bootstrap",
-        "sass", "next.js", "redux", "jquery", "webpack"
-    },
-    "backend": {
-        "node.js", "express", "fastapi", "django", "flask", "spring boot",
-        "spring", "laravel", "ruby on rails", "asp.net", "graphql", "rest api",
-        "rest", "api", "microservices"
-    },
-    "database": {
-        "mysql", "postgresql", "mongodb", "redis", "sql", "sqlite", "oracle",
-        "cassandra", "dynamodb", "elasticsearch", "firebase"
-    },
-    "cloud_devops": {
-        "aws", "azure", "gcp", "docker", "kubernetes", "git", "github",
-        "gitlab", "jenkins", "ci/cd", "terraform", "ansible", "linux", "nginx",
-        "bash", "shell scripting"
-    },
-    "data_ai": {
-        "machine learning", "deep learning", "artificial intelligence",
-        "data science", "data analysis", "data engineering", "pandas", "numpy",
-        "scikit-learn", "tensorflow", "pytorch", "keras", "nlp", "computer vision",
-        "opencv", "spacy", "sentence-transformers", "power bi", "tableau", "excel"
-    },
-    "mobile": {
-        "android", "ios", "react native", "flutter", "swiftui"
-    },
-    "testing": {
-        "selenium", "pytest", "jest", "junit", "cypress", "postman"
-    },
-    "design": {
-        "figma", "sketch", "adobe xd", "ui/ux", "photoshop", "illustrator"
-    },
-    "business": {
-        "jira", "confluence", "agile", "scrum", "kanban", "seo",
-        "digital marketing", "content writing", "market research", "negotiation",
-        "salesforce", "google analytics", "social media", "video editing",
-        "email marketing"
-    },
-}
-
-
-def categorize_skills(raw_skills):
-    skills = (
-        {normalize_skill(skill) for skill in raw_skills.split(",") if skill.strip()}
-        if isinstance(raw_skills, str)
-        else {normalize_skill(skill) for skill in raw_skills if skill}
-    )
-    categories = set()
-    for category, vocabulary in SKILL_CATEGORIES.items():
-        if skills & vocabulary:
-            categories.add(category)
-    return categories
-
 
 
 # ==========================================
@@ -244,10 +82,6 @@ def extract_pdf_text(file_path):
             text += page_text + "\n"
 
     return text
-
-
-# Backward-compatible alias (older callers used this name)
-extract_resume_text = extract_pdf_text
 
 
 # ==========================================

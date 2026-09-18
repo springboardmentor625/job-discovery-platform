@@ -1,22 +1,26 @@
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
 
 
 # ==========================================
-# EXPERIENCE LEVELS
+# AUTHENTICATION
+#
+# Sent as a JSON request body (not query
+# parameters), so a candidate's password never
+# ends up in the request URL — and therefore
+# never in server access logs, proxy logs, or
+# browser history.
 # ==========================================
 
-EXPERIENCE_LEVELS = [
-    "Fresher / Entry-Level",
-    "Intern",
-    "Trainee",
-    "Junior / Associate",
-    "Mid-Level",
-    "Senior-Level",
-    "Lead",
-    "Manager",
-    "Experienced Professional",
-]
+class RegisterRequest(BaseModel):
+
+    full_name: str
+
+    email: EmailStr
+
+    password: str
+
+    phone: str
 
 
 # ==========================================
@@ -35,57 +39,17 @@ class CandidateProfileCreate(BaseModel):
 
     skills: Optional[str] = None
 
-    experience: Optional[str] = None
+    experience_years: Optional[int] = Field(default=None, ge=0, le=80)
 
     preferred_role: Optional[str] = None
 
     preferred_location: Optional[str] = None
 
+    # ge=10001 is the single source of truth for "must be more than
+    # ₹10,000" — a separate field_validator re-checking the same
+    # ">10000" condition used to live here too (dead, redundant code).
     expected_salary: Optional[int] = Field(
         default=None,
-        ge=10001
+        ge=10001,
+        description="Must be more than ₹10,000."
     )
-
-    # ======================================
-    # EXPERIENCE VALIDATION
-    # ======================================
-
-    @field_validator("experience")
-    @classmethod
-    def validate_experience(cls, value):
-
-        # Allow empty experience
-        if value is None or value.strip() == "":
-            return value
-
-        # Reject Swagger placeholder
-        if value.strip().lower() == "string":
-            raise ValueError(
-                "Please select a valid experience level"
-            )
-
-        # Check against allowed levels
-        if value not in EXPERIENCE_LEVELS:
-            raise ValueError(
-                "Please select a valid experience level"
-            )
-
-        return value
-
-    # ======================================
-    # SALARY VALIDATION
-    # ======================================
-
-    @field_validator("expected_salary")
-    @classmethod
-    def validate_salary(cls, value):
-
-        if value is None:
-            return value
-
-        if value <= 10000:
-            raise ValueError(
-                "Expected salary must be more than ₹10,000"
-            )
-
-        return value

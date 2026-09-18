@@ -34,7 +34,9 @@ services:
 
     environment:
       DATABASE_URL: postgresql://postgres:root@db:5432/swipex
-      SECRET_KEY: swipex-secret-key
+      # Regenerate before any real deployment, e.g.:
+      #   python -c "import secrets; print(secrets.token_hex(32))"
+      SECRET_KEY: 9dc1f3e7b6a2c845fe0139a7d5c8b2e6410f9a3c7b1e58d2f4a6c9b0e3d7f215
 
     depends_on:
       db:

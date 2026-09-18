@@ -6,24 +6,8 @@ import {
 
 import { useLocation, useNavigate } from "react-router-dom";
 import { FaArrowLeft } from "react-icons/fa";
-import api from "../../api";
-
-
-// ==========================================
-// EXPERIENCE LEVELS
-// ==========================================
-
-const EXPERIENCE_LEVELS = [
-  "Fresher / Entry-Level",
-  "Intern",
-  "Trainee",
-  "Junior / Associate",
-  "Mid-Level",
-  "Senior-Level",
-  "Lead",
-  "Manager",
-  "Experienced Professional",
-];
+import api, { clearAuth } from "../../api";
+import Toast from "../Toast";
 
 
 // ==========================================
@@ -31,108 +15,106 @@ const EXPERIENCE_LEVELS = [
 // ==========================================
 
 const AVAILABLE_SKILLS = [
-
-  // Programming Languages
-  "C",
-  "C++",
-  "C#",
-  "Java",
-  "Python",
-  "JavaScript",
-  "TypeScript",
-  "Go",
-  "Rust",
-  "PHP",
-  "Kotlin",
-  "Swift",
-  "R",
-
-  // Frontend
-  "HTML",
-  "CSS",
-  "SASS",
-  "Bootstrap",
-  "Tailwind CSS",
-  "React",
-  "Next.js",
-  "Angular",
-  "Vue.js",
-  "Redux",
-
-  // Backend
-  "Node.js",
-  "Express.js",
-  "FastAPI",
-  "Django",
-  "Flask",
-  "Spring Boot",
   ".NET",
-  "Laravel",
-
-  // Databases
-  "SQL",
-  "MySQL",
-  "PostgreSQL",
-  "MongoDB",
-  "SQLite",
-  "Oracle",
-  "Redis",
+  "Adobe XD",
+  "Agile",
+  "Android Development",
+  "Android Studio",
+  "Angular",
+  "Ansible",
+  "API Design",
+  "AWS",
+  "Azure",
+  "Bash",
+  "Bootstrap",
+  "C",
+  "C#",
+  "C++",
+  "CI/CD",
+  "Cloud Computing",
+  "Computer Networks",
+  "CSS",
+  "Cybersecurity",
+  "Dart",
+  "Data Analysis",
+  "Data Engineering",
+  "Data Science",
+  "Deep Learning",
+  "Django",
+  "Docker",
+  "DSA",
+  "Elasticsearch",
+  "Excel",
+  "Express.js",
+  "Figma",
   "Firebase",
-
-  // DevOps & Cloud
+  "Flask",
+  "Flutter",
+  "GCP",
   "Git",
   "GitHub",
   "GitLab",
-  "Docker",
-  "Kubernetes",
-  "Jenkins",
-  "AWS",
-  "Azure",
-  "Google Cloud",
-  "Linux",
-
-  // Data & AI
-  "Machine Learning",
-  "Deep Learning",
-  "Data Science",
-  "Data Analysis",
-  "Data Engineering",
-  "Artificial Intelligence",
-  "TensorFlow",
-  "PyTorch",
-  "Scikit-learn",
-  "Pandas",
-  "NumPy",
-  "Power BI",
-  "Tableau",
-
-  // Mobile
-  "Android Development",
-  "Flutter",
-  "React Native",
-  "Android Studio",
-
-  // Tools
-  "VS Code",
-  "Postman",
-  "Jira",
-  "Figma",
-  "UI/UX",
-
-  // Concepts
-  "REST API",
+  "Go",
+  "Google Analytics",
   "GraphQL",
+  "HTML",
+  "Java",
+  "JavaScript",
+  "Jenkins",
+  "Jira",
+  "jQuery",
+  "Kotlin",
+  "Kubernetes",
+  "Laravel",
+  "Linux",
+  "Machine Learning",
+  "MATLAB",
   "Microservices",
-  "System Design",
+  "MongoDB",
+  "MySQL",
+  "Next.js",
+  "Node.js",
+  "NumPy",
+  "OAuth",
   "OOP",
-  "DSA",
-  "Computer Networks",
   "Operating Systems",
-  "Cybersecurity",
-
-  // Custom option
-  "Other",
-];
+  "Oracle",
+  "Pandas",
+  "PHP",
+  "PostgreSQL",
+  "Power BI",
+  "Postman",
+  "PyTorch",
+  "Python",
+  "R",
+  "React",
+  "React Native",
+  "Redis",
+  "Redux",
+  "REST API",
+  "Rust",
+  "SASS",
+  "Scikit-learn",
+  "Scrum",
+  "Selenium",
+  "Shell Scripting",
+  "Spring Boot",
+  "SQL",
+  "SQLite",
+  "System Design",
+  "Tableau",
+  "Tailwind CSS",
+  "TensorFlow",
+  "Terraform",
+  "TypeScript",
+  "UI/UX",
+  "Vue.js",
+  "Webpack",
+  "Windows Server",
+  "WordPress",
+].sort((firstSkill, secondSkill) =>
+  firstSkill.localeCompare(secondSkill)
+).concat("Add New Skill");
 
 
 // ==========================================
@@ -146,11 +128,6 @@ function ProfileSettings({ returnTo }) {
   const resolvedReturnTo = returnTo || location.state?.returnTo || "/candidate";
 
   const skillAreaRef = useRef(null);
-  const redirectTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    return () => clearTimeout(redirectTimeoutRef.current);
-  }, []);
 
 
   // ==========================================
@@ -164,7 +141,7 @@ function ProfileSettings({ returnTo }) {
     location: "",
     education: "",
     skills: "",
-    experience: "",
+    experience_years: "",
     preferred_role: "",
     preferred_location: "",
     expected_salary: "",
@@ -319,12 +296,13 @@ function ProfileSettings({ returnTo }) {
             : [];
 
 
-        // Remove "Other" if somehow saved
+        // Remove option labels if they were somehow saved
 
         const cleanedSkills =
           existingSkills.filter(
             (skill) =>
-              skill.toLowerCase() !== "other"
+              skill.toLowerCase() !== "other" &&
+              skill.toLowerCase() !== "add new skill"
           );
 
 
@@ -352,8 +330,8 @@ function ProfileSettings({ returnTo }) {
           skills:
             cleanedSkills.join(", "),
 
-          experience:
-            profile.experience || "",
+          experience_years:
+            profile.experience_years ?? "",
 
           preferred_role:
             profile.preferred_role || "",
@@ -378,9 +356,12 @@ function ProfileSettings({ returnTo }) {
           err.response?.status === 401
         ) {
 
-          localStorage.removeItem(
-            "access_token"
-          );
+          // Bug fix: this previously only removed "access_token" and left
+          // "user_id"/"role" behind in localStorage — an incomplete logout
+          // that could leave other parts of the app (anything reading
+          // those keys) with stale state. clearAuth() removes all three,
+          // same as every other 401 handler in the app.
+          clearAuth();
 
           navigate("/login");
 
@@ -449,7 +430,7 @@ function ProfileSettings({ returnTo }) {
     // CUSTOM SKILL
     // ----------------------------------------
 
-    if (skill === "Other") {
+    if (skill === "Add New Skill") {
 
       setShowCustomSkill(true);
 
@@ -564,7 +545,8 @@ function ProfileSettings({ returnTo }) {
         .filter(Boolean)
         .filter(
           (skill) =>
-            skill.toLowerCase() !== "other"
+            skill.toLowerCase() !== "other" &&
+            skill.toLowerCase() !== "add new skill"
         );
 
 
@@ -722,10 +704,18 @@ function ProfileSettings({ returnTo }) {
     // EXPERIENCE VALIDATION
     // ========================================
 
-    if (!form.experience) {
+    const experienceYears = Number(form.experience_years);
+
+    if (
+      form.experience_years === "" ||
+      Number.isNaN(experienceYears) ||
+      !Number.isInteger(experienceYears) ||
+      experienceYears < 0 ||
+      experienceYears > 80
+    ) {
 
       setError(
-        "Please select your experience level."
+        "Enter experience between 0 and 80 years."
       );
 
       setSaving(false);
@@ -816,8 +806,7 @@ function ProfileSettings({ returnTo }) {
         skills:
           selectedSkills.join(", "),
 
-        experience:
-          form.experience,
+        experience_years: experienceYears,
 
         preferred_role:
           form.preferred_role.trim(),
@@ -835,29 +824,15 @@ function ProfileSettings({ returnTo }) {
       // SAVE PROFILE
       // --------------------------------------
 
-      const response =
-        await api.put(
-          "/api/candidate/profile",
-          profileData
-        );
-
-
-      console.log(
-        "PROFILE UPDATE SUCCESS:",
-        response.data
+      await api.put(
+        "/api/candidate/profile",
+        profileData
       );
 
 
       setMessage(
         "Profile saved successfully."
       );
-
-
-      redirectTimeoutRef.current = setTimeout(() => {
-        navigate(resolvedReturnTo, {
-          replace: true,
-        });
-      }, 1000);
 
 
     } catch (err) {
@@ -874,9 +849,9 @@ function ProfileSettings({ returnTo }) {
         err.response?.status === 401
       ) {
 
-        localStorage.removeItem(
-          "access_token"
-        );
+        // Same incomplete-logout bug as the profile-load handler above —
+        // fixed the same way, with the shared clearAuth() helper.
+        clearAuth();
 
         navigate("/login");
 
@@ -989,11 +964,11 @@ function ProfileSettings({ returnTo }) {
 
         {/* SUCCESS */}
 
-        {message && (
-          <div className="mb-4 rounded-lg border border-sx-success-border bg-sx-success-bg px-4 py-3 text-sm text-sx-success">
-            {message}
-          </div>
-        )}
+        <Toast
+          message={message}
+          type="success"
+          onClose={() => setMessage("")}
+        />
 
         {/* ERROR */}
 
@@ -1098,20 +1073,17 @@ function ProfileSettings({ returnTo }) {
                 Experience
               </label>
 
-              <select
-                name="experience"
-                value={form.experience}
+              <input
+                type="number"
+                name="experience_years"
+                value={form.experience_years}
+                min="0"
+                max="80"
+                step="1"
                 onChange={handleChange}
+                placeholder="Example: 2"
                 className={inputClasses}
-              >
-                <option value="">Select experience level</option>
-
-                {EXPERIENCE_LEVELS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             {/* SKILLS */}
@@ -1175,7 +1147,7 @@ function ProfileSettings({ returnTo }) {
                           onClick={() => addSkill(skill)}
                           className="block w-full px-3.5 py-2 text-left text-sm text-sx-text transition hover:bg-sx-bg-soft"
                         >
-                          {skill}
+                          {skill === "Add New Skill" ? "+ Add New Skill" : skill}
                         </button>
                       ))
                     ) : (

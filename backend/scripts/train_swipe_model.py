@@ -14,38 +14,26 @@ import sys
 
 import joblib
 from sklearn.linear_model import LogisticRegression
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.model_selection import train_test_split
 
 BACKEND_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(BACKEND_DIR))
 
-from app.database import SessionLocal
-from app.models import CandidateProfile, Job, JobSwipe, Resume
-from app.services.ats_service import guess_job_category
-from app.services.resume_parser import normalize_skill, categorize_skills
-from app.services.embeddings import semantic_similarity
+from app.database import SessionLocal  # type: ignore[import]
+from app.models import CandidateProfile, Job, JobSwipe, Resume  # type: ignore[import]
+from app.services.ats_service import guess_job_category  # type: ignore[import]
+from app.services.skill_utils import categorize_skills, merge_skills, normalize_skills  # type: ignore[import]
+from app.services.candidate_data import build_candidate_data  # type: ignore[import]
+from app.services.embeddings import semantic_similarity  # type: ignore[import]
 
 
 MODEL_PATH = BACKEND_DIR / "app" / "ml_models" / "swipe_classifier.joblib"
 
 
-def skills_to_set(raw_skills):
-    if not raw_skills:
-        return set()
-
-    return {
-        normalize_skill(skill)
-        for skill in str(raw_skills).split(",")
-        if skill.strip()
-    }
-
-
-def build_feature_vector(profile, resume, job):
-    candidate_skills = (
-        skills_to_set(profile.skills)
-        |
-        skills_to_set(resume.extracted_skills if resume else "")
-    )
-    job_skills = skills_to_set(job.skills)
+def build_feature_vector(profile, resume, job, candidate_data):
+    candidate_skills = candidate_data.skills
+    job_skills = normalize_skills(job.skills)
 
     overlap_count = len(candidate_skills & job_skills)
     overlap_ratio = overlap_count / max(len(candidate_skills), 1)
@@ -56,7 +44,7 @@ def build_feature_vector(profile, resume, job):
             profile.headline,
             profile.bio,
             profile.preferred_role,
-            profile.experience,
+            str(profile.experience_years)if profile.experience_years is not None else "",
             profile.education,
             resume.extracted_text if resume else "",
         ]
@@ -119,10 +107,10 @@ def train():
 
         total = len(swipes)
 
-        if total < 30:
+        if total < 10:
             print(
                 f"Only {total} swipe rows found. "
-                "At least 30 are required; no model was trained or saved."
+                "At least 10 are required; no model was trained or saved."
             )
             return
 
@@ -139,7 +127,14 @@ def train():
             else:
                 continue
 
-            features.append(build_feature_vector(profile, resume, job))
+            features.append(
+                build_feature_vector(
+                    profile,
+                    resume,
+                    job,
+                    build_candidate_data(db, profile.user_id),
+                )
+            )
             labels.append(label)
 
         if len(set(labels)) < 2:
@@ -150,13 +145,39 @@ def train():
             )
             return
 
+        test_size = max(2, round(len(labels) * 0.2))
+        can_stratify = min(labels.count(0), labels.count(1)) >= 2
+        try:
+            train_features, test_features, train_labels, test_labels = train_test_split(
+                features,
+                labels,
+                test_size=test_size,
+                random_state=42,
+                stratify=labels if can_stratify else None,
+            )
+        except ValueError as split_error:
+            print(f"Validation split unavailable: {split_error}")
+            train_features = test_features = train_labels = test_labels = None
+
         model = LogisticRegression(
             max_iter=1000,
             random_state=42,
         )
-        model.fit(features, labels)
+        if train_features is not None and len(set(train_labels)) == 2:
+            model.fit(train_features, train_labels)
+            predictions = model.predict(test_features)
+            metrics = {
+                "accuracy": accuracy_score(test_labels, predictions),
+                "precision": precision_score(test_labels, predictions, zero_division=0),
+                "recall": recall_score(test_labels, predictions, zero_division=0),
+                "f1": f1_score(test_labels, predictions, zero_division=0),
+            }
+        else:
+            metrics = None
 
-        training_accuracy = model.score(features, labels)
+        # Refit the saved model on all available historical rows after the
+        # held-out evaluation; the reported metrics remain test-set metrics.
+        model.fit(features, labels)
 
         MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
         joblib.dump(model, MODEL_PATH)
@@ -165,7 +186,13 @@ def train():
         print("SWIPE MODEL TRAINING COMPLETED")
         print("================================")
         print(f"Swipe rows used : {len(labels)}")
-        print(f"Training accuracy: {training_accuracy:.4f}")
+        if metrics:
+            print(f"Test accuracy   : {metrics['accuracy']:.4f}")
+            print(f"Test precision  : {metrics['precision']:.4f}")
+            print(f"Test recall     : {metrics['recall']:.4f}")
+            print(f"Test F1         : {metrics['f1']:.4f}")
+        else:
+            print("Test metrics    : unavailable (insufficient split data)")
         print(f"Model saved     : {MODEL_PATH}")
 
     finally:

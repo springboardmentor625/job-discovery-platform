@@ -14,6 +14,22 @@ load_dotenv()
 
 SECRET_KEY = os.getenv("SECRET_KEY")
 
+if not SECRET_KEY:
+    # Fail loudly rather than silently passing SECRET_KEY=None into
+    # jwt.encode(). A random per-process key still lets the app run
+    # locally, but invalidates every existing token on each restart —
+    # set a real SECRET_KEY in .env for anything beyond a throwaway run.
+    import secrets
+
+    SECRET_KEY = secrets.token_hex(32)
+
+    print(
+        "[auth] WARNING: SECRET_KEY is not set in the environment. "
+        "Using a random, process-local key — every existing token will "
+        "become invalid on the next restart, and this is NOT safe for "
+        "production. Set SECRET_KEY in your .env file."
+    )
+
 ALGORITHM = "HS256"
 
 ACCESS_TOKEN_EXPIRE_MINUTES = 60

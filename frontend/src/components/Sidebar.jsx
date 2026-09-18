@@ -9,6 +9,7 @@ import {
   FaBolt,
   FaCog,
 } from "react-icons/fa";
+import { clearAuth } from "../api";
 
 // ==========================================
 // NAV ITEMS
@@ -35,9 +36,7 @@ function Sidebar() {
   // ==========================================
 
   const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("user_id");
-    localStorage.removeItem("role");
+    clearAuth();
     navigate("/login");
   };
 
@@ -49,7 +48,7 @@ function Sidebar() {
   };
 
   return (
-    <aside className="sticky top-0 flex h-screen w-[250px] flex-shrink-0 flex-col justify-between overflow-y-auto bg-slate-900 px-4 py-6">
+    <aside className="sticky top-0 z-50 flex h-screen w-[250px] flex-shrink-0 flex-col justify-between overflow-y-auto bg-slate-900 px-4 py-6">
       <div>
         <div className="mb-8 px-2">
           <div className="flex items-center gap-2">

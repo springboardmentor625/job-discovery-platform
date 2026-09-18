@@ -25,7 +25,7 @@ const invalidateCachedJob = (jobId) => {
 // swipe history all factor into match_score.
 // Powers the AI Recommendations page.
 //
-//   AI Recommendations -> useJobs(userId, { limit: 10 })
+//   AI Recommendations -> useJobs(userId, { limit: 30 })
 //
 // NOT used by Discover — Discover is a plain,
 // unscored listing of every active job and uses
@@ -60,16 +60,24 @@ export default function useJobs(userId, options = {}) {
     const now = Date.now();
 
     if (cached && now - cached.timestamp < JOB_CACHE_TTL_MS) {
-      setJobs(cached.jobs);
-      setLoading(false);
-      setError("");
+      Promise.resolve().then(() => {
+        if (!cancelled) {
+          setJobs(cached.jobs);
+          setLoading(false);
+          setError("");
+        }
+      });
       return () => {
         cancelled = true;
       };
     }
 
-    setLoading(true);
-    setError("");
+    Promise.resolve().then(() => {
+      if (!cancelled) {
+        setLoading(true);
+        setError("");
+      }
+    });
 
     const fetchJobs = async () => {
       try {
@@ -135,6 +143,31 @@ export default function useJobs(userId, options = {}) {
     setJobs((previous) => previous.filter((job) => job.job_id !== jobId));
   };
 
+  // ==========================================
+  // RESTORE A JOB LOCALLY
+  // Used when an optimistic removeJob() (swipe/save fired before the
+  // backend confirmed it) turns out to have failed — puts the job back
+  // at the front of the deck so the user doesn't lose it, and the swipe
+  // can be retried. Re-adds to the module cache too, so a remount within
+  // the cache TTL doesn't re-lose it.
+  // ==========================================
+
+  const restoreJob = (job) => {
+    if (!job) return;
+
+    setJobs((previous) =>
+      previous.some((existing) => existing.job_id === job.job_id)
+        ? previous
+        : [job, ...previous]
+    );
+
+    const cacheKey = getCacheKey(userId, limit, search);
+    const cached = jobsCache.get(cacheKey);
+    if (cached && !cached.jobs.some((existing) => existing.job_id === job.job_id)) {
+      jobsCache.set(cacheKey, { ...cached, jobs: [job, ...cached.jobs] });
+    }
+  };
+
   const refetch = () => setRefetchIndex((previous) => previous + 1);
 
   return {
@@ -143,5 +176,6 @@ export default function useJobs(userId, options = {}) {
     error,
     refetch,
     removeJob,
+    restoreJob,
   };
 }

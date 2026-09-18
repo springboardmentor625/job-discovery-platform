@@ -20,6 +20,7 @@ from ..models import (
 from ..auth import get_current_user
 from .job_routes import invalidate_recommendation_cache
 from ..services.resume_parser import (
+    COMMON_SKILLS,
     extract_pdf_text,
     extract_docx_text,
     parse_resume
@@ -601,8 +602,6 @@ def analyze_resume_ats(
     # Contact information
     # --------------------------------------
 
-    import re
-
     email_found = bool(
         re.search(
             r"[A-Za-z0-9._%+-]+@"
@@ -730,8 +729,8 @@ def analyze_resume_ats(
             profile.skills
             if profile else None,
 
-        "experience":
-            profile.experience
+        "experience_years":
+            profile.experience_years
             if profile else None,
 
         "education":
@@ -773,46 +772,11 @@ def analyze_resume_ats(
     # KEYWORD / SKILL ANALYSIS
     # ======================================
 
-    common_skills = [
-
-        "python",
-        "java",
-        "javascript",
-        "typescript",
-        "react",
-        "node.js",
-        "node",
-        "fastapi",
-        "django",
-        "flask",
-        "sql",
-        "mysql",
-        "postgresql",
-        "mongodb",
-        "html",
-        "css",
-        "git",
-        "github",
-        "docker",
-        "aws",
-        "azure",
-        "machine learning",
-        "deep learning",
-        "data analysis",
-        "pandas",
-        "numpy",
-        "scikit-learn",
-        "tensorflow",
-        "pytorch"
-
-    ]
-
-
     detected_skills = [
 
         skill
 
-        for skill in common_skills
+        for skill in COMMON_SKILLS
 
         if skill in normalized_text
 

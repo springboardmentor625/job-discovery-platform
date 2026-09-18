@@ -106,8 +106,8 @@ class CandidateProfile(Base):
         nullable=True
     )
 
-    experience = Column(
-        String(1000),
+    experience_years = Column(
+        Integer,
         nullable=True
     )
 
@@ -125,6 +125,8 @@ class CandidateProfile(Base):
     Integer,
     nullable=True
 )
+
+
 class Resume(Base):
 
     __tablename__ = "resumes"
@@ -194,6 +196,8 @@ class Resume(Base):
         DateTime,
         default=datetime.utcnow
     )
+
+
 class Job(Base):
 
     __tablename__ = "jobs"
@@ -287,6 +291,8 @@ class Job(Base):
         DateTime,
         default=datetime.utcnow
     )
+
+
 class JobSwipe(Base):
 
     __tablename__ = "job_swipes"
@@ -333,6 +339,8 @@ class JobSwipe(Base):
         DateTime,
         default=datetime.utcnow
     )
+
+
 class SavedJob(Base):
 
     __tablename__ = "saved_jobs"

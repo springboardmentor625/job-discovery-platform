@@ -7,8 +7,10 @@ from ..models import Job, CandidateProfile, Resume, ATSReport
 from ..auth import get_current_user
 from ..services.ats_service import (
     calculate_ats_score,
-    generate_improvement_suggestion
+    generate_improvement_suggestion,
+    guess_job_category,
 )
+from ..services.candidate_data import build_candidate_data
 
 
 router = APIRouter(
@@ -66,13 +68,14 @@ def get_ats_score_for_job(
     # resume file itself.
     # ======================================
 
+    candidate = build_candidate_data(db, user_id)
     resume_data = {
-        "skills": (profile.skills if profile and profile.skills
-                   else resume.extracted_skills),
-        "experience_level": profile.experience if profile else None,
-        "education": (profile.education if profile and profile.education
-                      else resume.extracted_education),
-        "resume_text": resume.extracted_text,
+        "skills": ", ".join(sorted(candidate.skills)),
+        "experience_years": candidate.experience_years,
+        "experience_min_years": candidate.experience_min_years,
+        "experience_max_years": candidate.experience_max_years,
+        "education": candidate.education,
+        "resume_text": candidate.combined_text,
     }
 
     job_data = {
@@ -84,6 +87,11 @@ def get_ats_score_for_job(
     }
 
     result = calculate_ats_score(resume_data, job_data)
+
+    # job_category was previously never populated (the column existed
+    # but nothing wrote to it) — this reuses the same categorization
+    # already used by the recommendation engine.
+    job_category = guess_job_category(job.title, job.description)
 
     # ======================================
     # OPTIONAL AI SUGGESTION (skips gracefully)
@@ -116,6 +124,7 @@ def get_ats_score_for_job(
         existing_report.semantic_score = breakdown["semantic"]
         existing_report.education_score = breakdown["education"]
         existing_report.missing_skills = missing_skills_str
+        existing_report.job_category = job_category
 
         db.commit()
 
@@ -132,6 +141,7 @@ def get_ats_score_for_job(
             semantic_score=breakdown["semantic"],
             education_score=breakdown["education"],
             missing_skills=missing_skills_str,
+            job_category=job_category,
         )
 
         db.add(report)

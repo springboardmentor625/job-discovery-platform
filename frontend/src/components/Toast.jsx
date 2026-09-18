@@ -1,19 +1,31 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 function Toast({ message, type = "success", onClose }) {
+  // onClose is a fresh inline function on every parent render. Depending
+  // on it directly used to mean any unrelated parent re-render while a
+  // toast was showing would tear down and restart this 4-second timer —
+  // a toast could linger indefinitely on a page that re-renders often.
+  // Keeping the latest onClose in a ref lets the effect depend on
+  // `message` alone.
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
   useEffect(() => {
     if (!message) {
       return;
     }
 
     const timer = setTimeout(() => {
-      onClose();
-    }, 5000);
+      onCloseRef.current();
+    }, 4000);
 
     return () => {
       clearTimeout(timer);
     };
-  }, [message, onClose]);
+  }, [message]);
 
   if (!message) {
     return null;

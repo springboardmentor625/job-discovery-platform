@@ -264,6 +264,16 @@ dist/
 build/
 
 # ==========================================
+# TRAINED ML MODELS
+# ==========================================
+# swipe_classifier.joblib is a locally-trained artifact, not source —
+# generate it with `python scripts/train_swipe_model.py` from backend/
+# (see backend/README.md). Not committed since it's derived from
+# whatever swipe history exists in your own database.
+
+backend/app/ml_models/
+
+# ==========================================
 # IDE
 # ==========================================
 

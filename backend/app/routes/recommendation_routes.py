@@ -76,7 +76,7 @@ def compute_tags(job):
 @router.get("/api/recommendations/{user_id}")
 def get_recommendations(
     user_id: int,
-    limit: int = 50,
+    limit: int = 30,
     search: str = None,
     current_user_id: int = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -90,31 +90,41 @@ def get_recommendations(
         )
 
     # Guard against pathological limit values from the client.
-    limit = max(1, min(limit, 300))
+    limit = max(1, min(limit, 30))
+
+    # Guard: get_matched_jobs() raises HTTPException(400) with a descriptive
+    # message if the candidate has no profile or no primary resume yet.
+    # No need to duplicate those queries here.
+
+    # ======================================
+    # MINIMUM MATCH THRESHOLD
+    # A recommendation below this isn't a real
+    # recommendation — it's noise. 40% is the
+    # floor; anything under it is dropped before
+    # the limit is applied, so the returned list
+    # is always genuinely relevant even if fewer
+    # than `limit` jobs clear the bar.
+    # ======================================
+    MIN_MATCH_SCORE = 40.0
 
     matched_jobs = get_matched_jobs(
         user_id=current_user_id,
         db=db
     )
 
-    # ======================================
-    # PERFORMANCE CAP
-    #
-    # get_matched_jobs can return every active
-    # job in the database (the imported Naukri dataset).
-    # Enriching every one
-    # of them below (word-overlap regex per
-    # description, tag computation, etc.) does
-    # not scale — the Discover page only ever
-    # needs the top handful for Swipe Deck /
-    # Recommended, and a generously large pool
-    # for Search & Filters. matched_jobs is
-    # already sorted by match_score descending,
-    # so this keeps the best matches and avoids
-    # doing real work on jobs nobody will see.
-    # ======================================
+    matched_jobs = [
+        job for job in matched_jobs
+        if job["match_score"] >= MIN_MATCH_SCORE
+    ]
 
-    matched_jobs = matched_jobs[:200]
+    # ======================================
+    # The scoring layer has already evaluated the
+    # complete unswiped active-job pool. Do not
+    # truncate it before search/filtering: the user
+    # should be able to get the best jobs from ALL
+    # available jobs. Expensive semantic/ML work is
+    # already bounded inside get_matched_jobs().
+    # ======================================
 
     # ======================================
     # OPTIONAL SERVER-SIDE SEARCH
@@ -207,6 +217,7 @@ class SwipeInput(BaseModel):
     job_id: int
     action: str  # "right" or "left"
     match_score: float | None = None
+    calculate_match_score: bool = True
 
 
 ACTION_MAP = {
@@ -255,7 +266,7 @@ def record_swipe(
     # the backend will fall back to calculating it.
     match_score = data.match_score
 
-    if match_score is None:
+    if match_score is None and data.calculate_match_score:
         try:
             matched_jobs = get_matched_jobs(
                 user_id=user_id,

@@ -4,16 +4,17 @@ SQLAlchemy==2.0.52
 psycopg2-binary==2.9.12
 python-dotenv==1.0.1
 python-jose==3.5.0
-passlib==1.7.4
 bcrypt==5.0.0
 python-multipart==0.0.32
 pypdf==6.16.1
-PyPDF2==3.0.1
 pandas==3.0.3
 numpy==2.4.6
-scikit-learn
 python-docx==1.2.0
 sentence-transformers==3.3.1
 spacy==3.8.16
 groq==0.31.0
-joblib
+# Pinned to match the scikit-learn version app/ml_models/swipe_classifier.joblib
+# was trained with. If you retrain the model with a different scikit-learn
+# version, update this pin (and re-check compatibility) to match.
+scikit-learn==1.9.0
+joblib==1.5.3

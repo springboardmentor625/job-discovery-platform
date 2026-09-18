@@ -6,7 +6,7 @@ import {
   FaExclamationTriangle,
   FaFileAlt,
 } from "react-icons/fa";
-import api from "../api";
+import api, { clearAuth } from "../api";
 
 function Resume() {
   const navigate = useNavigate();
@@ -72,7 +72,7 @@ function Resume() {
         await loadATS();
       } catch (err) {
         if (err.response?.status === 401) {
-          localStorage.removeItem("access_token");
+          clearAuth();
           navigate("/login");
           return;
         }
@@ -169,7 +169,7 @@ function Resume() {
       console.error(err);
 
       if (err.response?.status === 401) {
-        localStorage.removeItem("access_token");
+        clearAuth();
         navigate("/login");
         return;
       }
@@ -193,7 +193,7 @@ function Resume() {
   }
 
   return (
-    <div className="px-4 py-8 sm:px-6 lg:px-8">
+    <div className="px-8 py-10">
       <div className="mx-auto max-w-5xl">
         {/* ================================= */}
         {/* HEADER */}

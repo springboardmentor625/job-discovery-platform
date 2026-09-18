@@ -45,7 +45,7 @@ def create_profile(
         location=profile_data.location,
         education=profile_data.education,
         skills=profile_data.skills,
-        experience=profile_data.experience,
+        experience_years=profile_data.experience_years,
         preferred_role=profile_data.preferred_role,
         preferred_location=profile_data.preferred_location,
         expected_salary=profile_data.expected_salary
@@ -100,7 +100,7 @@ def get_profile(
         "location": profile.location,
         "education": profile.education,
         "skills": profile.skills,
-        "experience": profile.experience,
+        "experience_years": profile.experience_years,
         "preferred_role": profile.preferred_role,
         "preferred_location": profile.preferred_location,
         "expected_salary": profile.expected_salary
@@ -139,7 +139,7 @@ def update_profile(
             location=profile_data.location,
             education=profile_data.education,
             skills=profile_data.skills,
-            experience=profile_data.experience,
+            experience_years=profile_data.experience_years,
             preferred_role=profile_data.preferred_role,
             preferred_location=profile_data.preferred_location,
             expected_salary=profile_data.expected_salary
@@ -178,8 +178,8 @@ def update_profile(
     if profile_data.skills is not None:
         profile.skills = profile_data.skills
 
-    if profile_data.experience is not None:
-        profile.experience = profile_data.experience
+    if profile_data.experience_years is not None:
+        profile.experience_years = profile_data.experience_years
 
     if profile_data.preferred_role is not None:
         profile.preferred_role = profile_data.preferred_role
