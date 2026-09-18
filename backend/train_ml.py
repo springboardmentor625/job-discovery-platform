@@ -14,7 +14,7 @@ from app import (
 from recommendation import (
     calculate_skill_match,
     calculate_location_match,
-    calculate_job_type_match
+    
 )
 
 from sklearn.pipeline import Pipeline
@@ -23,7 +23,7 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score
 
 
-MODEL_PATH = "trained_model.pkl"
+MODEL_PATH = "/app/model/trained_model.pkl"
 
 
 def parse_skills(value):
@@ -139,10 +139,7 @@ def create_training_data():
         # Feature 3: Job Type Match
         # ----------------------------------------
 
-        job_type_match = calculate_job_type_match(
-            profile.preferred_job_type,
-            job.employment_type
-        )
+        
 
         # ----------------------------------------
         # Add features
@@ -151,7 +148,7 @@ def create_training_data():
         X.append([
             skill_match,
             location_match,
-            job_type_match
+        
         ])
 
         # ----------------------------------------
@@ -246,7 +243,7 @@ def train_model(X, y):
     print("Features:")
     print("1. Skill Match")
     print("2. Location Match")
-    print("3. Job Type Match")
+    
 
     # ----------------------------------------
     # Model coefficients
