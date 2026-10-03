@@ -138,8 +138,7 @@ class Command(BaseCommand):
             .values_list("source_id", flat=True)
         )
         existing_signatures = set(
-            Job.objects.filter(is_active=True)
-            .values_list("company", "title")
+            Job.objects.all().values_list("company", "title")
         )
         existing_signatures_normalized = {
             (c.strip().lower(), t.strip().lower())
@@ -149,7 +148,7 @@ class Command(BaseCommand):
 
         self.stdout.write(
             f"Pre-existing '{target_source}' jobs in DB: {len(existing_source_ids):,} "
-            f"(Total active jobs in DB: {Job.objects.filter(is_active=True).count():,})"
+            f"(Total jobs in DB: {Job.objects.all().count():,})"
         )
 
         added_count = 0

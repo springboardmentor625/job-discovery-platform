@@ -552,8 +552,7 @@ class JobViewSet(viewsets.ModelViewSet):
         from django.utils import timezone
         now = timezone.now()
         queryset = (
-            Job.objects.filter(is_active=True)
-            .order_by("-id")
+            Job.objects.all().order_by("-id")
         )
         params = self.request.query_params
 
@@ -907,23 +906,22 @@ class JobsLastUpdatedView(APIView):
         from django.utils import timezone
         now = timezone.now()
 
-        qs = Job.objects.filter(is_active=True).filter(
-            Q(expires_at__isnull=True) | Q(expires_at__gt=now)
-        )
+        qs = Job.objects.all()
 
-        # Most recent posted_at among live-imported jobs
-        live_qs = qs.exclude(source="dataset")
+        active_qs = qs.filter(is_active=True).filter(Q(expires_at__isnull=True) | Q(expires_at__gt=now))
+
+        live_qs = active_qs.exclude(source="dataset")
         last_updated = live_qs.aggregate(last=Max("posted_at"))["last"]
 
-        # Per-source counts
         source_counts = list(
-            qs.values("source").annotate(count=Count("id")).order_by("source")
+            qs.values("source")
+            .annotate(count=Count("id"))
+            .order_by("source")
         )
 
-        return Response(
-            {
-                "last_updated": last_updated,
-                "total_active": qs.count(),
-                "sources": source_counts,
-            }
-        )
+        return Response({
+            "last_updated": last_updated,
+            "total_jobs": qs.count(),
+            "total_active": active_qs.count(),
+            "sources": source_counts,
+        })

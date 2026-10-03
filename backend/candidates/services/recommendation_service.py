@@ -700,7 +700,7 @@ class RecommendationService:
 
         from django.utils import timezone as dj_tz
         now = dj_tz.now()
-        base_qs = Job.objects.filter(is_active=True).filter(
+        base_qs = Job.objects.all().filter(
             Q(expires_at__isnull=True) | Q(expires_at__gt=now)
         )
 
